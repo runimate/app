@@ -7,21 +7,98 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@1,800&family=Orbitron:wght@700&family=Bebas+Neue&family=Fredericka+the+Great&family=Big+Shoulders+Inline+Text:wght@700&family=Caveat+Brush&family=Rock+Salt&family=Handjet:wght@500&display=swap" rel="stylesheet">
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; padding: 40px; background-color: #fff; color: #000; }
-    .upload-box { border: 1px solid #ddd; padding: 40px; margin-bottom: 30px; display: inline-block; }
-    .upload-label { display: block; background-color: black; color: white; padding: 10px 20px; font-weight: bold; margin-bottom: 10px; cursor: pointer; }
-    .status { color: green; margin-bottom: 10px; font-weight: bold; }
-    .run-button { background-color: black; color: #7fff00; padding: 15px 30px; font-size: 24px; border: 2px solid #0070ff; border-radius: 5px; cursor: pointer; margin-top: 10px; display: none; }
-    .km-container { display: flex; flex-direction: column; align-items: flex-start; max-width: 600px; margin: 30px auto 20px; text-align: left; }
-    .km-display { font-weight: bold; }
-    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; max-width: 600px; margin: 0 auto; }
-    .stat { font-size: 22px; font-weight: bold; text-align: left; }
-    .label { font-size: 14px; color: gray; text-align: left; }
-    .font-controls, .align-controls, .bg-controls { margin-top: 30px; }
-    .font-controls button, .align-controls button, .bg-controls button { margin: 5px; padding: 8px 12px; font-size: 14px; cursor: pointer; border-radius: 5px; height: 40px; }
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 40px;
+      background-color: #fff;
+      color: #000;
+    }
+    h1 {
+      font-weight: bold;
+    }
+    .subtitle {
+      font-size: 14px;
+      margin-bottom: 30px;
+    }
+    .upload-box {
+      border: 1px solid #ddd;
+      padding: 40px;
+      margin-bottom: 30px;
+      display: inline-block;
+    }
+    .upload-label {
+      display: block;
+      background-color: black;
+      color: white;
+      padding: 10px 20px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      cursor: pointer;
+    }
+    .status {
+      color: green;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+    .run-button {
+      background-color: black;
+      color: #7fff00;
+      padding: 15px 30px;
+      font-size: 24px;
+      border: 2px solid #0070ff;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 10px;
+      display: none;
+    }
+    .km-container {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      margin: 30px 0 10px;
+      text-align: left;
+      padding-left: 60px;
+    }
+    .km-number {
+      font-family: 'Jost', sans-serif;
+      font-style: italic;
+      font-weight: 800;
+      font-size: 100px;
+    }
+    .km-unit {
+      font-size: 30px;
+      margin-top: 5px;
+      font-family: Arial, sans-serif;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 30px;
+      max-width: 600px;
+      margin: 80px auto 0;
+      text-align: left;
+    }
+    .stat {
+      font-size: 22px;
+      font-weight: bold;
+    }
+    .label {
+      font-size: 14px;
+      color: gray;
+    }
+    .font-controls, .align-controls, .bg-controls {
+      margin-top: 30px;
+    }
+    .font-controls button, .align-controls button, .bg-controls button {
+      margin: 5px;
+      padding: 8px 12px;
+      font-size: 14px;
+      cursor: pointer;
+      border-radius: 5px;
+      height: 40px;
+    }
     .font-controls button { font-size: 20px; }
-    h1 { font-weight: bold; }
-    .subtitle { font-size: 14px; margin-top: -20px; margin-bottom: 40px; }
   </style>
 </head>
 <body>
@@ -60,11 +137,11 @@
   </div>
 
   <div class="km-container" id="km-container">
-    <div class="km-display"><span id="km" style="font-size: 100px; font-family: 'Jost', sans-serif;">0.00</span></div>
-    <div class="km-label" style="font-size: 20px; color: gray;">Kilometers</div>
+    <div class="km-number" id="km">0.00</div>
+    <div class="km-unit">kilometers</div>
   </div>
 
-  <div class="grid" id="data-grid">
+  <div class="grid">
     <div><div class="stat" id="pace">-</div><div class="label">Avg. Pace</div></div>
     <div><div class="stat" id="time">-</div><div class="label">Time</div></div>
     <div><div class="stat" id="calories">-</div><div class="label">Calories</div></div>
@@ -79,7 +156,6 @@
     function parseValuesByLine(text) {
       const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
       const numbers = lines.flatMap(line => line.match(/[\d.:']{1,5}/g) || []);
-
       const parsed = {
         km: numbers[0] || null,
         pace: numbers[1] || null,
@@ -89,18 +165,15 @@
         heartrate: numbers[5] || null,
         cadence: numbers[6] || null,
       };
-
-      console.log("라인 기반 파싱 결과:", parsed);
+      console.log("파싱 결과:", parsed);
       return parsed;
     }
 
     document.getElementById("file-upload").addEventListener("change", async (event) => {
       const file = event.target.files[0];
       if (!file) return;
-
       document.getElementById("upload-status").textContent = "업로드 완료";
       document.getElementById("run-btn").style.display = "inline-block";
-
       const reader = new FileReader();
       reader.onload = async () => {
         const img = reader.result;
@@ -115,7 +188,6 @@
     function animateNumber(id, start, end, duration) {
       const el = document.getElementById(id);
       let startTime;
-
       function update(currentTime) {
         if (!startTime) startTime = currentTime;
         const progress = Math.min((currentTime - startTime) / duration, 1);
@@ -128,34 +200,22 @@
 
     function runAnimation() {
       animateNumber("km", 0, parseFloat(parsedData.km || 0), 2000);
-
       const keys = ["pace", "time", "calories", "elevation", "heartrate", "cadence"];
       keys.forEach(key => {
         document.getElementById(key).textContent = parsedData[key] || "-";
       });
     }
 
-    function setFont(fontName, numSize) {
+    function setFont(fontName, size) {
       const kmEl = document.getElementById("km");
       kmEl.style.fontFamily = fontName;
-      kmEl.style.fontSize = numSize + "px";
+      kmEl.style.fontSize = size + "px";
     }
 
     function setAlign(direction) {
-      const kmBox = document.getElementById("km-container");
-      const grid = document.getElementById("data-grid");
-
-      if (direction === 'left') {
-        kmBox.style.alignItems = 'flex-start';
-        grid.style.justifyContent = 'flex-start';
-        const stats = document.querySelectorAll('.stat, .label');
-        stats.forEach(el => el.style.textAlign = 'left');
-      } else {
-        kmBox.style.alignItems = 'center';
-        grid.style.justifyContent = 'center';
-        const stats = document.querySelectorAll('.stat, .label');
-        stats.forEach(el => el.style.textAlign = 'center');
-      }
+      const kmContainer = document.getElementById("km-container");
+      kmContainer.style.alignItems = direction === 'center' ? 'center' : 'flex-start';
+      document.querySelector(".grid").style.textAlign = direction;
     }
 
     function setBackground(color) {
@@ -163,8 +223,6 @@
       document.body.style.backgroundColor = isBlack ? "#000" : "#fff";
       document.body.style.color = isBlack ? "#fff" : "#000";
     }
-
-    window.onload = () => setFont('Jost', 100);
   </script>
 </body>
 </html>
