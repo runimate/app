@@ -1,132 +1,114 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RUNNING MILEAGE ANIMATION MAKER</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Running Mileage Animation Maker</title>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: sans-serif;
       text-align: center;
-      padding: 40px;
+      padding: 2rem;
     }
-    .upload-box {
-      border: 1px solid #ddd;
-      padding: 40px;
-      margin-bottom: 30px;
-      display: inline-block;
+    #upload-box {
+      margin-bottom: 2rem;
     }
-    .upload-label {
-      display: block;
-      background-color: black;
-      color: white;
-      padding: 10px 20px;
-      font-weight: bold;
-      margin-bottom: 10px;
-      cursor: pointer;
+    #output {
+      margin-top: 2rem;
+      font-size: 1.2rem;
+      line-height: 2;
     }
-    .status {
-      color: green;
-      margin-bottom: 10px;
+    .km-number {
+      font-size: 3rem;
       font-weight: bold;
     }
-    .run-button {
-      background-color: black;
-      color: #7fff00;
-      padding: 15px 30px;
-      font-size: 24px;
-      border: 2px solid #0070ff;
-      border-radius: 5px;
-      cursor: pointer;
-      margin-top: 10px;
-    }
-    .km-display {
-      font-size: 60px;
-      margin: 30px 0 20px;
-      font-weight: bold;
-    }
-    .grid {
+    .stat-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 30px;
+      gap: 1rem;
       max-width: 600px;
-      margin: 0 auto;
+      margin: 2rem auto 0;
     }
     .stat {
-      font-size: 22px;
+      font-size: 1.5rem;
       font-weight: bold;
     }
     .label {
-      font-size: 14px;
+      font-size: 0.9rem;
       color: gray;
     }
   </style>
 </head>
 <body>
   <h1>RUNNING MILEAGE ANIMATION MAKER</h1>
-
-  <div class="upload-box">
-    <label for="file-upload" class="upload-label">기록 이미지 업로드</label>
-    <input type="file" id="file-upload" accept="image/*" style="display: none;" />
-    <div class="status" id="upload-status"></div>
-    <button class="run-button" onclick="runAnimation()">RUN</button>
+  <div id="upload-box">
+    <input type="file" id="imageUpload" accept="image/*">
+    <div id="upload-status"></div>
   </div>
-
-  <div class="km-display"><span id="km">0.00</span> km</div>
-
-  <div class="grid">
-    <div><div class="stat" id="pace">-</div><div class="label">Avg. Pace</div></div>
-    <div><div class="stat" id="time">-</div><div class="label">Time</div></div>
-    <div><div class="stat" id="calories">-</div><div class="label">Calories</div></div>
-    <div><div class="stat" id="elevation">-</div><div class="label">Elevation Gain</div></div>
-    <div><div class="stat" id="heartrate">-</div><div class="label">Avg. Heart Rate</div></div>
-    <div><div class="stat" id="cadence">-</div><div class="label">Cadence</div></div>
+  <div class="km-number" id="kmValue">—</div>
+  <div class="stat-grid">
+    <div><div class="stat" id="pace">—</div><div class="label">Avg. Pace</div></div>
+    <div><div class="stat" id="time">—</div><div class="label">Time</div></div>
+    <div><div class="stat" id="calories">—</div><div class="label">Calories</div></div>
+    <div><div class="stat" id="elevation">—</div><div class="label">Elevation Gain</div></div>
+    <div><div class="stat" id="heart">—</div><div class="label">Avg. Heart Rate</div></div>
+    <div><div class="stat" id="cadence">—</div><div class="label">Cadence</div></div>
   </div>
 
   <script>
-    let extractedValues = [];
+    const parseValuesByLine = (text) => {
+      const lines = text.trim().split("\n").map(line => line.trim()).filter(Boolean);
+      const numbers = lines.flatMap(line => line.match(/\d{1,3}(?:[:']\d{1,2})?|\d+\.\d+/g) || []);
 
-    document.getElementById("file-upload").addEventListener("change", async (event) => {
-      const file = event.target.files[0];
+      const parsed = {
+        km: numbers[0] || null,
+        pace: numbers[1] || null,
+        time: numbers[2] || null,
+        calories: numbers[3] || null,
+        elevation: numbers[4] || null,
+        heart: numbers[5] || null,
+        cadence: numbers[6] || null
+      };
+
+      console.log("라인 기반 파싱 결과:", parsed);
+      return parsed;
+    };
+
+    document.getElementById('imageUpload').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
       if (!file) return;
 
+      const img = URL.createObjectURL(file);
       document.getElementById("upload-status").textContent = "업로드 완료";
+      const result = await Tesseract.recognize(img, 'eng');
+      const text = result.data.text;
+      console.log("OCR 텍스트:", text);
 
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const imageData = reader.result;
-        const {
-          createWorker
-        } = Tesseract;
-        const worker = createWorker();
-        await worker.load();
-        await worker.loadLanguage("eng");
-        await worker.initialize("eng");
-        const {
-          data: {
-            text
-          }
-        } = await worker.recognize(imageData);
-        await worker.terminate();
+      const parsedData = parseValuesByLine(text);
 
-        const lines = text.trim().split("\n").map(l => l.trim()).filter(l => l);
-        let numbers = lines.join(" ").match(/\d{1,3}(?:[:']\d{1,2})?|\d+(\.\d+)?/g);
-
-        if (numbers && numbers.length >= 7) {
-          document.getElementById("km").textContent = numbers[0];
-          extractedValues = numbers.slice(1, 7); // 6개만
-        }
-      };
-      reader.readAsDataURL(file);
+      animateNumber("kmValue", 0, parseFloat(parsedData.km || 0), 2000);
+      document.getElementById("pace").textContent = parsedData.pace || "—";
+      document.getElementById("time").textContent = parsedData.time || "—";
+      document.getElementById("calories").textContent = parsedData.calories || "—";
+      document.getElementById("elevation").textContent = parsedData.elevation || "—";
+      document.getElementById("heart").textContent = parsedData.heart || "—";
+      document.getElementById("cadence").textContent = parsedData.cadence || "—";
     });
 
-    function runAnimation() {
-      const keys = ["pace", "time", "calories", "elevation", "heartrate", "cadence"];
-      keys.forEach((key, i) => {
-        document.getElementById(key).textContent = extractedValues[i] || "-";
-      });
+    function animateNumber(id, start, end, duration) {
+      const el = document.getElementById(id);
+      let startTime;
+
+      function update(currentTime) {
+        if (!startTime) startTime = currentTime;
+        const progress = Math.min((currentTime - startTime) / duration, 1);
+        const value = (start + (end - start) * progress).toFixed(2);
+        el.textContent = value;
+        if (progress < 1) requestAnimationFrame(update);
+      }
+      requestAnimationFrame(update);
     }
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
 </body>
 </html>
