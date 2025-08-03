@@ -108,16 +108,6 @@
   </div>
 
   <script>
-    const patterns = {
-      km: /([\d.]{3,6})[\s\n]*K\s*i\s*l\s*o\s*m\s*e\s*t\s*e\s*r\s*s?/i,
-      pace: /\b(\d{1,2}'\d{2}"?)\b(?=.*Avg\. Pace)/i,
-      time: /\b(\d{1,2}:\d{2})\b(?=.*Time)/i,
-      calories: /\b(\d{2,4})\b(?=.*Calories)/i,
-      elevation: /\b(\d{1,4}\s*m)\b(?=.*Elevation)/i,
-      heart: /\b(\d{2,3})\s*[^\d]?\b(?=.*Heart)/i,
-      cadence: /\b(\d{2,3})\b(?=.*Cadence)/i
-    };
-
     let parsedData = {};
 
     document.getElementById('imageUpload').addEventListener('change', async (e) => {
@@ -131,26 +121,26 @@
       const text = result.data.text;
       console.log('OCR 텍스트:', text);
 
-      parsedData = {
-        km: text.match(patterns.km)?.[1],
-        pace: text.match(patterns.pace)?.[1],
-        time: text.match(patterns.time)?.[1],
-        calories: text.match(patterns.calories)?.[1],
-        elevation: text.match(patterns.elevation)?.[1],
-        heart: text.match(patterns.heart)?.[1],
-        cadence: text.match(patterns.cadence)?.[1]
-      };
+      const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
 
-      // fallback logic
-      if (!parsedData.km) {
-        const fallback = text.match(/\d{1,2}\.\d{1,2}/);
-        if (fallback) {
-          console.log('Fallback 거리 인식:', fallback[0]);
-          parsedData.km = fallback[0];
-        }
+      if (lines.length >= 3) {
+        parsedData.km = lines[0];
+
+        const secondLine = lines[1].split(/\s+/);
+        const thirdLine = lines[2].split(/\s+/);
+
+        parsedData.pace = secondLine[0] || '–';
+        parsedData.time = secondLine[1] || '–';
+        parsedData.calories = secondLine[2] || '–';
+
+        parsedData.elevation = thirdLine[0] || '–';
+        parsedData.heart = thirdLine[1] || '–';
+        parsedData.cadence = thirdLine[2] || '–';
+      } else {
+        parsedData = {};
       }
 
-      console.log('km 최종 값:', parsedData.km);
+      console.log('최종 추출 결과:', parsedData);
       document.getElementById('uploadStatus').textContent = '업로드 완료';
       document.getElementById('runButton').style.display = 'inline-block';
     });
