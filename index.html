@@ -2,165 +2,169 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Running Mileage Animation</title>
-  <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;700&family=Orbitron&family=Bebas+Neue&family=Fredericka+the+Great&family=Big+Shoulders+Text:wght@700&family=Caveat+Brush&family=Rock+Salt&family=Handjet&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RUNNING MILEAGE ANIMATION MAKER</title>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@1,800&family=Orbitron:wght@700&family=Bebas+Neue&family=Fredericka+the+Great&family=Big+Shoulders+Inline+Text:wght@700&family=Caveat+Brush&family=Rock+Salt&family=Handjet:wght@500&display=swap" rel="stylesheet">
   <style>
-    body {
-      margin: 0;
-      font-family: 'Jost', sans-serif;
-      background-color: white;
-      color: black;
-      text-align: center;
-    }
-    .title {
-      font-weight: bold;
-      font-size: 24px;
-      margin-top: 20px;
-    }
-    .subtitle {
-      font-size: 14px;
-      font-style: italic;
-      margin-bottom: 30px;
-    }
-    .controls {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 10px;
-      margin-bottom: 40px;
-    }
-    .controls-group {
-      text-align: center;
-      margin: 10px;
-    }
-    .font-button,
-    .align-button,
-    .bg-button {
-      border: 2px solid black;
-      background: white;
-      padding: 6px 14px;
-      font-family: inherit;
-      font-weight: bold;
-      cursor: pointer;
-      font-size: 14px;
-      border-radius: 6px;
-      min-width: 100px;
-    }
-    .font-button.selected,
-    .align-button.selected,
-    .bg-button.selected {
-      background: black;
-      color: white;
-    }
-    .output {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-    }
-    .main-distance {
-      font-size: 120px;
-      font-weight: bold;
-      margin: 0;
-    }
-    .main-unit {
-      font-size: 32px;
-      font-weight: bold;
-      margin-top: 10px;
-      margin-bottom: 80px; /* 200% spacing */
-    }
-    .stats {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 60px; /* 50% spacing */
-      max-width: 1000px;
-    }
-    .stat-block {
-      min-width: 120px;
-    }
-    .stat-value {
-      font-size: 28px;
-      font-weight: bold;
-      margin-bottom: 4px;
-    }
-    .stat-label {
-      font-size: 20px;
-      color: gray;
-      font-style: italic;
-      font-weight: bold;
-    }
-    .left .output {
-      align-items: flex-start;
-      padding-left: 40px;
-    }
-    .center .output {
-      align-items: center;
-    }
+    body { font-family: Arial, sans-serif; text-align: center; padding: 40px; background-color: #fff; color: #000; }
+    .upload-box { border: 1px solid #ddd; padding: 40px; margin-bottom: 30px; display: inline-block; }
+    .upload-label { display: block; background-color: black; color: white; padding: 10px 20px; font-weight: bold; margin-bottom: 10px; cursor: pointer; }
+    .status { color: green; margin-bottom: 10px; font-weight: bold; }
+    .run-button { background-color: black; color: #7fff00; padding: 15px 30px; font-size: 24px; border: 2px solid #0070ff; border-radius: 5px; cursor: pointer; margin-top: 10px; display: none; }
+    .km-container { display: flex; flex-direction: column; align-items: flex-start; max-width: 600px; margin: 30px auto 20px; text-align: left; }
+    .km-display { font-weight: bold; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; max-width: 600px; margin: 0 auto; }
+    .stat { font-size: 22px; font-weight: bold; text-align: left; }
+    .label { font-size: 14px; color: gray; text-align: left; }
+    .font-controls, .align-controls, .bg-controls { margin-top: 30px; }
+    .font-controls button, .align-controls button, .bg-controls button { margin: 5px; padding: 8px 12px; font-size: 14px; cursor: pointer; border-radius: 5px; height: 40px; }
+    .font-controls button { font-size: 20px; }
+    h1 { font-weight: bold; }
+    .subtitle { font-size: 14px; margin-top: -20px; margin-bottom: 40px; }
   </style>
 </head>
 <body>
-  <div class="title">RUNNING MILEAGE ANIMATION MAKER</div>
+  <h1>RUNNING MILEAGE ANIMATION MAKER</h1>
   <div class="subtitle">by JS @runarchive.js</div>
 
-  <div class="controls">
-    <div class="controls-group">
-      <div><strong>Font</strong></div>
-      <button class="font-button selected">Jost</button>
-      <button class="font-button">Orbitron</button>
-      <button class="font-button">Bebas Neue</button>
-      <button class="font-button">Fredericka</button>
-      <button class="font-button">Big Shoulders</button>
-      <button class="font-button">Caveat Brush</button>
-      <button class="font-button">Rock Salt</button>
-      <button class="font-button">Handjet</button>
-    </div>
-
-    <div class="controls-group">
-      <div><strong>Align</strong></div>
-      <button class="align-button selected">⬅ Left</button>
-      <button class="align-button">➡ Center</button>
-    </div>
-
-    <div class="controls-group">
-      <div><strong>Background</strong></div>
-      <button class="bg-button">Black</button>
-      <button class="bg-button selected">White</button>
-    </div>
+  <div class="upload-box">
+    <label for="file-upload" class="upload-label">기록 이미지 업로드</label>
+    <input type="file" id="file-upload" accept="image/*" style="display: none;" />
+    <div class="status" id="upload-status"></div>
+    <button class="run-button" id="run-btn" onclick="runAnimation()">RUN</button>
   </div>
 
-  <div class="output-container left">
-    <div class="output">
-      <div class="main-distance">0.00</div>
-      <div class="main-unit">Kilometers</div>
-      <div class="stats">
-        <div class="stat-block">
-          <div class="stat-value">-</div>
-          <div class="stat-label">Avg. Pace</div>
-        </div>
-        <div class="stat-block">
-          <div class="stat-value">-</div>
-          <div class="stat-label">Time</div>
-        </div>
-        <div class="stat-block">
-          <div class="stat-value">-</div>
-          <div class="stat-label">Calories</div>
-        </div>
-        <div class="stat-block">
-          <div class="stat-value">-</div>
-          <div class="stat-label">Elevation Gain</div>
-        </div>
-        <div class="stat-block">
-          <div class="stat-value">-</div>
-          <div class="stat-label">Avg. Heart Rate</div>
-        </div>
-        <div class="stat-block">
-          <div class="stat-value">-</div>
-          <div class="stat-label">Cadence</div>
-        </div>
-      </div>
-    </div>
+  <div class="font-controls">
+    <div><strong>Font</strong></div>
+    <button style="font-family: 'Jost', sans-serif; font-style: italic; font-weight: 800;" onclick="setFont('Jost', 100)">Jost</button>
+    <button style="font-family: 'Orbitron', sans-serif; font-weight: 700;" onclick="setFont('Orbitron', 85)">Orbitron</button>
+    <button style="font-family: 'Bebas Neue', sans-serif; font-weight: 400;" onclick="setFont('Bebas Neue', 95)">Bebas Neue</button>
+    <button style="font-family: 'Fredericka the Great', cursive; font-weight: 400;" onclick="setFont('Fredericka the Great', 70)">Fredericka</button>
+    <button style="font-family: 'Big Shoulders Inline Text', cursive; font-weight: 700;" onclick="setFont('Big Shoulders Inline Text', 90)">Big Shoulders</button>
+    <button style="font-family: 'Caveat Brush', cursive; font-weight: 400;" onclick="setFont('Caveat Brush', 100)">Caveat Brush</button>
+    <button style="font-family: 'Rock Salt', cursive; font-weight: 400;" onclick="setFont('Rock Salt', 65)">Rock Salt</button>
+    <button style="font-family: 'Handjet', cursive; font-weight: 500;" onclick="setFont('Handjet', 85)">Handjet</button>
   </div>
+
+  <div class="align-controls">
+    <div><strong>Align</strong></div>
+    <button onclick="setAlign('left')">⬅️ Left</button>
+    <button onclick="setAlign('center')">↔️ Center</button>
+  </div>
+
+  <div class="bg-controls">
+    <div><strong>Background</strong></div>
+    <button onclick="setBackground('black')">Black</button>
+    <button onclick="setBackground('white')">White</button>
+  </div>
+
+  <div class="km-container" id="km-container">
+    <div class="km-display"><span id="km" style="font-size: 100px; font-family: 'Jost', sans-serif;">0.00</span></div>
+    <div class="km-label" style="font-size: 20px; color: gray;">Kilometers</div>
+  </div>
+
+  <div class="grid" id="data-grid">
+    <div><div class="stat" id="pace">-</div><div class="label">Avg. Pace</div></div>
+    <div><div class="stat" id="time">-</div><div class="label">Time</div></div>
+    <div><div class="stat" id="calories">-</div><div class="label">Calories</div></div>
+    <div><div class="stat" id="elevation">-</div><div class="label">Elevation Gain</div></div>
+    <div><div class="stat" id="heartrate">-</div><div class="label">Avg. Heart Rate</div></div>
+    <div><div class="stat" id="cadence">-</div><div class="label">Cadence</div></div>
+  </div>
+
+  <script>
+    let parsedData = {};
+
+    function parseValuesByLine(text) {
+      const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
+      const numbers = lines.flatMap(line => line.match(/[\d.:']{1,5}/g) || []);
+
+      const parsed = {
+        km: numbers[0] || null,
+        pace: numbers[1] || null,
+        time: numbers[2] || null,
+        calories: numbers[3] || null,
+        elevation: numbers[4] || null,
+        heartrate: numbers[5] || null,
+        cadence: numbers[6] || null,
+      };
+
+      console.log("라인 기반 파싱 결과:", parsed);
+      return parsed;
+    }
+
+    document.getElementById("file-upload").addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      document.getElementById("upload-status").textContent = "업로드 완료";
+      document.getElementById("run-btn").style.display = "inline-block";
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const img = reader.result;
+        const result = await Tesseract.recognize(img, 'eng');
+        const text = result.data.text;
+        console.log('OCR 텍스트:', text);
+        parsedData = parseValuesByLine(text);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function animateNumber(id, start, end, duration) {
+      const el = document.getElementById(id);
+      let startTime;
+
+      function update(currentTime) {
+        if (!startTime) startTime = currentTime;
+        const progress = Math.min((currentTime - startTime) / duration, 1);
+        const value = (start + (end - start) * progress).toFixed(2);
+        el.textContent = value;
+        if (progress < 1) requestAnimationFrame(update);
+      }
+      requestAnimationFrame(update);
+    }
+
+    function runAnimation() {
+      animateNumber("km", 0, parseFloat(parsedData.km || 0), 2000);
+
+      const keys = ["pace", "time", "calories", "elevation", "heartrate", "cadence"];
+      keys.forEach(key => {
+        document.getElementById(key).textContent = parsedData[key] || "-";
+      });
+    }
+
+    function setFont(fontName, numSize) {
+      const kmEl = document.getElementById("km");
+      kmEl.style.fontFamily = fontName;
+      kmEl.style.fontSize = numSize + "px";
+    }
+
+    function setAlign(direction) {
+      const kmBox = document.getElementById("km-container");
+      const grid = document.getElementById("data-grid");
+
+      if (direction === 'left') {
+        kmBox.style.alignItems = 'flex-start';
+        grid.style.justifyContent = 'flex-start';
+        const stats = document.querySelectorAll('.stat, .label');
+        stats.forEach(el => el.style.textAlign = 'left');
+      } else {
+        kmBox.style.alignItems = 'center';
+        grid.style.justifyContent = 'center';
+        const stats = document.querySelectorAll('.stat, .label');
+        stats.forEach(el => el.style.textAlign = 'center');
+      }
+    }
+
+    function setBackground(color) {
+      const isBlack = color === 'black';
+      document.body.style.backgroundColor = isBlack ? "#000" : "#fff";
+      document.body.style.color = isBlack ? "#fff" : "#000";
+    }
+
+    window.onload = () => setFont('Jost', 100);
+  </script>
 </body>
 </html>
