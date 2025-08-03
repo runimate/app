@@ -83,6 +83,7 @@
     <div><div class="stat" id="cadence">-</div><div class="label">Cadence</div></div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
   <script>
     let extractedValues = [];
 
@@ -99,17 +100,23 @@
         await worker.load();
         await worker.loadLanguage("eng");
         await worker.initialize("eng");
-        const {
-          data: { text },
-        } = await worker.recognize(imageData);
+        const { data: { text } } = await worker.recognize(imageData);
         await worker.terminate();
 
         const lines = text.trim().split("\n").map(l => l.trim()).filter(l => l);
-        let numbers = lines.join(" ").match(/\d{1,3}(?:[:\']\d{1,2})?|\d+(\.\d+)?/g);
+        const rawNumbers = lines.join(" ").match(/\d{1,3}(?:[:\']\d{1,2})?|\d+(\.\d+)?/g);
 
-        if (numbers && numbers.length >= 7) {
-          document.getElementById("km").textContent = numbers[0];
-          extractedValues = numbers.slice(1, 7); // 6개만
+        let km = "0.00";
+        if (rawNumbers && rawNumbers.length >= 7) {
+          // KM 후보 찾기
+          let kmIndex = rawNumbers.findIndex(n => n.includes(".") && parseFloat(n) > 1 && parseFloat(n) < 100);
+          if (kmIndex >= 0) {
+            km = rawNumbers[kmIndex];
+            rawNumbers.splice(kmIndex, 1); // km 제거
+          }
+
+          document.getElementById("km").textContent = km;
+          extractedValues = rawNumbers.slice(0, 6); // 아래 6개
         }
       };
       reader.readAsDataURL(file);
@@ -122,6 +129,5 @@
       });
     }
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 </body>
 </html>
