@@ -42,26 +42,17 @@
     let parsedData = {};
 
     function parseValuesByLine(text) {
-      const lines = text.trim().split('\n').map(line => line.trim()).filter(Boolean);
-
-      const kmLine = lines[0] || '';
-      const secondLine = lines[1] || '';
-      const thirdLine = lines[2] || '';
-
-      const kmMatch = kmLine.match(/\d+(\.\d{1,2})?/);
-      const km = kmMatch ? kmMatch[0] : null;
-
-      const [pace, time, calories] = secondLine.match(/[\d:'\.]{1,6}/g) || [];
-      const [elevation, heartrate, cadence] = thirdLine.match(/\d{1,4}/g) || [];
+      const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
+      const numbers = lines.flatMap(line => line.match(/[\d.:']{1,5}/g) || []);
 
       const parsed = {
-        km,
-        pace,
-        time,
-        calories,
-        elevation,
-        heartrate,
-        cadence
+        km: numbers[0] || null,
+        pace: numbers[1] || null,
+        time: numbers[2] || null,
+        calories: numbers[3] || null,
+        elevation: numbers[4] || null,
+        heartrate: numbers[5] || null,
+        cadence: numbers[6] || null,
       };
 
       console.log("라인 기반 파싱 결과:", parsed);
@@ -80,8 +71,7 @@
         const result = await Tesseract.recognize(img, 'eng');
         const text = result.data.text;
         console.log('OCR 텍스트:', text);
-        parsedData = parseValuesByLine(text);
-        animateNumber("km", 0, parseFloat(parsedData.km || 0), 2000);
+        parsedData = parseValuesByLine(text); // 👉 저장만 하고 출력은 하지 않음
       };
       reader.readAsDataURL(file);
     });
@@ -101,6 +91,8 @@
     }
 
     function runAnimation() {
+      animateNumber("km", 0, parseFloat(parsedData.km || 0), 2000);
+
       const keys = ["pace", "time", "calories", "elevation", "heartrate", "cadence"];
       keys.forEach(key => {
         document.getElementById(key).textContent = parsedData[key] || "-";
