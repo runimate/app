@@ -88,7 +88,7 @@
 
   <script>
     const patterns = {
-      km: /\b(\d+\.\d{1,2})\b(?=\s*Kilometers?)/i,
+      km: /(\d+\.\d{1,2}).{0,20}?Kilometers?/i,
       pace: /\b(\d{1,2}'\d{2}"?)\b(?=.*Avg\. Pace)/i,
       time: /\b(\d{1,2}:\d{2})\b(?=.*Time)/i,
       calories: /\b(\d{2,4})\b(?=.*Calories)/i,
@@ -103,7 +103,7 @@
       const img = URL.createObjectURL(file);
       const result = await Tesseract.recognize(img, 'eng');
       const text = result.data.text;
-      console.log(text);
+      console.log('OCR 텍스트:', text);
 
       const update = (id, val) => document.getElementById(id).textContent = val || '–';
 
@@ -115,7 +115,12 @@
       update('cadence', text.match(patterns.cadence)?.[1]);
 
       const kmMatch = text.match(patterns.km);
-      if (kmMatch) animateNumber("kmValue", 0, parseFloat(kmMatch[1]), 2000);
+      console.log('km 매치 결과:', kmMatch);
+      if (kmMatch) {
+        animateNumber("kmValue", 0, parseFloat(kmMatch[1]), 2000);
+      } else {
+        document.getElementById("kmValue").textContent = "인식 실패";
+      }
     });
 
     function animateNumber(id, start, end, duration) {
@@ -133,3 +138,4 @@
   </script>
 </body>
 </html>
+
