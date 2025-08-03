@@ -131,14 +131,24 @@
       const text = result.data.text;
       console.log('OCR 텍스트:', text);
 
-      parsedData = {
-        km: text.match(patterns.km)?.[1],
-        pace: text.match(patterns.pace)?.[1],
-        time: text.match(patterns.time)?.[1],
-        calories: text.match(patterns.calories)?.[1],
-        elevation: text.match(patterns.elevation)?.[1],
-        heart: text.match(patterns.heart)?.[1],
-        cadence: text.match(patterns.cadence)?.[1]
+ parsedData = {
+  km: text.match(patterns.km)?.[1],
+  pace: text.match(patterns.pace)?.[1],
+  time: text.match(patterns.time)?.[1],
+  calories: text.match(patterns.calories)?.[1],
+  elevation: text.match(patterns.elevation)?.[1],
+  heart: text.match(patterns.heart)?.[1],
+  cadence: text.match(patterns.cadence)?.[1]
+};
+
+// fallback logic
+if (!parsedData.km) {
+  const fallback = text.match(/\\d{1,2}\\.\\d{1,2}/);
+  if (fallback) {
+    console.log('Fallback 거리 인식:', fallback[0]);
+    parsedData.km = fallback[0];
+  }
+}
       };
 
       console.log('km 매치 결과:', parsedData.km);
