@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>RUNNING MILEAGE ANIMATION MAKER</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@1,800&family=Orbitron:wght@700&family=Bebas+Neue&family=Fredericka+the+Great&family=Big+Shoulders+Inline+Text:wght@700&family=Caveat+Brush&family=Rock+Salt&family=Handjet:wght@500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@1,800&display=swap" rel="stylesheet">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -14,16 +14,19 @@
       background-color: #fff;
       color: #000;
     }
-    h1 { font-weight: bold; }
-    .subtitle { font-size: 14px; margin-bottom: 30px; }
-
+    h1 {
+      font-weight: bold;
+    }
+    .subtitle {
+      font-size: 14px;
+      margin-bottom: 30px;
+    }
     .upload-box {
       border: 1px solid #ddd;
       padding: 40px;
       margin-bottom: 30px;
       display: inline-block;
     }
-
     .upload-label {
       display: block;
       background-color: black;
@@ -33,9 +36,11 @@
       margin-bottom: 10px;
       cursor: pointer;
     }
-
-    .status { color: green; margin-bottom: 10px; font-weight: bold; }
-
+    .status {
+      color: green;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
     .run-button {
       background-color: black;
       color: #7fff00;
@@ -47,47 +52,45 @@
       margin-top: 10px;
       display: none;
     }
-
     .km-container {
       display: flex;
       flex-direction: column;
       align-items: flex-start;
       margin: 30px 0 10px;
+      text-align: left;
       padding-left: 60px;
-      width: fit-content;
     }
-
     .km-number {
       font-family: 'Jost', sans-serif;
       font-style: italic;
       font-weight: 800;
       font-size: 100px;
     }
-
     .km-unit {
       font-size: 30px;
-      margin-top: 5px;
+      margin-top: 2px;
       font-family: Arial, sans-serif !important;
     }
-
     .grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 30px;
       max-width: 600px;
+      margin: 80px auto 0;
       text-align: left;
-      margin: 80px 0 0;
-      padding-left: 60px;
     }
-
-    .stat { font-size: 22px; font-weight: bold; }
-    .label { font-size: 14px; color: gray; }
-
-    .font-controls, .align-controls, .bg-controls { margin-top: 30px; }
-
-    .font-controls button,
-    .align-controls button,
-    .bg-controls button {
+    .stat {
+      font-size: 22px;
+      font-weight: bold;
+    }
+    .label {
+      font-size: 14px;
+      color: gray;
+    }
+    .font-controls, .align-controls, .bg-controls {
+      margin-top: 30px;
+    }
+    .font-controls button, .align-controls button, .bg-controls button {
       margin: 5px;
       padding: 8px 12px;
       font-size: 14px;
@@ -95,7 +98,6 @@
       border-radius: 5px;
       height: 40px;
     }
-
     .font-controls button { font-size: 20px; }
   </style>
 </head>
@@ -110,33 +112,9 @@
     <button class="run-button" id="run-btn" onclick="runAnimation()">RUN</button>
   </div>
 
-  <div class="font-controls">
-    <div><strong>Font</strong></div>
-    <button style="font-family: 'Jost', sans-serif; font-style: italic; font-weight: 800;" onclick="setFont('Jost', 100)">Jost</button>
-    <button style="font-family: 'Orbitron', sans-serif; font-weight: 700;" onclick="setFont('Orbitron', 85)">Orbitron</button>
-    <button style="font-family: 'Bebas Neue', sans-serif; font-weight: 400;" onclick="setFont('Bebas Neue', 95)">Bebas Neue</button>
-    <button style="font-family: 'Fredericka the Great', cursive; font-weight: 400;" onclick="setFont('Fredericka the Great', 70)">Fredericka</button>
-    <button style="font-family: 'Big Shoulders Inline Text', cursive; font-weight: 700;" onclick="setFont('Big Shoulders Inline Text', 90)">Big Shoulders</button>
-    <button style="font-family: 'Caveat Brush', cursive; font-weight: 400;" onclick="setFont('Caveat Brush', 100)">Caveat Brush</button>
-    <button style="font-family: 'Rock Salt', cursive; font-weight: 400;" onclick="setFont('Rock Salt', 65)">Rock Salt</button>
-    <button style="font-family: 'Handjet', cursive; font-weight: 500;" onclick="setFont('Handjet', 85)">Handjet</button>
-  </div>
-
-  <div class="align-controls">
-    <div><strong>Align</strong></div>
-    <button onclick="setAlign('left')">⬅️ Left</button>
-    <button onclick="setAlign('center')">↔️ Center</button>
-  </div>
-
-  <div class="bg-controls">
-    <div><strong>Background</strong></div>
-    <button onclick="setBackground('black')">Black</button>
-    <button onclick="setBackground('white')">White</button>
-  </div>
-
   <div class="km-container" id="km-container">
     <div class="km-number" id="km">0.00</div>
-    <div class="km-unit">kilometers</div>
+    <div class="km-unit">Kilometers</div>
   </div>
 
   <div class="grid">
@@ -202,27 +180,6 @@
       keys.forEach(key => {
         document.getElementById(key).textContent = parsedData[key] || "-";
       });
-    }
-
-    function setFont(fontName, size) {
-      const kmEl = document.getElementById("km");
-      kmEl.style.fontFamily = fontName;
-      kmEl.style.fontSize = size + "px";
-
-      // Kilometers는 항상 고정 폰트
-      document.querySelector(".km-unit").style.fontFamily = "Arial, sans-serif";
-    }
-
-    function setAlign(direction) {
-      const kmContainer = document.getElementById("km-container");
-      kmContainer.style.alignItems = direction === 'center' ? 'center' : 'flex-start';
-      document.querySelector(".grid").style.textAlign = direction;
-    }
-
-    function setBackground(color) {
-      const isBlack = color === 'black';
-      document.body.style.backgroundColor = isBlack ? "#000" : "#fff";
-      document.body.style.color = isBlack ? "#fff" : "#000";
     }
   </script>
 </body>
