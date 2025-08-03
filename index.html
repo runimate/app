@@ -138,3 +138,52 @@
         km: km,
         pace: allNumbers[1] || null,
         time: allNumbers[2] || null,
+        calories: allNumbers[3] || null,
+        elevation: allNumbers[4] || null,
+        heart: allNumbers[5] || null,
+        cadence: allNumbers[6] || null
+      };
+
+      console.log('파싱 결과:', parsedData);
+
+      document.getElementById('uploadStatus').textContent = '업로드 완료';
+      document.getElementById('runButton').style.display = 'inline-block';
+    });
+
+    document.getElementById('runButton').addEventListener('click', () => {
+      const update = (id, val) => {
+        console.log(`${id}: ${val}`);
+        document.getElementById(id).textContent = val || '–';
+      };
+
+      update('pace', parsedData.pace);
+      update('time', parsedData.time);
+      update('calories', parsedData.calories);
+      update('elevation', parsedData.elevation);
+      update('heart', parsedData.heart);
+      update('cadence', parsedData.cadence);
+
+      if (parsedData.km) {
+        document.getElementById("kmContainer").style.display = 'block';
+        animateNumber("kmValue", 0, parseFloat(parsedData.km), 2000);
+      } else {
+        document.getElementById("kmValue").textContent = "인식 실패";
+        document.getElementById("kmContainer").style.display = 'block';
+      }
+    });
+
+    function animateNumber(id, start, end, duration) {
+      const el = document.getElementById(id);
+      let startTime;
+      function update(currentTime) {
+        if (!startTime) startTime = currentTime;
+        const progress = Math.min((currentTime - startTime) / duration, 1);
+        const value = (start + (end - start) * progress).toFixed(2);
+        el.textContent = value;
+        if (progress < 1) requestAnimationFrame(update);
+      }
+      requestAnimationFrame(update);
+    }
+  </script>
+</body>
+</html>
