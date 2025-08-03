@@ -108,8 +108,6 @@
   </div>
 
   <script>
-    let parsedData = {};
-
     document.getElementById('imageUpload').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -121,36 +119,45 @@
       const text = result.data.text;
       console.log('OCR 텍스트:', text);
 
-      // 줄 단위로 숫자만 추출
-      const textLines = text.split('\n');
-      const extractedNumbers = [];
-      textLines.forEach(line => {
-        const matches = line.match(/[\d'":\.]+/g);
-        if (matches) {
-          extractedNumbers.push(...matches);
-        }
-      });
+      const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
+      const values = lines.flatMap(line => line.match(/[\d'":.]+/g) || []);
 
-      const [km, pace, time, cal, elev, heart, cadence] = extractedNumbers;
-      parsedData = { km, pace, time, calories: cal, elevation: elev, heart, cadence };
+      let kmMatch = text.match(/\d{1,2}\.\d{1,2}/);
+      const km = kmMatch ? kmMatch[0] : null;
+      console.log('Fallback 거리 인식:', km);
+
+      let parsedData = {
+        km: km,
+        pace: values[0] || null,
+        time: values[1] || null,
+        calories: values[2] || null,
+        elevation: values[3] || null,
+        heart: values[4] || null,
+        cadence: values[5] || null
+      };
+
+      console.log('km 최종 값:', parsedData.km);
 
       document.getElementById('uploadStatus').textContent = '업로드 완료';
       document.getElementById('runButton').style.display = 'inline-block';
+
+      window.parsedData = parsedData;
     });
 
     document.getElementById('runButton').addEventListener('click', () => {
       const update = (id, val) => document.getElementById(id).textContent = val || '–';
 
-      update('pace', parsedData.pace);
-      update('time', parsedData.time);
-      update('calories', parsedData.calories);
-      update('elevation', parsedData.elevation);
-      update('heart', parsedData.heart);
-      update('cadence', parsedData.cadence);
+      const data = window.parsedData || {};
+      update('pace', data.pace);
+      update('time', data.time);
+      update('calories', data.calories);
+      update('elevation', data.elevation);
+      update('heart', data.heart);
+      update('cadence', data.cadence);
 
-      if (parsedData.km) {
+      if (data.km) {
         document.getElementById("kmContainer").style.display = 'block';
-        animateNumber("kmValue", 0, parseFloat(parsedData.km), 2000);
+        animateNumber("kmValue", 0, parseFloat(data.km), 2000);
       } else {
         document.getElementById("kmValue").textContent = "인식 실패";
         document.getElementById("kmContainer").style.display = 'block';
