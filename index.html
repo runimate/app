@@ -38,66 +38,67 @@
     <div><div class="stat" id="cadence">-</div><div class="label">Cadence</div></div>
   </div>
 
-  <script>
-    let parsedData = {};
+ <script>
+  let parsedData = {};
 
-    function parseValuesByLine(text) {
-      const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
-      const numbers = lines.flatMap(line => line.match(/[\d.:']{1,5}/g) || []);
+  function parseValuesByLine(text) {
+    const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
+    const numbers = lines.flatMap(line => line.match(/[\d.:']{1,5}/g) || []);
 
-      const parsed = {
-        km: numbers[0] || null,
-        pace: numbers[1] || null,
-        time: numbers[2] || null,
-        calories: numbers[3] || null,
-        elevation: numbers[4] || null,
-        heartrate: numbers[5] || null,
-        cadence: numbers[6] || null,
-      };
+    const parsed = {
+      km: numbers[0] || null,
+      pace: numbers[1] || null,
+      time: numbers[2] || null,
+      calories: numbers[3] || null,
+      elevation: numbers[4] || null,
+      heartrate: numbers[5] || null,
+      cadence: numbers[6] || null,
+    };
 
-      console.log("라인 기반 파싱 결과:", parsed);
-      return parsed;
+    console.log("라인 기반 파싱 결과:", parsed);
+    return parsed;
+  }
+
+  document.getElementById("file-upload").addEventListener("change", async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    document.getElementById("upload-status").textContent = "업로드 완료";
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const img = reader.result;
+      const result = await Tesseract.recognize(img, 'eng');
+      const text = result.data.text;
+      console.log('OCR 텍스트:', text);
+      parsedData = parseValuesByLine(text);
+      // ❌ 여기에 있던 animateNumber 제거됨!
+    };
+    reader.readAsDataURL(file);
+  });
+
+  function animateNumber(id, start, end, duration) {
+    const el = document.getElementById(id);
+    let startTime;
+
+    function update(currentTime) {
+      if (!startTime) startTime = currentTime;
+      const progress = Math.min((currentTime - startTime) / duration, 1);
+      const value = (start + (end - start) * progress).toFixed(2);
+      el.textContent = value;
+      if (progress < 1) requestAnimationFrame(update);
     }
+    requestAnimationFrame(update);
+  }
 
-    document.getElementById("file-upload").addEventListener("change", async (event) => {
-      const file = event.target.files[0];
-      if (!file) return;
+  function runAnimation() {
+    animateNumber("km", 0, parseFloat(parsedData.km || 0), 2000);
 
-      document.getElementById("upload-status").textContent = "업로드 완료";
-
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const img = reader.result;
-        const result = await Tesseract.recognize(img, 'eng');
-        const text = result.data.text;
-        console.log('OCR 텍스트:', text);
-        parsedData = parseValuesByLine(text); // 저장만 수행
-      };
-      reader.readAsDataURL(file);
+    const keys = ["pace", "time", "calories", "elevation", "heartrate", "cadence"];
+    keys.forEach(key => {
+      document.getElementById(key).textContent = parsedData[key] || "-";
     });
-
-    function animateNumber(id, start, end, duration) {
-      const el = document.getElementById(id);
-      let startTime;
-
-      function update(currentTime) {
-        if (!startTime) startTime = currentTime;
-        const progress = Math.min((currentTime - startTime) / duration, 1);
-        const value = (start + (end - start) * progress).toFixed(2);
-        el.textContent = value;
-        if (progress < 1) requestAnimationFrame(update);
-      }
-      requestAnimationFrame(update);
-    }
-
-    function runAnimation() {
-      animateNumber("km", 0, parseFloat(parsedData.km || 0), 2000);
-
-      const keys = ["pace", "time", "calories", "elevation", "heartrate", "cadence"];
-      keys.forEach(key => {
-        document.getElementById(key).textContent = parsedData[key] || "-";
-      });
-    }
-  </script>
+  }
+</script>
 </body>
 </html>
