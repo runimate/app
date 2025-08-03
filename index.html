@@ -14,19 +14,16 @@
       background-color: #fff;
       color: #000;
     }
-    h1 {
-      font-weight: bold;
-    }
-    .subtitle {
-      font-size: 14px;
-      margin-bottom: 30px;
-    }
+    h1 { font-weight: bold; }
+    .subtitle { font-size: 14px; margin-bottom: 30px; }
+
     .upload-box {
       border: 1px solid #ddd;
       padding: 40px;
       margin-bottom: 30px;
       display: inline-block;
     }
+
     .upload-label {
       display: block;
       background-color: black;
@@ -36,11 +33,9 @@
       margin-bottom: 10px;
       cursor: pointer;
     }
-    .status {
-      color: green;
-      margin-bottom: 10px;
-      font-weight: bold;
-    }
+
+    .status { color: green; margin-bottom: 10px; font-weight: bold; }
+
     .run-button {
       background-color: black;
       color: #7fff00;
@@ -52,45 +47,47 @@
       margin-top: 10px;
       display: none;
     }
+
     .km-container {
       display: flex;
       flex-direction: column;
       align-items: flex-start;
       margin: 30px 0 10px;
-      text-align: left;
       padding-left: 60px;
+      width: fit-content;
     }
+
     .km-number {
       font-family: 'Jost', sans-serif;
       font-style: italic;
       font-weight: 800;
       font-size: 100px;
     }
+
     .km-unit {
       font-size: 30px;
       margin-top: 5px;
-      font-family: Arial, sans-serif;
+      font-family: Arial, sans-serif !important;
     }
+
     .grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 30px;
       max-width: 600px;
-      margin: 80px auto 0;
       text-align: left;
+      margin: 80px 0 0;
+      padding-left: 60px;
     }
-    .stat {
-      font-size: 22px;
-      font-weight: bold;
-    }
-    .label {
-      font-size: 14px;
-      color: gray;
-    }
-    .font-controls, .align-controls, .bg-controls {
-      margin-top: 30px;
-    }
-    .font-controls button, .align-controls button, .bg-controls button {
+
+    .stat { font-size: 22px; font-weight: bold; }
+    .label { font-size: 14px; color: gray; }
+
+    .font-controls, .align-controls, .bg-controls { margin-top: 30px; }
+
+    .font-controls button,
+    .align-controls button,
+    .bg-controls button {
       margin: 5px;
       padding: 8px 12px;
       font-size: 14px;
@@ -98,6 +95,7 @@
       border-radius: 5px;
       height: 40px;
     }
+
     .font-controls button { font-size: 20px; }
   </style>
 </head>
@@ -210,6 +208,9 @@
       const kmEl = document.getElementById("km");
       kmEl.style.fontFamily = fontName;
       kmEl.style.fontSize = size + "px";
+
+      // Kilometers는 항상 고정 폰트
+      document.querySelector(".km-unit").style.fontFamily = "Arial, sans-serif";
     }
 
     function setAlign(direction) {
