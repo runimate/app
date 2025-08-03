@@ -110,6 +110,22 @@
   <script>
     let parsedData = {};
 
+    const parseValuesByLine = (text) => {
+      const lines = text.trim().split('\n').map(line => line.trim()).filter(Boolean);
+      const numbers = lines.flatMap(line => line.match(/[\d.']{2,}|\d{1,3}/g) || []);
+      const parsed = {
+        km: numbers[0] || null,
+        pace: numbers[1] || null,
+        time: numbers[2] || null,
+        calories: numbers[3] || null,
+        elevation: numbers[4] || null,
+        heart: numbers[5] || null,
+        cadence: numbers[6] || null
+      };
+      console.log("라인 기반 파싱 결과:", parsed);
+      return parsed;
+    };
+
     document.getElementById('imageUpload').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -121,40 +137,14 @@
       const text = result.data.text;
       console.log('OCR 텍스트:', text);
 
-      const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
-      const allNumbers = [];
-
-      for (const line of lines) {
-        const matches = line.match(/[\d.,:'"]+/g);
-        if (matches) allNumbers.push(...matches);
-      }
-
-      console.log('추출된 모든 숫자:', allNumbers);
-
-      let kmMatch = text.match(/\d{1,2}\.\d{1,2}/);
-      const km = kmMatch ? kmMatch[0] : null;
-
-      parsedData = {
-        km: km,
-        pace: allNumbers[1] || null,
-        time: allNumbers[2] || null,
-        calories: allNumbers[3] || null,
-        elevation: allNumbers[4] || null,
-        heart: allNumbers[5] || null,
-        cadence: allNumbers[6] || null
-      };
-
-      console.log('파싱 결과:', parsedData);
+      parsedData = parseValuesByLine(text);
 
       document.getElementById('uploadStatus').textContent = '업로드 완료';
       document.getElementById('runButton').style.display = 'inline-block';
     });
 
     document.getElementById('runButton').addEventListener('click', () => {
-      const update = (id, val) => {
-        console.log(`${id}: ${val}`);
-        document.getElementById(id).textContent = val || '–';
-      };
+      const update = (id, val) => document.getElementById(id).textContent = val || '–';
 
       update('pace', parsedData.pace);
       update('time', parsedData.time);
