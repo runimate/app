@@ -108,6 +108,8 @@
   </div>
 
   <script>
+    let parsedData = {};
+
     document.getElementById('imageUpload').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -120,62 +122,19 @@
       console.log('OCR 텍스트:', text);
 
       const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
-      const values = lines.flatMap(line => line.match(/[\d'":.]+/g) || []);
+      const allNumbers = [];
+
+      for (const line of lines) {
+        const matches = line.match(/[\d.,:'"]+/g);
+        if (matches) allNumbers.push(...matches);
+      }
+
+      console.log('추출된 모든 숫자:', allNumbers);
 
       let kmMatch = text.match(/\d{1,2}\.\d{1,2}/);
       const km = kmMatch ? kmMatch[0] : null;
-      console.log('Fallback 거리 인식:', km);
 
-      let parsedData = {
+      parsedData = {
         km: km,
-        pace: values[0] || null,
-        time: values[1] || null,
-        calories: values[2] || null,
-        elevation: values[3] || null,
-        heart: values[4] || null,
-        cadence: values[5] || null
-      };
-
-      console.log('km 최종 값:', parsedData.km);
-
-      document.getElementById('uploadStatus').textContent = '업로드 완료';
-      document.getElementById('runButton').style.display = 'inline-block';
-
-      window.parsedData = parsedData;
-    });
-
-    document.getElementById('runButton').addEventListener('click', () => {
-      const update = (id, val) => document.getElementById(id).textContent = val || '–';
-
-      const data = window.parsedData || {};
-      update('pace', data.pace);
-      update('time', data.time);
-      update('calories', data.calories);
-      update('elevation', data.elevation);
-      update('heart', data.heart);
-      update('cadence', data.cadence);
-
-      if (data.km) {
-        document.getElementById("kmContainer").style.display = 'block';
-        animateNumber("kmValue", 0, parseFloat(data.km), 2000);
-      } else {
-        document.getElementById("kmValue").textContent = "인식 실패";
-        document.getElementById("kmContainer").style.display = 'block';
-      }
-    });
-
-    function animateNumber(id, start, end, duration) {
-      const el = document.getElementById(id);
-      let startTime;
-      function update(currentTime) {
-        if (!startTime) startTime = currentTime;
-        const progress = Math.min((currentTime - startTime) / duration, 1);
-        const value = (start + (end - start) * progress).toFixed(2);
-        el.textContent = value;
-        if (progress < 1) requestAnimationFrame(update);
-      }
-      requestAnimationFrame(update);
-    }
-  </script>
-</body>
-</html>
+        pace: allNumbers[1] || null,
+        time: allNumbers[2] || null,
