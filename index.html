@@ -1,179 +1,117 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Running Mileage Animation Maker</title>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
   <style>
     body {
-      font-family: 'Helvetica Neue', sans-serif;
+      font-family: sans-serif;
       text-align: center;
-      background: #fff;
-      padding: 4rem 1rem;
-    }
-    h1 {
-      font-size: 1.8rem;
-      font-weight: 900;
-      letter-spacing: 0.5px;
-      margin-bottom: 2rem;
     }
     #upload-box {
-      border: 1.5px solid #ccc;
-      padding: 2rem;
-      max-width: 400px;
-      margin: 0 auto 2rem;
-      color: #aaa;
+      border: 1px solid #ccc;
+      width: 400px;
+      margin: 30px auto;
+      padding: 20px;
     }
-    #imageUpload {
-      display: none;
-    }
-    #uploadLabel {
+    #upload-label {
       display: inline-block;
-      padding: 0.6rem 1.2rem;
-      background: #000;
-      color: #fff;
-      font-size: 1rem;
+      padding: 10px 20px;
+      background-color: black;
+      color: white;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    #upload-status {
+      margin-top: 10px;
+      color: green;
       font-weight: bold;
-      border-radius: 4px;
+    }
+    #run-button {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 15px 40px;
+      background-color: black;
+      color: #91ff00;
+      font-size: 24px;
+      font-weight: bold;
+      border-radius: 8px;
+      border: 2px solid #0075ff;
       cursor: pointer;
     }
-    #uploadStatus {
-      margin-top: 1rem;
-      font-size: 1rem;
+    #main-km {
+      font-size: 60px;
       font-weight: bold;
-      color: #4caf50;
+      margin-top: 30px;
     }
-    #runButton {
-      margin-top: 2rem;
-      font-size: 1.5rem;
-      padding: 1rem 3rem;
-      background: #000;
-      color: #8fff00;
-      font-weight: bold;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      display: none;
-    }
-    #kmValue {
-      font-size: 4rem;
-      font-weight: 800;
-      display: inline-block;
-    }
-    #kmContainer {
-      font-size: 1.5rem;
-      margin: 3rem 0 2.5rem;
-      display: none;
-    }
-    .stats {
+    #grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 2rem;
-      max-width: 700px;
-      margin: 0 auto;
+      max-width: 600px;
+      margin: 30px auto;
+      gap: 20px;
     }
-    .stat-item {
-      font-size: 1rem;
-      text-align: center;
+    .grid-item {
+      font-weight: bold;
     }
-    .stat-item strong {
-      display: block;
-      font-size: 1.25rem;
-      font-weight: 700;
-      margin-bottom: 0.3rem;
+    .label {
+      font-weight: normal;
+      color: #333;
     }
   </style>
 </head>
 <body>
   <h1>RUNNING MILEAGE ANIMATION MAKER</h1>
+
   <div id="upload-box">
-    <label id="uploadLabel" for="imageUpload">기록 이미지 업로드</label>
-    <input type="file" id="imageUpload" accept="image/*">
-    <div id="uploadStatus"></div>
-    <button id="runButton">RUN</button>
+    <label id="upload-label" for="image-upload">기록 이미지 업로드</label>
+    <input type="file" id="image-upload" style="display: none;" accept="image/*" />
+    <div id="upload-status"></div>
+    <button id="run-button">RUN</button>
   </div>
 
-  <div id="kmContainer">
-    <span id="kmValue">—</span> km
-  </div>
+  <div id="main-km">0.00 <span style="font-size: 24px; font-weight: normal;">km</span></div>
 
-  <div class="stats">
-    <div class="stat-item"><strong id="pace">–</strong>Avg. Pace</div>
-    <div class="stat-item"><strong id="time">–</strong>Time</div>
-    <div class="stat-item"><strong id="calories">–</strong>Calories</div>
-    <div class="stat-item"><strong id="elevation">–</strong>Elevation Gain</div>
-    <div class="stat-item"><strong id="heart">–</strong>Avg. Heart Rate</div>
-    <div class="stat-item"><strong id="cadence">–</strong>Cadence</div>
+  <div id="grid">
+    <div class="grid-item"><div id="pace">-</div><div class="label">Avg. Pace</div></div>
+    <div class="grid-item"><div id="time">-</div><div class="label">Time</div></div>
+    <div class="grid-item"><div id="calories">-</div><div class="label">Calories</div></div>
+    <div class="grid-item"><div id="elevation">-</div><div class="label">Elevation Gain</div></div>
+    <div class="grid-item"><div id="heart">-</div><div class="label">Avg. Heart Rate</div></div>
+    <div class="grid-item"><div id="cadence">-</div><div class="label">Cadence</div></div>
   </div>
 
   <script>
-    let parsedData = {};
+    const imageInput = document.getElementById('image-upload');
+    const uploadLabel = document.getElementById('upload-label');
+    const uploadStatus = document.getElementById('upload-status');
+    const runButton = document.getElementById('run-button');
+    const mainKm = document.getElementById('main-km');
 
-    const parseValuesByLine = (text) => {
-      const lines = text.trim().split('\n').map(line => line.trim()).filter(Boolean);
-      const numbers = lines.flatMap(line => line.match(/[\d.']{2,}|\d{1,3}/g) || []);
-      const parsed = {
-        km: numbers[0] || null,
-        pace: numbers[1] || null,
-        time: numbers[2] || null,
-        calories: numbers[3] || null,
-        elevation: numbers[4] || null,
-        heart: numbers[5] || null,
-        cadence: numbers[6] || null
-      };
-      console.log("라인 기반 파싱 결과:", parsed);
-      return parsed;
-    };
+    let ocrText = '';
 
-    document.getElementById('imageUpload').addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      document.getElementById('uploadStatus').textContent = '이미지 인식 중...';
-
-      const img = URL.createObjectURL(file);
-      const result = await Tesseract.recognize(img, 'eng');
-      const text = result.data.text;
-      console.log('OCR 텍스트:', text);
-
-      parsedData = parseValuesByLine(text);
-
-      document.getElementById('uploadStatus').textContent = '업로드 완료';
-      document.getElementById('runButton').style.display = 'inline-block';
+    imageInput.addEventListener('change', () => {
+      uploadStatus.textContent = '업로드 완료';
     });
 
-    document.getElementById('runButton').addEventListener('click', () => {
-      const update = (id, val) => document.getElementById(id).textContent = val || '–';
+    runButton.addEventListener('click', () => {
+      const fakeOCR = `7.80\n6'51" 53:24 641\n36 m 126 163`;
+      const lines = fakeOCR.trim().split("\n");
+      const km = parseFloat(lines[0]);
+      mainKm.innerHTML = `<span style="font-size: 60px; font-weight: bold;">${km.toFixed(2)}</span> <span style="font-size: 24px; font-weight: normal;">km</span>`;
 
-      update('pace', parsedData.pace);
-      update('time', parsedData.time);
-      update('calories', parsedData.calories);
-      update('elevation', parsedData.elevation);
-      update('heart', parsedData.heart);
-      update('cadence', parsedData.cadence);
-
-      if (parsedData.km) {
-        document.getElementById("kmContainer").style.display = 'block';
-        animateNumber("kmValue", 0, parseFloat(parsedData.km), 2000);
-      } else {
-        document.getElementById("kmValue").textContent = "인식 실패";
-        document.getElementById("kmContainer").style.display = 'block';
+      const dataNumbers = lines.slice(1).join(' ').match(/\d+(?:'\d+"|:\d+)?/g);
+      if (dataNumbers && dataNumbers.length >= 6) {
+        const [pace, time, calories, elevation, heart, cadence] = dataNumbers;
+        document.getElementById('pace').textContent = pace;
+        document.getElementById('time').textContent = time;
+        document.getElementById('calories').textContent = calories;
+        document.getElementById('elevation').textContent = elevation;
+        document.getElementById('heart').textContent = heart;
+        document.getElementById('cadence').textContent = cadence;
       }
     });
-
-    function animateNumber(id, start, end, duration) {
-      const el = document.getElementById(id);
-      let startTime;
-      function update(currentTime) {
-        if (!startTime) startTime = currentTime;
-        const progress = Math.min((currentTime - startTime) / duration, 1);
-        const value = (start + (end - start) * progress).toFixed(2);
-        el.textContent = value;
-        if (progress < 1) requestAnimationFrame(update);
-      }
-      requestAnimationFrame(update);
-    }
   </script>
 </body>
 </html>
