@@ -12,22 +12,42 @@
     .upload-label { display: block; background-color: black; color: white; padding: 10px 20px; font-weight: bold; margin-bottom: 10px; cursor: pointer; }
     .status { color: green; margin-bottom: 10px; font-weight: bold; }
     .run-button { background-color: black; color: #7fff00; padding: 15px 30px; font-size: 24px; border: 2px solid #0070ff; border-radius: 5px; cursor: pointer; margin-top: 10px; display: none; }
-    .km-wrapper { display: flex; flex-direction: column; align-items: var(--align-items, center); text-align: var(--text-align, center); }
-    .km-display { font-weight: bold; }
-    .km-value { font-size: 100px; font-family: 'Jost', sans-serif; }
-    .km-unit { font-size: 30px; font-family: 'Jost', sans-serif; }
-    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; max-width: 600px; margin: 40px auto 0 auto; }
-    .stat { font-size: 22px; font-weight: bold; font-family: 'Jost', sans-serif; }
-    .label { font-size: 16px; color: gray; }
+
+    .controls { max-width: 900px; margin: 0 auto; }
     .font-controls, .align-controls, .bg-controls { margin-top: 30px; }
     .font-controls button, .align-controls button, .bg-controls button {
-      margin: 5px; padding: 10px 15px; font-size: 14px; cursor: pointer; border-radius: 5px; border: 2px solid #333; font-family: 'Jost', sans-serif;
+      margin: 5px; padding: 8px 12px; font-size: 18px; cursor: pointer; border-radius: 5px; border: 2px solid #000;
+      height: 50px; display: inline-flex; align-items: center; justify-content: center;
     }
-    h1 { font-weight: bold; }
+    .font-controls button { font-size: 20px; min-width: 90px; }
+
+    .display-container {
+      max-width: 900px;
+      margin: 60px auto 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .display-container.center {
+      align-items: center;
+    }
+    .km-number { font-size: 100px; font-family: 'Jost', sans-serif; font-style: italic; font-weight: 800; }
+    .km-label { font-size: 30px; font-weight: 800; font-family: 'Jost', sans-serif; margin-top: 10px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 30px;
+      max-width: 900px;
+      margin: 40px auto 0;
+      text-align: center;
+    }
+    .stat { font-size: 22px; font-weight: bold; }
+    .label { font-size: 18px; color: gray; }
   </style>
 </head>
 <body>
-  <h1>RUNNING MILEAGE ANIMATION MAKER<br><span style="font-weight: normal; font-size: 18px;">by JS @runarchive.js</span></h1>
+  <h1><strong>RUNNING MILEAGE ANIMATION MAKER</strong><br/>by JS @runarchive.js</h1>
 
   <div class="upload-box">
     <label for="file-upload" class="upload-label">기록 이미지 업로드</label>
@@ -36,33 +56,35 @@
     <button class="run-button" id="run-btn" onclick="runAnimation()">RUN</button>
   </div>
 
-  <div class="font-controls">
-    <div><strong>Font</strong></div>
-    <button style="font-family: 'Jost';" onclick="setFont('Jost', 100, 30)">Jost</button>
-    <button style="font-family: 'Orbitron';" onclick="setFont('Orbitron', 85, 30)">Orbitron</button>
-    <button style="font-family: 'Bebas Neue';" onclick="setFont('Bebas Neue', 95, 30)">Bebas Neue</button>
-    <button style="font-family: 'Fredericka the Great';" onclick="setFont('Fredericka the Great', 70, 25)">Fredericka</button>
-    <button style="font-family: 'Big Shoulders Inline Text';" onclick="setFont('Big Shoulders Inline Text', 90, 30)">Big Shoulders</button>
-    <button style="font-family: 'Caveat Brush';" onclick="setFont('Caveat Brush', 100, 30)">Caveat Brush</button>
-    <button style="font-family: 'Rock Salt';" onclick="setFont('Rock Salt', 65, 25)">Rock Salt</button>
-    <button style="font-family: 'Handjet';" onclick="setFont('Handjet', 85, 30)">Handjet</button>
+  <div class="controls">
+    <div class="font-controls">
+      <div><strong>Font</strong></div>
+      <button style="font-family: 'Jost', sans-serif; font-style: italic; font-weight: 800;" onclick="setFont('Jost', 100)">Jost</button>
+      <button style="font-family: 'Orbitron', sans-serif; font-weight: 700;" onclick="setFont('Orbitron', 85)">Orbitron</button>
+      <button style="font-family: 'Bebas Neue', sans-serif; font-weight: 400;" onclick="setFont('Bebas Neue', 95)">Bebas Neue</button>
+      <button style="font-family: 'Fredericka the Great', cursive; font-weight: 400;" onclick="setFont('Fredericka the Great', 70)">Fredericka</button>
+      <button style="font-family: 'Big Shoulders Inline Text', cursive; font-weight: 700;" onclick="setFont('Big Shoulders Inline Text', 90)">Big Shoulders</button>
+      <button style="font-family: 'Caveat Brush', cursive; font-weight: 400;" onclick="setFont('Caveat Brush', 100)">Caveat Brush</button>
+      <button style="font-family: 'Rock Salt', cursive; font-weight: 400;" onclick="setFont('Rock Salt', 65)">Rock Salt</button>
+      <button style="font-family: 'Handjet', cursive; font-weight: 500;" onclick="setFont('Handjet', 85)">Handjet</button>
+    </div>
+
+    <div class="align-controls">
+      <div><strong>Align</strong></div>
+      <button onclick="setAlign('left')">⬅️ Left</button>
+      <button onclick="setAlign('center')">↔️ Center</button>
+    </div>
+
+    <div class="bg-controls">
+      <div><strong>Background</strong></div>
+      <button onclick="setBackground('black')">Black</button>
+      <button onclick="setBackground('white')">White</button>
+    </div>
   </div>
 
-  <div class="align-controls">
-    <div><strong>Align</strong></div>
-    <button onclick="setAlign('left')">⬅️ Left</button>
-    <button onclick="setAlign('center')">↔️ Center</button>
-  </div>
-
-  <div class="bg-controls">
-    <div><strong>Background</strong></div>
-    <button onclick="setBackground('black')">Black</button>
-    <button onclick="setBackground('white')">White</button>
-  </div>
-
-  <div class="km-wrapper" id="km-wrapper">
-    <div class="km-display"><span id="km" class="km-value">0.00</span></div>
-    <div><span id="km-unit" class="km-unit">Kilometers</span></div>
+  <div class="display-container" id="display-container">
+    <div class="km-number" id="km">0.00</div>
+    <div class="km-label">Kilometers</div>
   </div>
 
   <div class="grid">
@@ -76,8 +98,6 @@
 
   <script>
     let parsedData = {};
-    document.body.style.setProperty('--text-align', 'center');
-    document.body.style.setProperty('--align-items', 'center');
 
     function parseValuesByLine(text) {
       const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
@@ -96,8 +116,10 @@
     document.getElementById("file-upload").addEventListener("change", async (event) => {
       const file = event.target.files[0];
       if (!file) return;
+
       document.getElementById("upload-status").textContent = "업로드 완료";
       document.getElementById("run-btn").style.display = "inline-block";
+
       const reader = new FileReader();
       reader.onload = async () => {
         const img = reader.result;
@@ -111,6 +133,7 @@
     function animateNumber(id, start, end, duration) {
       const el = document.getElementById(id);
       let startTime;
+
       function update(currentTime) {
         if (!startTime) startTime = currentTime;
         const progress = Math.min((currentTime - startTime) / duration, 1);
@@ -123,28 +146,31 @@
 
     function runAnimation() {
       animateNumber("km", 0, parseFloat(parsedData.km || 0), 2000);
-      ["pace", "time", "calories", "elevation", "heartrate", "cadence"].forEach(id => {
-        document.getElementById(id).textContent = parsedData[id] || "-";
+      const keys = ["pace", "time", "calories", "elevation", "heartrate", "cadence"];
+      keys.forEach(key => {
+        document.getElementById(key).textContent = parsedData[key] || "-";
       });
     }
 
-    function setFont(fontName, numSize, unitSize) {
-      document.getElementById("km").style.fontFamily = fontName;
-      document.getElementById("km").style.fontSize = numSize + "px";
-      document.getElementById("km-unit").style.fontSize = unitSize + "px";
+    function setFont(fontName, numSize) {
+      const kmEl = document.getElementById("km");
+      kmEl.style.fontFamily = fontName;
+      kmEl.style.fontSize = numSize + "px";
     }
 
     function setAlign(direction) {
-      const textAlign = direction === 'left' ? 'left' : 'center';
-      const alignItems = direction === 'left' ? 'flex-start' : 'center';
-      document.body.style.setProperty('--text-align', textAlign);
-      document.body.style.setProperty('--align-items', alignItems);
+      const display = document.getElementById("display-container");
+      display.className = direction === 'center' ? 'display-container center' : 'display-container';
     }
 
     function setBackground(color) {
-      document.body.style.backgroundColor = color === 'black' ? '#000' : '#fff';
-      document.body.style.color = color === 'black' ? '#fff' : '#000';
+      const isBlack = color === 'black';
+      document.body.style.backgroundColor = isBlack ? "#000" : "#fff";
+      document.body.style.color = isBlack ? "#fff" : "#000";
     }
+
+    // Default font init
+    window.onload = () => setFont('Jost', 100);
   </script>
 </body>
 </html>
