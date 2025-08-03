@@ -42,24 +42,30 @@
     let parsedData = {};
 
     function parseValuesByLine(text) {
-      const lines = text.toLowerCase().split('\n').map(line => line.trim()).filter(Boolean);
+      const lines = text.trim().split('\n').map(line => line.trim()).filter(Boolean);
 
-      const extract = (keyword, regex) => {
-        const line = lines.find(l => l.includes(keyword));
-        if (!line) return null;
-        const match = line.match(regex);
-        return match ? match[0] : null;
+      const kmLine = lines[0] || '';
+      const secondLine = lines[1] || '';
+      const thirdLine = lines[2] || '';
+
+      const kmMatch = kmLine.match(/\d+(\.\d{1,2})?/);
+      const km = kmMatch ? kmMatch[0] : null;
+
+      const [pace, time, calories] = secondLine.match(/[\d:'\.]{1,6}/g) || [];
+      const [elevation, heartrate, cadence] = thirdLine.match(/\d{1,4}/g) || [];
+
+      const parsed = {
+        km,
+        pace,
+        time,
+        calories,
+        elevation,
+        heartrate,
+        cadence
       };
 
-      return {
-        km: extract("km", /\d+(\.\d{1,2})?/),
-        time: extract("time", /\d{1,2}[:']\d{2}/),
-        pace: extract("pace", /\d{1,2}[:']\d{2}/),
-        calories: extract("calories", /\d+/),
-        elevation: extract("elevation", /\d+/),
-        heartrate: extract("heart", /\d+/),
-        cadence: extract("cadence", /\d+/)
-      };
+      console.log("라인 기반 파싱 결과:", parsed);
+      return parsed;
     }
 
     document.getElementById("file-upload").addEventListener("change", async (event) => {
