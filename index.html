@@ -42,23 +42,24 @@
     let parsedData = {};
 
     function parseValuesByLine(text) {
-      const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
-      const numbers = lines.flatMap(line =>
-        line.match(/\d+\.\d{1,2}|\d{1,2}[:']\d{2}|\d+/g) || []
-      );
+      const lines = text.toLowerCase().split('\n').map(line => line.trim()).filter(Boolean);
 
-      const parsed = {
-        km: numbers[0] || null,
-        pace: numbers[1] || null,
-        time: numbers[2] || null,
-        calories: numbers[3] || null,
-        elevation: numbers[4] || null,
-        heartrate: numbers[5] || null,
-        cadence: numbers[6] || null,
+      const extract = (keyword, regex) => {
+        const line = lines.find(l => l.includes(keyword));
+        if (!line) return null;
+        const match = line.match(regex);
+        return match ? match[0] : null;
       };
 
-      console.log("파싱 결과:", parsed);
-      return parsed;
+      return {
+        km: extract("km", /\d+(\.\d{1,2})?/),
+        time: extract("time", /\d{1,2}[:']\d{2}/),
+        pace: extract("pace", /\d{1,2}[:']\d{2}/),
+        calories: extract("calories", /\d+/),
+        elevation: extract("elevation", /\d+/),
+        heartrate: extract("heart", /\d+/),
+        cadence: extract("cadence", /\d+/)
+      };
     }
 
     document.getElementById("file-upload").addEventListener("change", async (event) => {
@@ -73,10 +74,7 @@
         const result = await Tesseract.recognize(img, 'eng');
         const text = result.data.text;
         console.log('OCR 텍스트:', text);
-
         parsedData = parseValuesByLine(text);
-
-        // km 애니메이션만 이미지 업로드 시 작동
         animateNumber("km", 0, parseFloat(parsedData.km || 0), 2000);
       };
       reader.readAsDataURL(file);
