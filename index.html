@@ -109,7 +109,7 @@
 
   <script>
     const patterns = {
-      km: /([\d.]{3,6})[\s\n]*K\s*i\s*l\s*o\s*m\s*e\s*t\s*e\s*r\s*s?/i,2}).{0,20}?Kilometers?/i,
+      km: /([\d.]{3,6})[\s\n]*K\s*i\s*l\s*o\s*m\s*e\s*t\s*e\s*r\s*s?/i,
       pace: /\b(\d{1,2}'\d{2}"?)\b(?=.*Avg\. Pace)/i,
       time: /\b(\d{1,2}:\d{2})\b(?=.*Time)/i,
       calories: /\b(\d{2,4})\b(?=.*Calories)/i,
@@ -131,27 +131,26 @@
       const text = result.data.text;
       console.log('OCR 텍스트:', text);
 
- parsedData = {
-  km: text.match(patterns.km)?.[1],
-  pace: text.match(patterns.pace)?.[1],
-  time: text.match(patterns.time)?.[1],
-  calories: text.match(patterns.calories)?.[1],
-  elevation: text.match(patterns.elevation)?.[1],
-  heart: text.match(patterns.heart)?.[1],
-  cadence: text.match(patterns.cadence)?.[1]
-};
-
-// fallback logic
-if (!parsedData.km) {
-  const fallback = text.match(/\\d{1,2}\\.\\d{1,2}/);
-  if (fallback) {
-    console.log('Fallback 거리 인식:', fallback[0]);
-    parsedData.km = fallback[0];
-  }
-}
+      parsedData = {
+        km: text.match(patterns.km)?.[1],
+        pace: text.match(patterns.pace)?.[1],
+        time: text.match(patterns.time)?.[1],
+        calories: text.match(patterns.calories)?.[1],
+        elevation: text.match(patterns.elevation)?.[1],
+        heart: text.match(patterns.heart)?.[1],
+        cadence: text.match(patterns.cadence)?.[1]
       };
 
-      console.log('km 매치 결과:', parsedData.km);
+      // fallback logic
+      if (!parsedData.km) {
+        const fallback = text.match(/\d{1,2}\.\d{1,2}/);
+        if (fallback) {
+          console.log('Fallback 거리 인식:', fallback[0]);
+          parsedData.km = fallback[0];
+        }
+      }
+
+      console.log('km 최종 값:', parsedData.km);
       document.getElementById('uploadStatus').textContent = '업로드 완료';
       document.getElementById('runButton').style.display = 'inline-block';
     });
