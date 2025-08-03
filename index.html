@@ -43,7 +43,9 @@
 
     function parseValuesByLine(text) {
       const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
-      const numbers = lines.flatMap(line => line.match(/[\d.:']{1,5}/g) || []);
+      const numbers = lines.flatMap(line =>
+        line.match(/\d+\.\d{1,2}|\d{1,2}[:']\d{2}|\d+/g) || []
+      );
 
       const parsed = {
         km: numbers[0] || null,
@@ -55,7 +57,7 @@
         cadence: numbers[6] || null,
       };
 
-      console.log("라인 기반 파싱 결과:", parsed);
+      console.log("파싱 결과:", parsed);
       return parsed;
     }
 
@@ -71,7 +73,10 @@
         const result = await Tesseract.recognize(img, 'eng');
         const text = result.data.text;
         console.log('OCR 텍스트:', text);
+
         parsedData = parseValuesByLine(text);
+
+        // km 애니메이션만 이미지 업로드 시 작동
         animateNumber("km", 0, parseFloat(parsedData.km || 0), 2000);
       };
       reader.readAsDataURL(file);
