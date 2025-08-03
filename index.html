@@ -69,7 +69,7 @@
     <label for="file-upload" class="upload-label">기록 이미지 업로드</label>
     <input type="file" id="file-upload" accept="image/*" style="display: none;" />
     <div class="status" id="upload-status"></div>
-    <button class="run-button" onclick="runAnimation()">RUN</button>
+    <button class="run-button" id="run-button">RUN</button>
   </div>
 
   <div class="km-display"><span id="km">0.00</span> km</div>
@@ -97,10 +97,11 @@
       reader.onload = async () => {
         const imageData = reader.result;
 
-        const { data: { text } } = await Tesseract.recognize(imageData, 'eng');
+        const result = await Tesseract.recognize(imageData, 'eng');
+        const text = result.data.text;
         console.log("OCR 텍스트:", text);
 
-        const numbers = text.match(/[\d']+\:\d+|[\d.]+|[\d']+\”/g);
+        const numbers = text.match(/[\d']+\:\d+|\d+'\d+"|\d+(\.\d+)?/g);
         console.log("추출된 숫자 목록:", numbers);
 
         if (numbers && numbers.length >= 7) {
@@ -117,12 +118,12 @@
       reader.readAsDataURL(file);
     });
 
-    function runAnimation() {
+    document.getElementById("run-button").addEventListener("click", () => {
       const keys = ["pace", "time", "calories", "elevation", "heartrate", "cadence"];
       keys.forEach((key, i) => {
         document.getElementById(key).textContent = extractedValues[i] || "-";
       });
-    }
+    });
   </script>
 </body>
 </html>
