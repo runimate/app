@@ -43,7 +43,7 @@
 
     function parseValuesByLine(text) {
       const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
-      const numbers = lines.flatMap(line => line.match(/[\d.']{1,5}/g) || []);
+      const numbers = lines.flatMap(line => line.match(/[\d.:']{1,5}/g) || []);
 
       const parsed = {
         km: numbers[0] || null,
@@ -72,10 +72,24 @@
         const text = result.data.text;
         console.log('OCR 텍스트:', text);
         parsedData = parseValuesByLine(text);
-        document.getElementById("km").textContent = parsedData.km || "0.00";
+        animateNumber("km", 0, parseFloat(parsedData.km || 0), 2000);
       };
       reader.readAsDataURL(file);
     });
+
+    function animateNumber(id, start, end, duration) {
+      const el = document.getElementById(id);
+      let startTime;
+
+      function update(currentTime) {
+        if (!startTime) startTime = currentTime;
+        const progress = Math.min((currentTime - startTime) / duration, 1);
+        const value = (start + (end - start) * progress).toFixed(2);
+        el.textContent = value;
+        if (progress < 1) requestAnimationFrame(update);
+      }
+      requestAnimationFrame(update);
+    }
 
     function runAnimation() {
       const keys = ["pace", "time", "calories", "elevation", "heartrate", "cadence"];
