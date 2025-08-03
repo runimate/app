@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RUNNING MILEAGE ANIMATION MAKER</title>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@1,800&family=Orbitron:wght@700&family=Bebas+Neue&family=Fredericka+the+Great&family=Big+Shoulders+Inline+Text:wght@700&family=Caveat+Brush&family=Rock+Salt&family=Handjet:wght@500&display=swap" rel="stylesheet">
   <style>
     body { font-family: Arial, sans-serif; text-align: center; padding: 40px; transition: background 0.3s, color 0.3s; }
@@ -11,52 +12,50 @@
     .upload-label { display: block; background-color: black; color: white; padding: 10px 20px; font-weight: bold; margin-bottom: 10px; cursor: pointer; }
     .status { color: green; margin-bottom: 10px; font-weight: bold; }
     .run-button { background-color: black; color: #7fff00; padding: 15px 30px; font-size: 24px; border: 2px solid #0070ff; border-radius: 5px; cursor: pointer; margin-top: 10px; display: none; }
-    .km-display { margin: 30px 0 20px; font-weight: bold; }
+    .km-display { margin: 30px 0 20px; font-weight: bold; display: flex; justify-content: center; gap: 10px; align-items: baseline; }
+    .km-number { font-size: 100px; }
+    .km-unit { font-size: 60px; }
     .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; max-width: 600px; margin: 0 auto; }
     .stat { font-size: 22px; font-weight: bold; }
     .label { font-size: 14px; color: gray; }
-    .controls { margin-bottom: 20px; }
-    .controls button { margin: 4px; padding: 8px 12px; cursor: pointer; border-radius: 5px; border: none; }
-    .align-left::before { content: '📎 '; }
-    .align-center::before { content: '📍 '; }
+    select, .control-btn { margin: 0 10px 20px; padding: 8px 12px; font-size: 14px; cursor: pointer; }
+    .controls { margin-bottom: 30px; }
+    .left-icon::before { content: "\2190 "; }
+    .center-icon::before { content: "\21C6 "; }
   </style>
 </head>
 <body>
   <h1>RUNNING MILEAGE ANIMATION MAKER</h1>
 
   <div class="controls">
-    <div>
-      <strong>Font Select:</strong>
-      <button style="font-family: 'Jost'; font-style: italic; font-weight: 800" onclick="setFont('Jost', 100, 60)">Jost</button>
-      <button style="font-family: 'Orbitron'; font-weight: 700" onclick="setFont('Orbitron', 100, 60)">Orbitron</button>
-      <button style="font-family: 'Bebas Neue'; font-weight: 400" onclick="setFont('Bebas Neue', 100, 60)">Bebas Neue</button>
-      <button style="font-family: 'Fredericka the Great'; font-weight: 400" onclick="setFont('Fredericka the Great', 100, 60)">Fredericka</button>
-      <button style="font-family: 'Big Shoulders Inline Text'; font-weight: 700" onclick="setFont('Big Shoulders Inline Text', 100, 60)">Big Shoulders</button>
-      <button style="font-family: 'Caveat Brush'; font-weight: 400" onclick="setFont('Caveat Brush', 100, 60)">Caveat</button>
-      <button style="font-family: 'Rock Salt'; font-weight: 400" onclick="setFont('Rock Salt', 100, 60)">Rock Salt</button>
-      <button style="font-family: 'Handjet'; font-weight: 500" onclick="setFont('Handjet', 100, 60)">Handjet</button>
-    </div>
-    <div>
-      <strong>Text Align:</strong>
-      <button class="align-left" onclick="setAlign('left')">Left</button>
-      <button class="align-center" onclick="setAlign('center')">Center</button>
-    </div>
-    <div>
-      <strong>Background:</strong>
-      <button onclick="setTheme('dark')">Black</button>
-      <button onclick="setTheme('light')">White</button>
-    </div>
+    <select id="font-selector">
+      <option value="Jost" data-size="100">Jost ExtraBold</option>
+      <option value="Orbitron" data-size="80">Orbitron Bold</option>
+      <option value="Bebas Neue" data-size="90">Bebas Neue</option>
+      <option value="Fredericka the Great" data-size="70">Fredericka the Great</option>
+      <option value="Big Shoulders Inline Text" data-size="90">Big Shoulders Inline</option>
+      <option value="Caveat Brush" data-size="70">Caveat Brush</option>
+      <option value="Rock Salt" data-size="60">Rock Salt</option>
+      <option value="Handjet" data-size="80">Handjet</option>
+    </select>
+    <button class="control-btn left-icon" onclick="setAlign('flex-start')">Left Align</button>
+    <button class="control-btn center-icon" onclick="setAlign('center')">Center Align</button>
+    <select id="bg-selector" onchange="setBackground(this.value)">
+      <option value="#ffffff">White</option>
+      <option value="#000000">Black</option>
+    </select>
   </div>
 
   <div class="upload-box">
     <label for="file-upload" class="upload-label">기록 이미지 업로드</label>
     <input type="file" id="file-upload" accept="image/*" style="display: none;" />
     <div class="status" id="upload-status"></div>
-    <button class="run-button" id="run-btn" onclick="runAnimation()">RUN</button>
+    <button id="run-btn" class="run-button" onclick="runAnimation()">RUN</button>
   </div>
 
-  <div class="km-display">
-    <span id="km" style="font-size: 100px;">0.00</span> <span id="km-unit" style="font-size: 60px;">km</span>
+  <div class="km-display" id="km-display">
+    <span id="km-number" class="km-number">0.00</span>
+    <span class="km-unit">km</span>
   </div>
 
   <div class="grid">
@@ -68,13 +67,30 @@
     <div><div class="stat" id="cadence">-</div><div class="label">Cadence</div></div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
   <script>
     let parsedData = {};
+    let currentFont = 'Jost';
+
+    document.getElementById("file-upload").addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      document.getElementById("upload-status").textContent = "업로드 완료";
+      document.getElementById("run-btn").style.display = 'inline-block';
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const result = await Tesseract.recognize(reader.result, 'eng');
+        const text = result.data.text;
+        parsedData = parseValuesByLine(text);
+      };
+      reader.readAsDataURL(file);
+    });
 
     function parseValuesByLine(text) {
       const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
       const numbers = lines.flatMap(line => line.match(/[\d.:']{1,5}/g) || []);
+
       return {
         km: numbers[0] || null,
         pace: numbers[1] || null,
@@ -82,38 +98,14 @@
         calories: numbers[3] || null,
         elevation: numbers[4] || null,
         heartrate: numbers[5] || null,
-        cadence: numbers[6] || null,
+        cadence: numbers[6] || null
       };
-    }
-
-    document.getElementById("file-upload").addEventListener("change", async (event) => {
-      const file = event.target.files[0];
-      if (!file) return;
-      document.getElementById("upload-status").textContent = "업로드 완료";
-      document.getElementById("run-btn").style.display = "inline-block";
-
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const img = reader.result;
-        const result = await Tesseract.recognize(img, 'eng');
-        const text = result.data.text;
-        console.log('OCR 텍스트:', text);
-        parsedData = parseValuesByLine(text);
-      };
-      reader.readAsDataURL(file);
-    });
-
-    function runAnimation() {
-      animateNumber("km", 0, parseFloat(parsedData.km || 0), 2000);
-      const keys = ["pace", "time", "calories", "elevation", "heartrate", "cadence"];
-      keys.forEach(key => {
-        document.getElementById(key).textContent = parsedData[key] || "-";
-      });
     }
 
     function animateNumber(id, start, end, duration) {
       const el = document.getElementById(id);
       let startTime;
+
       function update(currentTime) {
         if (!startTime) startTime = currentTime;
         const progress = Math.min((currentTime - startTime) / duration, 1);
@@ -124,25 +116,30 @@
       requestAnimationFrame(update);
     }
 
-    function setFont(fontFamily, kmSize, unitSize) {
-      document.getElementById("km").style.fontFamily = fontFamily;
-      document.getElementById("km-unit").style.fontFamily = fontFamily;
-      document.getElementById("km").style.fontSize = kmSize + "px";
-      document.getElementById("km-unit").style.fontSize = unitSize + "px";
+    function runAnimation() {
+      animateNumber("km-number", 0, parseFloat(parsedData.km || 0), 2000);
+      const keys = ["pace", "time", "calories", "elevation", "heartrate", "cadence"];
+      keys.forEach(key => {
+        document.getElementById(key).textContent = parsedData[key] || "-";
+      });
     }
 
-    function setAlign(align) {
-      document.querySelector(".km-display").style.textAlign = align;
+    document.getElementById("font-selector").addEventListener("change", (e) => {
+      const font = e.target.options[e.target.selectedIndex].value;
+      const size = e.target.options[e.target.selectedIndex].dataset.size;
+      currentFont = font;
+      const kmNumber = document.getElementById("km-number");
+      kmNumber.style.fontFamily = `'${font}', sans-serif`;
+      kmNumber.style.fontSize = size + 'px';
+    });
+
+    function setAlign(justifyContent) {
+      document.getElementById("km-display").style.justifyContent = justifyContent;
     }
 
-    function setTheme(mode) {
-      if (mode === "dark") {
-        document.body.style.background = "#000";
-        document.body.style.color = "#fff";
-      } else {
-        document.body.style.background = "#fff";
-        document.body.style.color = "#000";
-      }
+    function setBackground(color) {
+      document.body.style.backgroundColor = color;
+      document.body.style.color = (color === '#000000') ? '#ffffff' : '#000000';
     }
   </script>
 </body>
