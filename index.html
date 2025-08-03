@@ -71,7 +71,7 @@
         const result = await Tesseract.recognize(img, 'eng');
         const text = result.data.text;
         console.log('OCR 텍스트:', text);
-        parsedData = parseValuesByLine(text); // 👉 저장만 하고 출력은 하지 않음
+        parsedData = parseValuesByLine(text); // 저장만 수행
       };
       reader.readAsDataURL(file);
     });
