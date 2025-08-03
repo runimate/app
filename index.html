@@ -121,26 +121,23 @@
       const text = result.data.text;
       console.log('OCR 텍스트:', text);
 
-      const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
+      const numbers = text.match(/\d{1,3}[.,']?\d{1,2}|\d{2,3}/g);
+      console.log('모든 숫자:', numbers);
 
-      if (lines.length >= 3) {
-        parsedData.km = lines[0];
-
-        const secondLine = lines[1].split(/\s+/);
-        const thirdLine = lines[2].split(/\s+/);
-
-        parsedData.pace = secondLine[0] || '–';
-        parsedData.time = secondLine[1] || '–';
-        parsedData.calories = secondLine[2] || '–';
-
-        parsedData.elevation = thirdLine[0] || '–';
-        parsedData.heart = thirdLine[1] || '–';
-        parsedData.cadence = thirdLine[2] || '–';
+      if (numbers && numbers.length >= 7) {
+        parsedData = {
+          km: numbers[0].replace(/[,']/g, "."),
+          pace: numbers[1],
+          time: numbers[2],
+          calories: numbers[3],
+          elevation: numbers[4],
+          heart: numbers[5],
+          cadence: numbers[6]
+        };
       } else {
-        parsedData = {};
+        parsedData = { km: numbers?.[0] || null };
       }
 
-      console.log('최종 추출 결과:', parsedData);
       document.getElementById('uploadStatus').textContent = '업로드 완료';
       document.getElementById('runButton').style.display = 'inline-block';
     });
