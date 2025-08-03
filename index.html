@@ -22,7 +22,7 @@
       border: 1.5px solid #ccc;
       padding: 2rem;
       max-width: 400px;
-      margin: 0 auto 3rem;
+      margin: 0 auto 2rem;
       color: #aaa;
     }
     #imageUpload {
@@ -38,6 +38,24 @@
       border-radius: 4px;
       cursor: pointer;
     }
+    #uploadStatus {
+      margin-top: 1rem;
+      font-size: 1rem;
+      font-weight: bold;
+      color: #4caf50;
+    }
+    #runButton {
+      margin-top: 2rem;
+      font-size: 1.5rem;
+      padding: 1rem 3rem;
+      background: #000;
+      color: #8fff00;
+      font-weight: bold;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      display: none;
+    }
     #kmValue {
       font-size: 4rem;
       font-weight: 800;
@@ -45,7 +63,8 @@
     }
     #kmContainer {
       font-size: 1.5rem;
-      margin-bottom: 2.5rem;
+      margin: 3rem 0 2.5rem;
+      display: none;
     }
     .stats {
       display: grid;
@@ -71,6 +90,8 @@
   <div id="upload-box">
     <label id="uploadLabel" for="imageUpload">기록 이미지 업로드</label>
     <input type="file" id="imageUpload" accept="image/*">
+    <div id="uploadStatus"></div>
+    <button id="runButton">RUN</button>
   </div>
 
   <div id="kmContainer">
@@ -97,29 +118,50 @@
       cadence: /\b(\d{2,3})\b(?=.*Cadence)/i
     };
 
+    let parsedData = {};
+
     document.getElementById('imageUpload').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
+
+      document.getElementById('uploadStatus').textContent = '이미지 인식 중...';
+
       const img = URL.createObjectURL(file);
       const result = await Tesseract.recognize(img, 'eng');
       const text = result.data.text;
       console.log('OCR 텍스트:', text);
 
+      parsedData = {
+        km: text.match(patterns.km)?.[1],
+        pace: text.match(patterns.pace)?.[1],
+        time: text.match(patterns.time)?.[1],
+        calories: text.match(patterns.calories)?.[1],
+        elevation: text.match(patterns.elevation)?.[1],
+        heart: text.match(patterns.heart)?.[1],
+        cadence: text.match(patterns.cadence)?.[1]
+      };
+
+      console.log('km 매치 결과:', parsedData.km);
+      document.getElementById('uploadStatus').textContent = '업로드 완료';
+      document.getElementById('runButton').style.display = 'inline-block';
+    });
+
+    document.getElementById('runButton').addEventListener('click', () => {
       const update = (id, val) => document.getElementById(id).textContent = val || '–';
 
-      update('pace', text.match(patterns.pace)?.[1]);
-      update('time', text.match(patterns.time)?.[1]);
-      update('calories', text.match(patterns.calories)?.[1]);
-      update('elevation', text.match(patterns.elevation)?.[1]);
-      update('heart', text.match(patterns.heart)?.[1]);
-      update('cadence', text.match(patterns.cadence)?.[1]);
+      update('pace', parsedData.pace);
+      update('time', parsedData.time);
+      update('calories', parsedData.calories);
+      update('elevation', parsedData.elevation);
+      update('heart', parsedData.heart);
+      update('cadence', parsedData.cadence);
 
-      const kmMatch = text.match(patterns.km);
-      console.log('km 매치 결과:', kmMatch);
-      if (kmMatch) {
-        animateNumber("kmValue", 0, parseFloat(kmMatch[1]), 2000);
+      if (parsedData.km) {
+        document.getElementById("kmContainer").style.display = 'block';
+        animateNumber("kmValue", 0, parseFloat(parsedData.km), 2000);
       } else {
         document.getElementById("kmValue").textContent = "인식 실패";
+        document.getElementById("kmContainer").style.display = 'block';
       }
     });
 
@@ -138,4 +180,3 @@
   </script>
 </body>
 </html>
-
