@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Running Mileage Animation Maker</title>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
+  <style>
+    body {
+      font-family: 'Helvetica Neue', sans-serif;
+      text-align: center;
+      background: #fff;
+      padding: 4rem 1rem;
+    }
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      margin-bottom: 2rem;
+    }
+    #upload-box {
+      border: 1.5px solid #ccc;
+      padding: 2rem;
+      max-width: 400px;
+      margin: 0 auto 3rem;
+      color: #aaa;
+    }
+    #imageUpload {
+      display: none;
+    }
+    #uploadLabel {
+      display: inline-block;
+      padding: 0.6rem 1.2rem;
+      background: #000;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #kmValue {
+      font-size: 4rem;
+      font-weight: 800;
+      display: inline-block;
+    }
+    #kmContainer {
+      font-size: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    .stat-item {
+      font-size: 1rem;
+      text-align: center;
+    }
+    .stat-item strong {
+      display: block;
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 0.3rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>RUNNING MILEAGE ANIMATION MAKER</h1>
+  <div id="upload-box">
+    <label id="uploadLabel" for="imageUpload">기록 이미지 업로드</label>
+    <input type="file" id="imageUpload" accept="image/*">
+  </div>
+
+  <div id="kmContainer">
+    <span id="kmValue">—</span> km
+  </div>
+
+  <div class="stats">
+    <div class="stat-item"><strong id="pace">–</strong>Avg. Pace</div>
+    <div class="stat-item"><strong id="time">–</strong>Time</div>
+    <div class="stat-item"><strong id="calories">–</strong>Calories</div>
+    <div class="stat-item"><strong id="elevation">–</strong>Elevation Gain</div>
+    <div class="stat-item"><strong id="heart">–</strong>Avg. Heart Rate</div>
+    <div class="stat-item"><strong id="cadence">–</strong>Cadence</div>
+  </div>
+
+  <script>
+    const patterns = {
+      km: /\b(\d+\.\d{1,2})\b(?=\s*Kilometers?)/i,
+      pace: /\b(\d{1,2}'\d{2}"?)\b(?=.*Avg\. Pace)/i,
+      time: /\b(\d{1,2}:\d{2})\b(?=.*Time)/i,
+      calories: /\b(\d{2,4})\b(?=.*Calories)/i,
+      elevation: /\b(\d{1,4}\s*m)\b(?=.*Elevation)/i,
+      heart: /\b(\d{2,3})\s*[^\d]?\b(?=.*Heart)/i,
+      cadence: /\b(\d{2,3})\b(?=.*Cadence)/i
+    };
+
+    document.getElementById('imageUpload').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const img = URL.createObjectURL(file);
+      const result = await Tesseract.recognize(img, 'eng');
+      const text = result.data.text;
+      console.log(text);
+
+      const update = (id, val) => document.getElementById(id).textContent = val || '–';
+
+      update('pace', text.match(patterns.pace)?.[1]);
+      update('time', text.match(patterns.time)?.[1]);
+      update('calories', text.match(patterns.calories)?.[1]);
+      update('elevation', text.match(patterns.elevation)?.[1]);
+      update('heart', text.match(patterns.heart)?.[1]);
+      update('cadence', text.match(patterns.cadence)?.[1]);
+
+      const kmMatch = text.match(patterns.km);
+      if (kmMatch) animateNumber("kmValue", 0, parseFloat(kmMatch[1]), 2000);
+    });
+
+    function animateNumber(id, start, end, duration) {
+      const el = document.getElementById(id);
+      let startTime;
+      function update(currentTime) {
+        if (!startTime) startTime = currentTime;
+        const progress = Math.min((currentTime - startTime) / duration, 1);
+        const value = (start + (end - start) * progress).toFixed(2);
+        el.textContent = value;
+        if (progress < 1) requestAnimationFrame(update);
+      }
+      requestAnimationFrame(update);
+    }
+  </script>
+</body>
+</html>
