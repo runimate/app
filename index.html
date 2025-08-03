@@ -12,21 +12,20 @@
     .upload-label { display: block; background-color: black; color: white; padding: 10px 20px; font-weight: bold; margin-bottom: 10px; cursor: pointer; }
     .status { color: green; margin-bottom: 10px; font-weight: bold; }
     .run-button { background-color: black; color: #7fff00; padding: 15px 30px; font-size: 24px; border: 2px solid #0070ff; border-radius: 5px; cursor: pointer; margin-top: 10px; display: none; }
-    .km-display { margin: 30px 0 20px; font-weight: bold; }
-    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; max-width: 600px; margin: 0 auto; justify-items: center; }
+    .km-display { margin: 30px 0 20px; font-weight: bold; text-align: center; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; max-width: 600px; margin: 0 auto; text-align: left; }
     .stat { font-size: 22px; font-weight: bold; }
     .label { font-size: 14px; color: gray; }
     .font-controls, .align-controls, .bg-controls { margin-top: 30px; }
-    .font-controls button, .align-controls button, .bg-controls button {
-      margin: 5px; padding: 8px 12px; font-size: 14px; cursor: pointer; border-radius: 5px;
-    }
-    .font-controls button {
-      font-size: 20px; height: 50px; line-height: 1.2; vertical-align: middle;
-    }
+    .font-controls button, .align-controls button, .bg-controls button { margin: 5px; padding: 8px 12px; font-size: 14px; cursor: pointer; border-radius: 5px; height: 40px; }
+    .font-controls button { font-size: 20px; }
   </style>
 </head>
 <body>
-  <h1>RUNNING MILEAGE ANIMATION MAKER</h1>
+  <h1 style="margin-bottom: 10px;">
+    <span style="font-weight: bold;">RUNNING MILEAGE ANIMATION MAKER</span><br />
+    <span style="font-size: 18px; font-weight: normal;">by JS @runarchive.js</span>
+  </h1>
 
   <div class="upload-box">
     <label for="file-upload" class="upload-label">기록 이미지 업로드</label>
@@ -59,9 +58,9 @@
     <button onclick="setBackground('white')">White</button>
   </div>
 
-  <div class="km-display" id="km-display"><span id="km" style="font-size: 100px;">0.00</span> <span id="km-unit" style="font-size: 60px;">km</span></div>
+  <div class="km-display" id="km-display"><div><span id="km" style="font-size: 100px;">0.00</span></div><div><span id="km-unit" style="font-size: 60px;">Kilometers</span></div></div>
 
-  <div class="grid">
+  <div class="grid" id="stats-grid">
     <div><div class="stat" id="pace">-</div><div class="label">Avg. Pace</div></div>
     <div><div class="stat" id="time">-</div><div class="label">Time</div></div>
     <div><div class="stat" id="calories">-</div><div class="label">Calories</div></div>
@@ -141,7 +140,7 @@
 
     function setAlign(direction) {
       document.getElementById("km-display").style.textAlign = direction;
-      document.querySelector(".grid").style.justifyItems = direction === 'left' ? 'start' : 'center';
+      document.getElementById("stats-grid").style.textAlign = direction;
     }
 
     function setBackground(color) {
