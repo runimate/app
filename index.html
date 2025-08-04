@@ -59,7 +59,6 @@
       display: none;
     }
 
-    /* 정렬 기준이 되는 전체 출력 컨테이너 */
     .output-container {
       display: flex;
       flex-direction: column;
@@ -73,6 +72,7 @@
       flex-direction: column;
       margin-bottom: 10px;
       width: 100%;
+      max-width: 600px;
       align-items: flex-start;
     }
 
@@ -81,7 +81,9 @@
       font-style: italic;
       font-weight: 800;
       font-size: 250px;
+      max-width: 100%;
       word-break: break-word;
+      display: inline-block;
     }
 
     .km-unit {
@@ -184,7 +186,7 @@
     function parseValuesByLine(text) {
       const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
       const numbers = lines.flatMap(line => line.match(/[\d.:']{1,5}/g) || []);
-      const parsed = {
+      return {
         km: numbers[0] || null,
         pace: numbers[1] || null,
         time: numbers[2] || null,
@@ -193,8 +195,6 @@
         heartrate: numbers[5] || null,
         cadence: numbers[6] || null,
       };
-      console.log("파싱 결과:", parsed);
-      return parsed;
     }
 
     document.getElementById("file-upload").addEventListener("change", async (event) => {
@@ -206,9 +206,7 @@
       reader.onload = async () => {
         const img = reader.result;
         const result = await Tesseract.recognize(img, 'eng');
-        const text = result.data.text;
-        console.log('OCR 텍스트:', text);
-        parsedData = parseValuesByLine(text);
+        parsedData = parseValuesByLine(result.data.text);
       };
       reader.readAsDataURL(file);
     });
@@ -219,8 +217,7 @@
       function update(currentTime) {
         if (!startTime) startTime = currentTime;
         const progress = Math.min((currentTime - startTime) / duration, 1);
-        const value = (start + (end - start) * progress).toFixed(2);
-        el.textContent = value;
+        el.textContent = (start + (end - start) * progress).toFixed(2);
         if (progress < 1) requestAnimationFrame(update);
       }
       requestAnimationFrame(update);
@@ -228,8 +225,7 @@
 
     function runAnimation() {
       animateNumber("km", 0, parseFloat(parsedData.km || 0), 2000);
-      const keys = ["pace", "time", "calories", "elevation", "heartrate", "cadence"];
-      keys.forEach(key => {
+      ["pace", "time", "calories", "elevation", "heartrate", "cadence"].forEach(key => {
         document.getElementById(key).textContent = parsedData[key] || "-";
       });
     }
@@ -248,18 +244,21 @@
       if (direction === 'center') {
         main.style.alignItems = 'center';
         kmContainer.style.alignItems = 'center';
+        kmContainer.style.textAlign = 'center';
+        grid.style.justifyContent = 'center';
         grid.style.textAlign = 'center';
       } else {
         main.style.alignItems = 'flex-start';
         kmContainer.style.alignItems = 'flex-start';
+        kmContainer.style.textAlign = 'left';
+        grid.style.justifyContent = 'start';
         grid.style.textAlign = 'left';
       }
     }
 
     function setBackground(color) {
-      const isBlack = color === 'black';
-      document.body.style.backgroundColor = isBlack ? "#000" : "#fff";
-      document.body.style.color = isBlack ? "#fff" : "#000";
+      document.body.style.backgroundColor = color === 'black' ? "#000" : "#fff";
+      document.body.style.color = color === 'black' ? "#fff" : "#000";
     }
   </script>
 </body>
