@@ -1,264 +1,236 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>RUNNING MILEAGE ANIMATION MAKER</title>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@1,800&family=Orbitron:wght@700&family=Bebas+Neue&family=Big+Shoulders+Inline+Text:wght@700&family=Caveat+Brush&family=Rock+Salt&family=Handjet:wght@500&display=swap" rel="stylesheet">
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 40px;
-      background-color: #fff;
-      color: #000;
-    }
-
-    h1 {
-      font-weight: bold;
-    }
-
-    .subtitle {
-      font-size: 14px;
-      margin-bottom: 30px;
-    }
-
-    .upload-box {
-      border: 1px solid #ddd;
-      padding: 40px;
-      margin: 0 auto 30px;
-      width: fit-content;
-    }
-
-    .upload-label {
-      display: block;
-      background-color: black;
-      color: white;
-      padding: 10px 20px;
-      font-weight: bold;
-      margin-bottom: 10px;
-      cursor: pointer;
-    }
-
-    .status {
-      color: green;
-      margin-bottom: 10px;
-      font-weight: bold;
-    }
-
-    .run-button {
-      background-color: black;
-      color: #7fff00;
-      padding: 15px 30px;
-      font-size: 24px;
-      border: 2px solid #0070ff;
-      border-radius: 5px;
-      cursor: pointer;
-      margin-top: 10px;
-      display: none;
-    }
-
-    .km-container {
-      margin: 30px 0 20px;
-      text-align: left;
-      display: flex;
-      justify-content: center;
-    }
-
-    .km-number {
-      font-family: 'Jost', sans-serif;
-      font-style: italic;
-      font-weight: 800;
-      font-size: 160px;
-    }
-
-    .km-unit {
-      margin-left: 10px;
-      font-size: 64px;
-      line-height: 1;
-      align-self: flex-end;
-      font-family: 'Jost', sans-serif;
-      font-style: italic;
-      font-weight: 800;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 30px;
-      max-width: 600px;
-      margin: 80px auto 0;
-      text-align: left;
-    }
-
-    .stat {
-      font-size: 22px;
-      font-weight: bold;
-    }
-
-    .label {
-      font-size: 14px;
-      color: gray;
-    }
-
-    .font-controls, .align-controls, .bg-controls {
-      margin-top: 30px;
-    }
-
-    .font-controls button, .align-controls button, .bg-controls button {
-      margin: 5px;
-      padding: 8px 12px;
-      font-size: 14px;
-      cursor: pointer;
-      border-radius: 5px;
-      height: 40px;
-    }
-
-    .font-controls button {
-      font-size: 20px;
-    }
-  </style>
-</head>
-<body>
-  <h1>RUNNING MILEAGE ANIMATION MAKER</h1>
-  <div class="subtitle">by JS @runarchive.js</div>
-
-  <div class="upload-box">
-    <label for="file-upload" class="upload-label">기록 이미지 업로드</label>
-    <input type="file" id="file-upload" accept="image/*" style="display: none;" />
-    <div class="status" id="upload-status"></div>
-    <button class="run-button" id="run-btn" onclick="runAnimation()">RUN</button>
-  </div>
-
-  <div class="font-controls">
-    <div><strong>Font</strong></div>
-    <button style="font-family: 'Jost', sans-serif; font-style: italic; font-weight: 800;" onclick="setFont('Jost')">Jost</button>
-    <button style="font-family: 'Orbitron', sans-serif; font-weight: 700;" onclick="setFont('Orbitron')">Orbitron</button>
-    <button style="font-family: 'Bebas Neue', sans-serif;" onclick="setFont('Bebas Neue')">Bebas Neue</button>
-    <button style="font-family: 'Big Shoulders Inline Text', cursive;" onclick="setFont('Big Shoulders Inline Text')">Big Shoulders</button>
-    <button style="font-family: 'Caveat Brush', cursive;" onclick="setFont('Caveat Brush')">Caveat Brush</button>
-    <button style="font-family: 'Rock Salt', cursive;" onclick="setFont('Rock Salt')">Rock Salt</button>
-    <button style="font-family: 'Handjet', cursive;" onclick="setFont('Handjet')">Handjet</button>
-  </div>
-
-  <div class="align-controls">
-    <div><strong>Align</strong></div>
-    <button onclick="setAlign('left')">⬅️ Left</button>
-    <button onclick="setAlign('center')">↔️ Center</button>
-  </div>
-
-  <div class="bg-controls">
-    <div><strong>Background</strong></div>
-    <button onclick="setBackground('black')">Black</button>
-    <button onclick="setBackground('white')">White</button>
-  </div>
-
-  <div class="km-container" id="km-container">
-    <div class="km-number" id="km">0.00</div>
-    <div class="km-unit" id="km-unit">km</div>
-  </div>
-
-  <div class="grid">
-    <div><div class="stat" id="pace">-</div><div class="label">Avg. Pace</div></div>
-    <div><div class="stat" id="time">-</div><div class="label">Time</div></div>
-    <div><div class="stat" id="calories">-</div><div class="label">Calories</div></div>
-    <div><div class="stat" id="elevation">-</div><div class="label">Elevation Gain</div></div>
-    <div><div class="stat" id="heartrate">-</div><div class="label">Avg. Heart Rate</div></div>
-    <div><div class="stat" id="cadence">-</div><div class="label">Cadence</div></div>
-  </div>
-
-  <script>
-    let parsedData = {};
-
-    function parseValuesByLine(text) {
-      const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
-      const numbers = lines.flatMap(line => line.match(/[\d.:']{1,5}/g) || []);
-      return {
-        km: numbers[0] || null,
-        pace: numbers[1] || null,
-        time: numbers[2] || null,
-        calories: numbers[3] || null,
-        elevation: numbers[4] || null,
-        heartrate: numbers[5] || null,
-        cadence: numbers[6] || null,
-      };
-    }
-
-    document.getElementById("file-upload").addEventListener("change", async (event) => {
-      const file = event.target.files[0];
-      if (!file) return;
-      document.getElementById("upload-status").textContent = "업로드 완료";
-      document.getElementById("run-btn").style.display = "inline-block";
-
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const img = reader.result;
-        const result = await Tesseract.recognize(img, 'eng');
-        const text = result.data.text;
-        parsedData = parseValuesByLine(text);
-      };
-      reader.readAsDataURL(file);
-    });
-
-    function animateNumber(id, start, end, duration) {
-      const el = document.getElementById(id);
-      let startTime;
-
-      function update(currentTime) {
-        if (!startTime) startTime = currentTime;
-        const progress = Math.min((currentTime - startTime) / duration, 1);
-        const value = (start + (end - start) * progress).toFixed(2);
-        el.textContent = value;
-        if (progress < 1) requestAnimationFrame(update);
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Running Mileage Animation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Big+Shoulders+Text:wght@700&family=Caveat+Brush&family=Fredericka+the+Great&family=Handjet:wght@700&family=Jost:ital,wght@1,700&family=Orbitron:wght@700&family=Rock+Salt&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: 'Jost', sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        height: 100vh;
+        margin: 0;
+        padding: 20px;
+        transition: background-color 0.3s, color 0.3s;
       }
 
-      requestAnimationFrame(update);
-    }
+      .title {
+        text-align: center;
+        margin-bottom: 30px;
+      }
 
-    function runAnimation() {
-      animateNumber("km", 0, parseFloat(parsedData.km || 0), 2000);
-      const keys = ["pace", "time", "calories", "elevation", "heartrate", "cadence"];
-      keys.forEach(key => {
-        document.getElementById(key).textContent = parsedData[key] || "-";
+      .title h1 {
+        font-size: 24px;
+        font-weight: bold;
+        margin: 0;
+      }
+
+      .title h2 {
+        font-size: 14px;
+        font-weight: normal;
+        margin: 0;
+        font-style: italic;
+      }
+
+      .controls {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 30px;
+        gap: 10px;
+      }
+
+      .button-group {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+      }
+
+      .button-group button {
+        padding: 6px 12px;
+        border: 2px solid black;
+        background: white;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 14px;
+        height: 40px;
+      }
+
+      .button-group button.active {
+        background: black;
+        color: white;
+      }
+
+      .output {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        font-size: 64px;
+        font-weight: bold;
+        margin-top: 20px;
+      }
+
+      .unit {
+        font-size: 32px;
+        margin-top: -10px;
+      }
+
+      .details {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 40px 100px;
+        text-align: center;
+        margin-top: 80px;
+        font-family: 'Jost', sans-serif;
+      }
+
+      .details .label {
+        font-size: 18px;
+        color: gray;
+        font-weight: 400;
+      }
+
+      .details .value {
+        font-size: 28px;
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+
+      .dark-mode {
+        background-color: #000;
+        color: #fff;
+      }
+
+      .dark-mode .button-group button {
+        background: black;
+        color: white;
+        border-color: white;
+      }
+
+      .dark-mode .button-group button.active {
+        background: white;
+        color: black;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="title">
+      <h1>RUNNING MILEAGE ANIMATION MAKER</h1>
+      <h2>by JS @runarchive.js</h2>
+    </div>
+
+    <div class="controls">
+      <div class="button-group font-buttons">
+        <button data-font="Jost" class="active">Jost</button>
+        <button data-font="Orbitron">Orbitron</button>
+        <button data-font="Bebas Neue">Bebas Neue</button>
+        <button data-font="Fredericka the Great">Fredericka</button>
+        <button data-font="Big Shoulders Text">Big Shoulders</button>
+        <button data-font="Caveat Brush">Caveat Brush</button>
+        <button data-font="Rock Salt">Rock Salt</button>
+        <button data-font="Handjet">Handjet</button>
+      </div>
+      <div><strong>Font</strong></div>
+
+      <div class="button-group align-buttons">
+        <button data-align="left">⬅ Left</button>
+        <button data-align="center" class="active">➡ Center</button>
+      </div>
+      <div><strong>Align</strong></div>
+
+      <div class="button-group bg-buttons">
+        <button data-bg="black">Black</button>
+        <button data-bg="white" class="active">White</button>
+      </div>
+      <div><strong>Background</strong></div>
+    </div>
+
+    <div class="output" id="output">
+      <div id="number">0.00</div>
+      <div class="unit" id="unit">Kilometers</div>
+    </div>
+
+    <div class="details" id="details">
+      <div>
+        <div class="value" id="pace">-</div>
+        <div class="label">Avg. Pace</div>
+      </div>
+      <div>
+        <div class="value" id="time">-</div>
+        <div class="label">Time</div>
+      </div>
+      <div>
+        <div class="value" id="calories">-</div>
+        <div class="label">Calories</div>
+      </div>
+      <div>
+        <div class="value" id="elevation">-</div>
+        <div class="label">Elevation Gain</div>
+      </div>
+      <div>
+        <div class="value" id="heart">-</div>
+        <div class="label">Avg. Heart Rate</div>
+      </div>
+      <div>
+        <div class="value" id="cadence">-</div>
+        <div class="label">Cadence</div>
+      </div>
+    </div>
+
+    <script>
+      const fontButtons = document.querySelectorAll('.font-buttons button');
+      const alignButtons = document.querySelectorAll('.align-buttons button');
+      const bgButtons = document.querySelectorAll('.bg-buttons button');
+      const output = document.getElementById('output');
+      const number = document.getElementById('number');
+      const unit = document.getElementById('unit');
+      const details = document.getElementById('details');
+      const labels = document.querySelectorAll('.label');
+      const values = document.querySelectorAll('.value');
+      const title = document.querySelector('.title');
+      const body = document.body;
+
+      fontButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          fontButtons.forEach(btn => btn.classList.remove('active'));
+          button.classList.add('active');
+          number.style.fontFamily = `'${button.dataset.font}', sans-serif`;
+        });
       });
-    }
 
-    function setFont(fontName) {
-      const km = document.getElementById("km");
-      const kmUnit = document.getElementById("km-unit");
+      alignButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          alignButtons.forEach(btn => btn.classList.remove('active'));
+          button.classList.add('active');
+          const align = button.dataset.align;
+          output.style.alignItems = align === 'center' ? 'center' : 'flex-start';
+          output.style.textAlign = align;
+          details.style.justifyContent = align === 'center' ? 'center' : 'flex-start';
+        });
+      });
 
-      const smallFonts = ['Jost', 'Orbitron'];
-      const isJost = fontName === 'Jost';
-      const fontSize = smallFonts.includes(fontName) ? 160 : 200;
-
-      km.style.fontFamily = fontName;
-      km.style.fontSize = fontSize + "px";
-      km.style.fontStyle = isJost ? "italic" : "normal";
-      km.style.fontWeight = isJost ? "800" : "700";
-
-      kmUnit.style.fontFamily = fontName;
-      kmUnit.style.fontSize = (fontSize * 0.4) + "px";
-      kmUnit.style.fontStyle = isJost ? "italic" : "normal";
-      kmUnit.style.fontWeight = isJost ? "800" : "700";
-    }
-
-    function setAlign(direction) {
-      const kmContainer = document.getElementById("km-container");
-      kmContainer.style.justifyContent = direction === 'center' ? 'center' : 'flex-start';
-      document.querySelector(".grid").style.textAlign = direction;
-    }
-
-    function setBackground(color) {
-      const isBlack = color === 'black';
-      document.body.style.backgroundColor = isBlack ? "#000" : "#fff";
-      document.body.style.color = isBlack ? "#fff" : "#000";
-    }
-
-    // 초기 폰트 설정 (Jost)
-    window.onload = () => {
-      setFont('Jost');
-    };
-  </script>
-</body>
+      bgButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          bgButtons.forEach(btn => btn.classList.remove('active'));
+          button.classList.add('active');
+          if (button.dataset.bg === 'black') {
+            body.classList.add('dark-mode');
+          } else {
+            body.classList.remove('dark-mode');
+          }
+        });
+      });
+    </script>
+  </body>
 </html>
