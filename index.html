@@ -86,8 +86,8 @@
     .km-block {
       display: flex;
       flex-direction: row;
-      align-items: flex-end;
-      gap: 16px;
+      align-items: baseline;
+      gap: 10px;
       margin-top: 30px;
       flex-wrap: wrap;
     }
@@ -101,10 +101,11 @@
     }
 
     .km-unit {
-      font-size: 125px; /* 250px의 50% */
-      font-family: Arial, sans-serif;
-      font-weight: normal;
-      margin-bottom: 20px;
+      font-size: 100px; /* 40% of 250px */
+      font-family: 'Jost', sans-serif;
+      font-style: italic;
+      font-weight: 800;
+      margin-left: 10px;
     }
 
     .stats {
@@ -174,7 +175,7 @@
   <div id="main-content" class="main-content left-align">
     <div class="km-block">
       <div class="km-number" id="km">0.00</div>
-      <div class="km-unit" id="km-unit">Kilometers</div>
+      <div class="km-unit" id="km-unit">km</div>
     </div>
 
     <div class="stats" id="stats-grid">
@@ -242,20 +243,17 @@
 
     function setFont(font, size) {
       const km = document.getElementById("km");
+      const kmUnit = document.getElementById("km-unit");
       km.style.fontFamily = font;
       km.style.fontSize = size + "px";
+      kmUnit.style.fontFamily = font;
+      kmUnit.style.fontSize = (size * 0.4) + "px";
     }
 
     function setAlign(direction) {
       const main = document.getElementById("main-content");
-
-      if (direction === 'center') {
-        main.classList.remove('left-align');
-        main.classList.add('center-align');
-      } else {
-        main.classList.remove('center-align');
-        main.classList.add('left-align');
-      }
+      main.classList.remove('left-align', 'center-align');
+      main.classList.add(direction === 'center' ? 'center-align' : 'left-align');
     }
 
     function setBackground(color) {
