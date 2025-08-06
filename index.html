@@ -9,26 +9,43 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 40px;
       background-color: #fff;
       color: #000;
+      margin: 0;
+      padding: 40px;
     }
 
     h1 {
+      text-align: center;
       font-weight: bold;
     }
 
     .subtitle {
+      text-align: center;
       font-size: 14px;
       margin-bottom: 30px;
+      font-style: italic;
+    }
+
+    .font-controls, .align-controls, .bg-controls {
+      text-align: center;
+      margin-top: 30px;
+    }
+
+    .font-controls button, .align-controls button, .bg-controls button {
+      margin: 5px;
+      padding: 8px 12px;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
     }
 
     .upload-box {
       border: 1px solid #ddd;
       padding: 40px;
-      margin-bottom: 30px;
+      margin: 30px auto;
       display: inline-block;
+      text-align: center;
     }
 
     .upload-label {
@@ -43,7 +60,6 @@
 
     .status {
       color: green;
-      margin-bottom: 10px;
       font-weight: bold;
     }
 
@@ -54,26 +70,26 @@
       font-size: 24px;
       border: 2px solid #0070ff;
       border-radius: 5px;
-      cursor: pointer;
       margin-top: 10px;
+      cursor: pointer;
       display: none;
     }
 
-    .output-container {
+    .main-content {
       display: flex;
       flex-direction: column;
-      align-items: flex-start;
-      max-width: 600px;
+      max-width: 1000px;
       margin: 0 auto;
+      transition: all 0.3s;
     }
 
-    .km-container {
+    .km-block {
       display: flex;
-      flex-direction: column;
-      margin-bottom: 10px;
-      width: 100%;
-      max-width: 600px;
-      align-items: flex-start;
+      flex-direction: row;
+      align-items: flex-end;
+      gap: 16px;
+      margin-top: 30px;
+      flex-wrap: wrap;
     }
 
     .km-number {
@@ -81,51 +97,42 @@
       font-style: italic;
       font-weight: 800;
       font-size: 250px;
-      max-width: 100%;
-      word-break: break-word;
-      display: inline-block;
+      margin: 0;
     }
 
     .km-unit {
-      font-size: 40px;
-      margin-top: 10px;
+      font-size: 125px; /* 250px의 50% */
       font-family: Arial, sans-serif;
+      font-weight: normal;
+      margin-bottom: 20px;
     }
 
-    .grid {
+    .stats {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 30px;
       width: 100%;
+      margin-top: 80px;
     }
 
     .stat {
       font-size: 22px;
       font-weight: bold;
-      text-align: left;
     }
 
     .label {
       font-size: 14px;
       color: gray;
+    }
+
+    .left-align {
+      align-items: flex-start;
       text-align: left;
     }
 
-    .font-controls, .align-controls, .bg-controls {
-      margin-top: 30px;
-    }
-
-    .font-controls button, .align-controls button, .bg-controls button {
-      margin: 5px;
-      padding: 8px 12px;
-      font-size: 14px;
-      cursor: pointer;
-      border-radius: 5px;
-      height: 40px;
-    }
-
-    .font-controls button {
-      font-size: 20px;
+    .center-align {
+      align-items: center;
+      text-align: center;
     }
   </style>
 </head>
@@ -142,14 +149,14 @@
 
   <div class="font-controls">
     <div><strong>Font</strong></div>
-    <button style="font-family: 'Jost', sans-serif; font-style: italic; font-weight: 800;" onclick="setFont('Jost', 250)">Jost</button>
-    <button style="font-family: 'Orbitron', sans-serif; font-weight: 700;" onclick="setFont('Orbitron', 210)">Orbitron</button>
-    <button style="font-family: 'Bebas Neue', sans-serif; font-weight: 400;" onclick="setFont('Bebas Neue', 235)">Bebas Neue</button>
-    <button style="font-family: 'Fredericka the Great', cursive; font-weight: 400;" onclick="setFont('Fredericka the Great', 180)">Fredericka</button>
-    <button style="font-family: 'Big Shoulders Inline Text', cursive; font-weight: 700;" onclick="setFont('Big Shoulders Inline Text', 220)">Big Shoulders</button>
-    <button style="font-family: 'Caveat Brush', cursive; font-weight: 400;" onclick="setFont('Caveat Brush', 250)">Caveat Brush</button>
-    <button style="font-family: 'Rock Salt', cursive; font-weight: 400;" onclick="setFont('Rock Salt', 165)">Rock Salt</button>
-    <button style="font-family: 'Handjet', cursive; font-weight: 500;" onclick="setFont('Handjet', 210)">Handjet</button>
+    <button style="font-family: 'Jost'; font-style: italic; font-weight:800;" onclick="setFont('Jost', 250)">Jost</button>
+    <button style="font-family: 'Orbitron'; font-weight:700;" onclick="setFont('Orbitron', 220)">Orbitron</button>
+    <button style="font-family: 'Bebas Neue';" onclick="setFont('Bebas Neue', 240)">Bebas Neue</button>
+    <button style="font-family: 'Fredericka the Great';" onclick="setFont('Fredericka the Great', 180)">Fredericka</button>
+    <button style="font-family: 'Big Shoulders Inline Text';" onclick="setFont('Big Shoulders Inline Text', 230)">Big Shoulders</button>
+    <button style="font-family: 'Caveat Brush';" onclick="setFont('Caveat Brush', 250)">Caveat Brush</button>
+    <button style="font-family: 'Rock Salt';" onclick="setFont('Rock Salt', 160)">Rock Salt</button>
+    <button style="font-family: 'Handjet';" onclick="setFont('Handjet', 220)">Handjet</button>
   </div>
 
   <div class="align-controls">
@@ -164,13 +171,13 @@
     <button onclick="setBackground('white')">White</button>
   </div>
 
-  <div class="output-container" id="main-content">
-    <div class="km-container" id="km-container">
+  <div id="main-content" class="main-content left-align">
+    <div class="km-block">
       <div class="km-number" id="km">0.00</div>
-      <div class="km-unit">Kilometers</div>
+      <div class="km-unit" id="km-unit">Kilometers</div>
     </div>
 
-    <div class="grid" id="stats-grid">
+    <div class="stats" id="stats-grid">
       <div><div class="stat" id="pace">-</div><div class="label">Avg. Pace</div></div>
       <div><div class="stat" id="time">-</div><div class="label">Time</div></div>
       <div><div class="stat" id="calories">-</div><div class="label">Calories</div></div>
@@ -202,6 +209,7 @@
       if (!file) return;
       document.getElementById("upload-status").textContent = "업로드 완료";
       document.getElementById("run-btn").style.display = "inline-block";
+
       const reader = new FileReader();
       reader.onload = async () => {
         const img = reader.result;
@@ -214,12 +222,14 @@
     function animateNumber(id, start, end, duration) {
       const el = document.getElementById(id);
       let startTime;
+
       function update(currentTime) {
         if (!startTime) startTime = currentTime;
         const progress = Math.min((currentTime - startTime) / duration, 1);
         el.textContent = (start + (end - start) * progress).toFixed(2);
         if (progress < 1) requestAnimationFrame(update);
       }
+
       requestAnimationFrame(update);
     }
 
@@ -230,35 +240,27 @@
       });
     }
 
-    function setFont(fontName, size) {
-      const kmEl = document.getElementById("km");
-      kmEl.style.fontFamily = fontName;
-      kmEl.style.fontSize = size + "px";
+    function setFont(font, size) {
+      const km = document.getElementById("km");
+      km.style.fontFamily = font;
+      km.style.fontSize = size + "px";
     }
 
     function setAlign(direction) {
       const main = document.getElementById("main-content");
-      const kmContainer = document.getElementById("km-container");
-      const grid = document.getElementById("stats-grid");
 
       if (direction === 'center') {
-        main.style.alignItems = 'center';
-        kmContainer.style.alignItems = 'center';
-        kmContainer.style.textAlign = 'center';
-        grid.style.justifyContent = 'center';
-        grid.style.textAlign = 'center';
+        main.classList.remove('left-align');
+        main.classList.add('center-align');
       } else {
-        main.style.alignItems = 'flex-start';
-        kmContainer.style.alignItems = 'flex-start';
-        kmContainer.style.textAlign = 'left';
-        grid.style.justifyContent = 'start';
-        grid.style.textAlign = 'left';
+        main.classList.remove('center-align');
+        main.classList.add('left-align');
       }
     }
 
     function setBackground(color) {
-      document.body.style.backgroundColor = color === 'black' ? "#000" : "#fff";
-      document.body.style.color = color === 'black' ? "#fff" : "#000";
+      document.body.style.backgroundColor = color === 'black' ? '#000' : '#fff';
+      document.body.style.color = color === 'black' ? '#fff' : '#000';
     }
   </script>
 </body>
