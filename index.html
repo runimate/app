@@ -14,8 +14,13 @@
       background-color: #fff;
       color: #000;
     }
-    h1 { font-weight: bold; }
-    .subtitle { font-size: 14px; margin-bottom: 30px; }
+    h1 {
+      font-weight: bold;
+    }
+    .subtitle {
+      font-size: 14px;
+      margin-bottom: 30px;
+    }
     .upload-box {
       border: 1px solid #ddd;
       padding: 40px;
@@ -31,7 +36,11 @@
       margin-bottom: 10px;
       cursor: pointer;
     }
-    .status { color: green; margin-bottom: 10px; font-weight: bold; }
+    .status {
+      color: green;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
     .run-button {
       background-color: black;
       color: #7fff00;
@@ -45,38 +54,47 @@
     }
     .km-container {
       display: flex;
+      flex-direction: row;
+      align-items: baseline;
       justify-content: flex-start;
-      align-items: flex-end;
-      gap: 8px;
       margin: 30px auto 10px;
       max-width: 600px;
     }
-    #km {
+    .km-number {
       font-family: 'Jost', sans-serif;
       font-style: italic;
       font-weight: 800;
       font-size: 160px;
       line-height: 1;
     }
-    #km-unit {
+    .km-unit {
       font-family: 'Jost', sans-serif;
       font-style: italic;
       font-weight: 800;
       font-size: 64px;
       line-height: 1;
-      transform: translateY(-30px); /* KM 올리기 */
+      transform: translateY(-10px); /* KM 숫자 대비 10px 내려감 */
+      margin-left: 8px;
     }
     .grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 15px; /* 간격 50% 축소 */
+      gap: 15px;
       max-width: 600px;
-      margin: 30px auto 0;
+      margin: 20px auto 0;
       text-align: left;
     }
-    .stat { font-size: 22px; font-weight: bold; }
-    .label { font-size: 14px; color: gray; }
-    .font-controls, .align-controls, .bg-controls { margin-top: 30px; }
+    .stat {
+      font-size: 22px;
+      font-weight: bold;
+    }
+    .label {
+      font-size: 14px;
+      color: gray;
+    }
+    .font-controls, .align-controls, .bg-controls {
+      margin-top: 30px;
+    }
     .font-controls button, .align-controls button, .bg-controls button {
       margin: 5px;
       padding: 8px 12px;
@@ -123,8 +141,8 @@
   </div>
 
   <div class="km-container" id="km-container">
-    <div id="km">0.00</div>
-    <div id="km-unit">km</div>
+    <div class="km-number" id="km">0.00</div>
+    <div class="km-unit" id="km-unit">km</div>
   </div>
 
   <div class="grid">
@@ -162,7 +180,8 @@
       reader.onload = async () => {
         const img = reader.result;
         const result = await Tesseract.recognize(img, 'eng');
-        parsedData = parseValuesByLine(result.data.text);
+        const text = result.data.text;
+        parsedData = parseValuesByLine(text);
       };
       reader.readAsDataURL(file);
     });
@@ -182,7 +201,8 @@
 
     function runAnimation() {
       animateNumber("km", 0, parseFloat(parsedData.km || 0), 2000);
-      ["pace", "time", "calories", "elevation", "heartrate", "cadence"].forEach(key => {
+      const keys = ["pace", "time", "calories", "elevation", "heartrate", "cadence"];
+      keys.forEach(key => {
         document.getElementById(key).textContent = parsedData[key] || "-";
       });
     }
@@ -193,7 +213,7 @@
 
       const smallFonts = ["Jost", "Orbitron"];
       const baseSize = smallFonts.includes(fontName) ? 160 : 200;
-      const mainSize = (fontName === "Rock Salt") ? Math.round(baseSize * 0.5) : baseSize;
+      const mainSize = (fontName === "Rock Salt") ? Math.round(baseSize * 1.5) : baseSize;
       const isJost = fontName === "Jost";
 
       km.style.fontFamily = fontName;
