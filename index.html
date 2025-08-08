@@ -7,117 +7,57 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@1,800&family=Orbitron:wght@700&family=Bebas+Neue&family=Big+Shoulders+Inline+Text:wght@700&family=Caveat+Brush&family=Rock+Salt&family=Handjet:wght@500&display=swap" rel="stylesheet">
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 40px;
-      background-color: #fff;
-      color: #000;
-    }
+    body { font-family: Arial, sans-serif; padding: 40px; background-color: #fff; color: #000; text-align: center; }
+    h1 { font-weight: bold; }
+    .subtitle { font-size: 14px; margin-bottom: 30px; }
 
-    h1 {
-      font-weight: bold;
-    }
+    .upload-box { border: 1px solid #ddd; padding: 40px; margin-bottom: 30px; display: inline-block; vertical-align: top; }
+    .upload-label { display: block; background-color: black; color: white; padding: 10px 20px; font-weight: bold; margin-bottom: 10px; cursor: pointer; }
+    .status { color: green; margin-bottom: 10px; font-weight: bold; }
+    .run-button { background-color: black; color: #7fff00; padding: 15px 30px; font-size: 24px; border: 2px solid #0070ff; border-radius: 5px; cursor: pointer; margin-top: 10px; display: none; }
 
-    .subtitle {
-      font-size: 14px;
-      margin-bottom: 30px;
+    .controls { margin-bottom: 30px; }
+    .font-controls button, .align-controls button, .bg-controls button {
+      margin: 5px; padding: 8px 12px; font-size: 14px; cursor: pointer; border-radius: 5px; height: 40px;
     }
+    .font-controls button { font-size: 20px; }
 
-    .upload-box {
-      border: 1px solid #ddd;
-      padding: 40px;
-      margin: 0 auto 30px;
-      width: fit-content;
-    }
-
-    .upload-label {
-      display: block;
-      background-color: black;
-      color: white;
-      padding: 10px 20px;
-      font-weight: bold;
-      margin-bottom: 10px;
-      cursor: pointer;
-    }
-
-    .status {
-      color: green;
-      margin-bottom: 10px;
-      font-weight: bold;
-    }
-
-    .run-button {
-      background-color: black;
-      color: #7fff00;
-      padding: 15px 30px;
-      font-size: 24px;
-      border: 2px solid #0070ff;
-      border-radius: 5px;
-      cursor: pointer;
-      margin-top: 10px;
-      display: none;
-    }
-
-    .km-container {
-      margin: 30px 0 20px;
-      text-align: left;
+    /* 전체 래퍼: 거리+하단정보 정렬 */
+    .output-wrapper {
       display: flex;
-      justify-content: center;
+      flex-direction: column;
+      align-items: center;
     }
+    .output-wrapper.left-align { align-items: flex-start; }
 
+    /* 거리 숫자+KM */
+    .km-row {
+      display: flex;
+      align-items: flex-end;
+    }
     .km-number {
       font-family: 'Jost', sans-serif;
       font-style: italic;
       font-weight: 800;
-      font-size: 160px;
-    }
-
-    .km-unit {
-      margin-left: 10px;
-      font-size: 64px;
+      font-size: 200px;
       line-height: 1;
-      align-self: flex-end;
-      font-family: 'Jost', sans-serif;
-      font-style: italic;
-      font-weight: 800;
+    }
+    .km-unit {
+      margin-left: 8px;
+      font-size: 40%;
+      line-height: 1;
     }
 
+    /* 하단 정보 */
     .grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 30px;
+      gap: 15px 30px; /* 세로/가로 간격 줄임 */
       max-width: 600px;
-      margin: 80px auto 0;
-      text-align: left;
-    }
-
-    .stat {
-      font-size: 22px;
-      font-weight: bold;
-    }
-
-    .label {
-      font-size: 14px;
-      color: gray;
-    }
-
-    .font-controls, .align-controls, .bg-controls {
       margin-top: 30px;
     }
-
-    .font-controls button, .align-controls button, .bg-controls button {
-      margin: 5px;
-      padding: 8px 12px;
-      font-size: 14px;
-      cursor: pointer;
-      border-radius: 5px;
-      height: 40px;
-    }
-
-    .font-controls button {
-      font-size: 20px;
-    }
+    .stat { font-size: 22px; font-weight: bold; }
+    .label { font-size: 14px; color: gray; }
   </style>
 </head>
 <body>
@@ -126,46 +66,48 @@
 
   <div class="upload-box">
     <label for="file-upload" class="upload-label">기록 이미지 업로드</label>
-    <input type="file" id="file-upload" accept="image/*" style="display: none;" />
+    <input type="file" id="file-upload" accept="image/*" style="display:none" />
     <div class="status" id="upload-status"></div>
     <button class="run-button" id="run-btn" onclick="runAnimation()">RUN</button>
   </div>
 
-  <div class="font-controls">
+  <div class="controls font-controls">
     <div><strong>Font</strong></div>
-    <button style="font-family: 'Jost', sans-serif; font-style: italic; font-weight: 800;" onclick="setFont('Jost')">Jost</button>
-    <button style="font-family: 'Orbitron', sans-serif; font-weight: 700;" onclick="setFont('Orbitron')">Orbitron</button>
-    <button style="font-family: 'Bebas Neue', sans-serif;" onclick="setFont('Bebas Neue')">Bebas Neue</button>
-    <button style="font-family: 'Big Shoulders Inline Text', cursive;" onclick="setFont('Big Shoulders Inline Text')">Big Shoulders</button>
-    <button style="font-family: 'Caveat Brush', cursive;" onclick="setFont('Caveat Brush')">Caveat Brush</button>
-    <button style="font-family: 'Rock Salt', cursive;" onclick="setFont('Rock Salt')">Rock Salt</button>
-    <button style="font-family: 'Handjet', cursive;" onclick="setFont('Handjet')">Handjet</button>
+    <button style="font-family: 'Jost', sans-serif; font-style: italic; font-weight: 800;" onclick="setFont('Jost', 160, true)">Jost</button>
+    <button style="font-family: 'Orbitron', sans-serif; font-weight: 700;" onclick="setFont('Orbitron', 160, false)">Orbitron</button>
+    <button style="font-family: 'Bebas Neue', sans-serif; font-weight: 400;" onclick="setFont('Bebas Neue', 200, false)">Bebas Neue</button>
+    <button style="font-family: 'Big Shoulders Inline Text', cursive; font-weight: 700;" onclick="setFont('Big Shoulders Inline Text', 200, false)">Big Shoulders</button>
+    <button style="font-family: 'Caveat Brush', cursive; font-weight: 400;" onclick="setFont('Caveat Brush', 200, false)">Caveat Brush</button>
+    <button style="font-family: 'Rock Salt', cursive; font-weight: 400;" onclick="setFont('Rock Salt', 200, false)">Rock Salt</button>
+    <button style="font-family: 'Handjet', cursive; font-weight: 500;" onclick="setFont('Handjet', 200, false)">Handjet</button>
   </div>
 
-  <div class="align-controls">
+  <div class="controls align-controls">
     <div><strong>Align</strong></div>
     <button onclick="setAlign('left')">⬅️ Left</button>
     <button onclick="setAlign('center')">↔️ Center</button>
   </div>
 
-  <div class="bg-controls">
+  <div class="controls bg-controls">
     <div><strong>Background</strong></div>
     <button onclick="setBackground('black')">Black</button>
     <button onclick="setBackground('white')">White</button>
   </div>
 
-  <div class="km-container" id="km-container">
-    <div class="km-number" id="km">0.00</div>
-    <div class="km-unit" id="km-unit">km</div>
-  </div>
+  <div class="output-wrapper" id="output-wrapper">
+    <div class="km-row">
+      <div class="km-number" id="km">0.00</div>
+      <div class="km-unit" id="km-unit">km</div>
+    </div>
 
-  <div class="grid">
-    <div><div class="stat" id="pace">-</div><div class="label">Avg. Pace</div></div>
-    <div><div class="stat" id="time">-</div><div class="label">Time</div></div>
-    <div><div class="stat" id="calories">-</div><div class="label">Calories</div></div>
-    <div><div class="stat" id="elevation">-</div><div class="label">Elevation Gain</div></div>
-    <div><div class="stat" id="heartrate">-</div><div class="label">Avg. Heart Rate</div></div>
-    <div><div class="stat" id="cadence">-</div><div class="label">Cadence</div></div>
+    <div class="grid">
+      <div><div class="stat" id="pace">-</div><div class="label">Avg. Pace</div></div>
+      <div><div class="stat" id="time">-</div><div class="label">Time</div></div>
+      <div><div class="stat" id="calories">-</div><div class="label">Calories</div></div>
+      <div><div class="stat" id="elevation">-</div><div class="label">Elevation Gain</div></div>
+      <div><div class="stat" id="heartrate">-</div><div class="label">Avg. Heart Rate</div></div>
+      <div><div class="stat" id="cadence">-</div><div class="label">Cadence</div></div>
+    </div>
   </div>
 
   <script>
@@ -195,8 +137,7 @@
       reader.onload = async () => {
         const img = reader.result;
         const result = await Tesseract.recognize(img, 'eng');
-        const text = result.data.text;
-        parsedData = parseValuesByLine(text);
+        parsedData = parseValuesByLine(result.data.text);
       };
       reader.readAsDataURL(file);
     });
@@ -204,49 +145,36 @@
     function animateNumber(id, start, end, duration) {
       const el = document.getElementById(id);
       let startTime;
-
       function update(currentTime) {
         if (!startTime) startTime = currentTime;
         const progress = Math.min((currentTime - startTime) / duration, 1);
-        const value = (start + (end - start) * progress).toFixed(2);
-        el.textContent = value;
+        el.textContent = (start + (end - start) * progress).toFixed(2);
         if (progress < 1) requestAnimationFrame(update);
       }
-
       requestAnimationFrame(update);
     }
 
     function runAnimation() {
       animateNumber("km", 0, parseFloat(parsedData.km || 0), 2000);
-      const keys = ["pace", "time", "calories", "elevation", "heartrate", "cadence"];
-      keys.forEach(key => {
+      ["pace", "time", "calories", "elevation", "heartrate", "cadence"].forEach(key => {
         document.getElementById(key).textContent = parsedData[key] || "-";
       });
     }
 
-    function setFont(fontName) {
-      const km = document.getElementById("km");
-      const kmUnit = document.getElementById("km-unit");
-
-      const smallFonts = ['Jost', 'Orbitron'];
-      const isJost = fontName === 'Jost';
-      const fontSize = smallFonts.includes(fontName) ? 160 : 200;
-
-      km.style.fontFamily = fontName;
-      km.style.fontSize = fontSize + "px";
-      km.style.fontStyle = isJost ? "italic" : "normal";
-      km.style.fontWeight = isJost ? "800" : "700";
-
-      kmUnit.style.fontFamily = fontName;
-      kmUnit.style.fontSize = (fontSize * 0.4) + "px";
-      kmUnit.style.fontStyle = isJost ? "italic" : "normal";
-      kmUnit.style.fontWeight = isJost ? "800" : "700";
+    function setFont(fontName, size, italic) {
+      const kmEl = document.getElementById("km");
+      const unitEl = document.getElementById("km-unit");
+      kmEl.style.fontFamily = fontName;
+      kmEl.style.fontSize = size + "px";
+      kmEl.style.fontStyle = italic ? "italic" : "normal";
+      unitEl.style.fontFamily = fontName;
+      unitEl.style.fontSize = (size * 0.4) + "px";
+      unitEl.style.fontStyle = italic ? "italic" : "normal";
     }
 
     function setAlign(direction) {
-      const kmContainer = document.getElementById("km-container");
-      kmContainer.style.justifyContent = direction === 'center' ? 'center' : 'flex-start';
-      document.querySelector(".grid").style.textAlign = direction;
+      const wrapper = document.getElementById("output-wrapper");
+      wrapper.className = direction === "left" ? "output-wrapper left-align" : "output-wrapper";
     }
 
     function setBackground(color) {
@@ -254,11 +182,6 @@
       document.body.style.backgroundColor = isBlack ? "#000" : "#fff";
       document.body.style.color = isBlack ? "#fff" : "#000";
     }
-
-    // 초기 폰트 설정 (Jost)
-    window.onload = () => {
-      setFont('Jost');
-    };
   </script>
 </body>
 </html>
