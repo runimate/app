@@ -1,98 +1,176 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>RUNNING MILEAGE ANIMATION MAKER</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>RUNNING MILEAGE ANIMATION MAKER — 9:16</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@1,800&family=Orbitron:wght@700&family=Bebas+Neue&family=Big+Shoulders+Inline+Text:wght@700&family=Caveat+Brush&family=Handjet:wght@500&display=swap" rel="stylesheet">
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; padding: 40px; background:#fff; color:#000; }
-    h1 { font-weight: bold; }
-    .subtitle { font-size: 14px; margin-bottom: 30px; }
+    :root{ --pad:16px; --maxw:480px; }
+    *{box-sizing:border-box}
+    body{ margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; background:#fff; color:#000; }
+    header{ padding:var(--pad); text-align:center; }
+    h1{ margin:6px 0 2px; font-size:18px; font-weight:800; }
+    .subtitle{ font-size:12px; opacity:.8 }
 
-    .upload-box { border: 1px solid #ddd; padding: 40px; margin-bottom: 30px; display: inline-block; }
-    .upload-label { display: block; background:#000; color:#fff; padding:10px 20px; font-weight:700; margin-bottom:10px; cursor:pointer; }
-    .status { color: green; margin-bottom:10px; font-weight:700; }
-    .run-button { background:#000; color:#7fff00; padding:15px 30px; font-size:24px; border:2px solid #0070ff; border-radius:5px; cursor:pointer; margin-top:10px; display:none; }
+    .wrap{ width:100%; max-width:var(--maxw); margin:0 auto; padding:0 var(--pad); }
+    .section{ margin:14px 0; }
 
-    .km-row { display:flex; align-items:baseline; justify-content:flex-start; margin:30px auto 10px; max-width:600px; gap:10px; }
-    #km { font-family:'Jost',sans-serif; font-style:italic; font-weight:800; font-size:160px; line-height:1; }
-    /* 처음엔 숨김, 숫자 애니 뒤에 페이드인 */
-    #km-unit { font-size:64px; line-height:1; transform:translateY(-10px); opacity:0; transition:opacity 400ms ease; }
+    .upload-box{ border:1px solid #ddd; border-radius:10px; padding:16px; }
+    .upload-label{ display:block; background:#000; color:#fff; padding:12px 14px; font-weight:800; border-radius:8px; text-align:center; margin-bottom:10px; }
+    .status{ color:#17a34a; font-weight:700; font-size:13px; }
 
-    .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:15px; max-width:600px; margin:20px auto 0; text-align:left; }
-    .stat { font-size:22px; font-weight:700; color:inherit; }
-    .label { font-size:14px; color:inherit; } /* 회색 제거 → 본문색(기본 블랙) 상속 */
-
-    .font-controls, .align-controls, .bg-controls { margin-top: 30px; }
-    .font-controls button, .align-controls button, .bg-controls button {
-      margin:5px; padding:8px 12px; font-size:14px; cursor:pointer; border-radius:5px; height:40px;
+    .control-title{ font-size:13px; font-weight:800; margin:10px 0; }
+    .font-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+    .font-grid button,.align-row button,.bg-row button,.run-button{
+      width:100%; height:44px; border-radius:10px; border:2px solid #000;
+      background:#fff; color:#000; font-size:14px; font-weight:700;
     }
-    .font-controls button { font-size:20px; }
+    .align-row,.bg-row{ display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
+    .run-button{ background:#000; color:#7fff00; border-color:#0070ff; margin-top:6px; }
+
+    /* ===== 9:16 스테이지 프레임 ===== */
+    .stage-outer{ padding:10px 0 24px; }
+    .stage-frame{
+      aspect-ratio: 9 / 16;                   /* ★ 9:16 고정 */
+      height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px);
+      max-height: 780px;
+      width: auto;
+      margin: 0 auto;
+      border: 1px solid #000;
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;   /* 내부 중앙 */
+      align-items: center;
+      background: inherit; color: inherit;
+    }
+
+    .stage-inner{ width:92%; max-width:360px; margin:0 auto; }
+    .km-row{ display:flex; align-items:baseline; justify-content:center; gap:10px; margin: 4vh 0 1.5vh; }
+    #km{ font-family:'Jost',sans-serif; font-style:italic; font-weight:800; font-size:22vw; line-height:1; }
+    #km-unit{ font-size:8.8vw; line-height:1; transform:translateY(-10px); opacity:0; transition:opacity 400ms ease; }
+
+    .grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top: 1vh; color:inherit; }
+    .stat{ font-size:16px; font-weight:800; color:inherit; text-align:center; }
+    .label{ font-size:12px; color:inherit; opacity:.9; text-align:center; }
+
+    /* 포커스 모드: 설정 UI 숨기고 스테이지만 */
+    body.focus .top-ui{ display:none; }
+    body.focus .stage-outer{ padding:0; }
+    body.focus #exit-focus{
+      display:block; position:fixed; z-index:20;
+      top: env(safe-area-inset-top, 8px); right:10px;
+      width:40px; height:40px; border-radius:20px;
+      border:2px solid #000; background:#fff; color:#000; font-weight:800;
+    }
+    #exit-focus{ display:none; }
+
+    .bg-black{ background:#000; color:#fff; }
+    .bg-white{ background:#fff; color:#000; }
+
+    @media (min-width: 769px){
+      .stage-frame{ max-width: 430px; } /* 데스크탑에서도 9:16 유지(좁게) */
+    }
   </style>
 </head>
-<body>
-  <h1>RUNNING MILEAGE ANIMATION MAKER</h1>
-  <div class="subtitle">by JS @runarchive.js</div>
+<body class="bg-white">
+  <header>
+    <h1>RUNNING MILEAGE ANIMATION MAKER</h1>
+    <div class="subtitle">by JS @runarchive.js</div>
+  </header>
 
-  <div class="upload-box">
-    <label for="file-upload" class="upload-label">기록 이미지 업로드</label>
-    <input type="file" id="file-upload" accept="image/*" style="display:none;" />
-    <div class="status" id="upload-status"></div>
-    <button class="run-button" id="run-btn" onclick="runAnimation()">RUN</button>
+  <!-- 상단 설정 UI(모바일에서 포커스 모드 시 숨김) -->
+  <div class="top-ui">
+    <div class="wrap">
+      <section class="section upload-box">
+        <label for="file-upload" class="upload-label">기록 이미지 업로드</label>
+        <input type="file" id="file-upload" accept="image/*" style="display:none;" />
+        <div class="status" id="upload-status"></div>
+      </section>
+
+      <section class="section">
+        <div class="control-title">Font</div>
+        <div class="font-grid">
+          <button style="font-family:'Jost'; font-style:italic; font-weight:800;" onclick="setFont('Jost')">Jost</button>
+          <button style="font-family:'Orbitron'; font-weight:700;" onclick="setFont('Orbitron')">Orbitron</button>
+          <button style="font-family:'Bebas Neue';" onclick="setFont('Bebas Neue')">Bebas</button>
+          <button style="font-family:'Big Shoulders Inline Text';" onclick="setFont('Big Shoulders Inline Text')">Big Sh.</button>
+          <button style="font-family:'Caveat Brush';" onclick="setFont('Caveat Brush')">Caveat</button>
+          <button style="font-family:'Handjet';" onclick="setFont('Handjet')">Handjet</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="control-title">Align</div>
+        <div class="align-row">
+          <button onclick="setAlign('left')">⬅️ Left</button>
+          <button onclick="setAlign('center')">↔️ Center</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="control-title">Background</div>
+        <div class="bg-row">
+          <button onclick="setBackground('black')">Black</button>
+          <button onclick="setBackground('white')">White</button>
+        </div>
+      </section>
+
+      <!-- 컨트롤 아래 RUN -->
+      <section class="section">
+        <button class="run-button" id="run-btn" onclick="onRun()">RUN</button>
+      </section>
+    </div>
   </div>
 
-  <div class="font-controls">
-    <div><strong>Font</strong></div>
-    <button style="font-family:'Jost'; font-style:italic; font-weight:800;" onclick="setFont('Jost')">Jost</button>
-    <button style="font-family:'Orbitron'; font-weight:700;" onclick="setFont('Orbitron')">Orbitron</button>
-    <button style="font-family:'Bebas Neue';" onclick="setFont('Bebas Neue')">Bebas Neue</button>
-    <button style="font-family:'Big Shoulders Inline Text';" onclick="setFont('Big Shoulders Inline Text')">Big Shoulders</button>
-    <button style="font-family:'Caveat Brush';" onclick="setFont('Caveat Brush')">Caveat Brush</button>
-    <button style="font-family:'Handjet';" onclick="setFont('Handjet')">Handjet</button>
-  </div>
+  <!-- 포커스 모드 종료 -->
+  <button id="exit-focus" title="Close" onclick="exitFocus()">✕</button>
 
-  <div class="align-controls">
-    <div><strong>Align</strong></div>
-    <button onclick="setAlign('left')">⬅️ Left</button>
-    <button onclick="setAlign('center')">↔️ Center</button>
-  </div>
+  <!-- 9:16 스테이지 -->
+  <section class="stage-outer">
+    <div class="stage-frame" id="stage-frame">
+      <div class="stage-inner" id="stage">
+        <div class="km-row" id="km-row">
+          <div id="km">0.00</div>
+          <div id="km-unit">km</div>
+        </div>
 
-  <div class="bg-controls">
-    <div><strong>Background</strong></div>
-    <button onclick="setBackground('black')">Black</button>
-    <button onclick="setBackground('white')">White</button>
-  </div>
-
-  <div class="km-row" id="km-row">
-    <div id="km">0.00</div>
-    <div id="km-unit">km</div>
-  </div>
-
-  <div class="grid">
-    <div><div class="stat" id="pace">-</div><div class="label">Avg. Pace</div></div>
-    <div><div class="stat" id="time">-</div><div class="label">Time</div></div>
-    <div><div class="stat" id="calories">-</div><div class="label">Calories</div></div>
-    <div><div class="stat" id="elevation">-</div><div class="label">Elevation Gain</div></div>
-    <div><div class="stat" id="heartrate">-</div><div class="label">Avg. Heart Rate</div></div>
-    <div><div class="stat" id="cadence">-</div><div class="label">Cadence</div></div>
-  </div>
+        <div class="grid">
+          <div><div class="stat" id="pace">-</div><div class="label">Avg. Pace</div></div>
+          <div><div class="stat" id="time">-</div><div class="label">Time</div></div>
+          <div><div class="stat" id="calories">-</div><div class="label">Calories</div></div>
+          <div><div class="stat" id="elevation">-</div><div class="label">Elevation Gain</div></div>
+          <div><div class="stat" id="heartrate">-</div><div class="label">Avg. Heart Rate</div></div>
+          <div><div class="stat" id="cadence">-</div><div class="label">Cadence</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <script>
     let parsedData = {};
 
-    function parseValuesByLine(text) {
-      const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
+    function parseValuesByLine(text){
+      const lines = text.trim().split('\n').map(l=>l.trim()).filter(Boolean);
       const numbers = lines.flatMap(line => line.match(/[\d.:']{1,5}/g) || []);
-      return { km: numbers[0] || null, pace: numbers[1] || null, time: numbers[2] || null, calories: numbers[3] || null, elevation: numbers[4] || null, heartrate: numbers[5] || null, cadence: numbers[6] || null };
+      return {
+        km: numbers[0] || null,
+        pace: numbers[1] || null,
+        time: numbers[2] || null,
+        calories: numbers[3] || null,
+        elevation: numbers[4] || null,
+        heartrate: numbers[5] || null,
+        cadence: numbers[6] || null,
+      };
     }
 
-    document.getElementById("file-upload").addEventListener("change", async (event) => {
-      const file = event.target.files[0];
-      if (!file) return;
+    document.getElementById("file-upload").addEventListener("change", async (e)=>{
+      const file = e.target.files[0]; if(!file) return;
       document.getElementById("upload-status").textContent = "업로드 완료";
-      document.getElementById("run-btn").style.display = "inline-block";
+      document.getElementById("run-btn").style.display = "block";
       const reader = new FileReader();
       reader.onload = async () => {
         const img = reader.result;
@@ -102,78 +180,76 @@
       reader.readAsDataURL(file);
     });
 
-    // 부드러운 이징(가속→감속) 적용
+    // 더 부드러운 카운트업
     const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
-
-    // 애니메이션을 Promise로 만들어 완료 시점을 잡기 쉽게
-    function animateNumber(id, start, end, duration) {
-      return new Promise(resolve => {
+    function animateNumber(id,start,end,duration){
+      return new Promise(resolve=>{
         const el = document.getElementById(id);
         let startTime;
-        function update(currentTime) {
-          if (!startTime) startTime = currentTime;
-          const raw = Math.min((currentTime - startTime) / duration, 1);
+        function update(now){
+          if(!startTime) startTime = now;
+          const raw = Math.min((now - startTime)/duration,1);
           const eased = easeOutCubic(raw);
-          const value = (start + (end - start) * eased).toFixed(2);
-          el.textContent = value;
-          if (raw < 1) requestAnimationFrame(update); else resolve();
+          el.textContent = (start + (end-start)*eased).toFixed(2);
+          raw < 1 ? requestAnimationFrame(update) : resolve();
         }
         requestAnimationFrame(update);
       });
     }
 
-    // KM은 처음 숨겼다가 숫자 애니 후 나타남
-    async function runAnimation() {
+    async function runAnimation(){
       const unit = document.getElementById("km-unit");
-      unit.style.opacity = 0; // 재실행 대비 리셋
+      unit.style.opacity = 0;
       const endVal = parseFloat(parsedData.km || 0);
-      await animateNumber("km", 0, isNaN(endVal) ? 0 : endVal, 2200); // 살짝 더 길고 부드럽게
-      unit.style.opacity = 1; // 페이드인
-
-      // 하단 값 채우기
+      await animateNumber("km", 0, isNaN(endVal)?0:endVal, 2200);
+      unit.style.opacity = 1;
       ["pace","time","calories","elevation","heartrate","cadence"].forEach(k=>{
         document.getElementById(k).textContent = parsedData[k] || "-";
       });
     }
 
-    function setFont(fontName) {
+    // 액션들
+    function onRun(){
+      document.body.classList.add('focus');
+      document.getElementById('stage-frame').scrollIntoView({behavior:'smooth', block:'center'});
+      runAnimation();
+    }
+    function exitFocus(){
+      document.body.classList.remove('focus');
+      window.scrollTo({top:0, behavior:'smooth'});
+    }
+
+    function setFont(font){
       const km = document.getElementById("km");
       const unit = document.getElementById("km-unit");
-      const smallFonts = ["Jost", "Orbitron"];
-      const baseSize = smallFonts.includes(fontName) ? 160 : 200;
-      const isJost = fontName === "Jost";
-
-      km.style.fontFamily = fontName;
-      km.style.fontSize = baseSize + "px";
+      const small = ["Jost","Orbitron"];
+      const base = small.includes(font) ? 160 : 200;
+      const isJost = font === "Jost";
+      km.style.fontFamily = font;
+      km.style.fontSize = base + "px";
       km.style.fontStyle = isJost ? "italic" : "normal";
       km.style.fontWeight = isJost ? "800" : "700";
-
-      unit.style.fontFamily = fontName;
-      unit.style.fontSize = Math.round(baseSize * 0.4) + "px";
+      unit.style.fontFamily = font;
+      unit.style.fontSize = Math.round(base*0.4) + "px";
       unit.style.fontStyle = isJost ? "italic" : "normal";
       unit.style.fontWeight = isJost ? "800" : "700";
     }
 
-    function setAlign(direction) {
+    function setAlign(dir){
       const kmRow = document.getElementById("km-row");
       const grid = document.querySelector(".grid");
-      if (direction === 'center') {
-        kmRow.style.justifyContent = 'center';
-        grid.style.textAlign = 'center';
-      } else {
-        kmRow.style.justifyContent = 'flex-start';
-        grid.style.textAlign = 'left';
-      }
+      if(dir==='center'){ kmRow.style.justifyContent='center'; grid.style.textAlign='center'; }
+      else { kmRow.style.justifyContent='flex-start'; grid.style.textAlign='left'; }
     }
 
-    function setBackground(color) {
-      const isBlack = color === 'black';
-      document.body.style.backgroundColor = isBlack ? "#000" : "#fff";
-      document.body.style.color = isBlack ? "#fff" : "#000";
+    function setBackground(color){
+      const b = document.body;
+      if(color==='black'){ b.classList.remove('bg-white'); b.classList.add('bg-black'); }
+      else { b.classList.remove('bg-black'); b.classList.add('bg-white'); }
     }
 
     // 기본 폰트
-    window.onload = () => setFont('Jost');
+    window.onload = ()=> setFont('Jost');
   </script>
 </body>
 </html>
