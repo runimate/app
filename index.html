@@ -14,23 +14,19 @@
       background-color: #fff;
       color: #000;
     }
-
     h1 {
       font-weight: bold;
     }
-
     .subtitle {
       font-size: 14px;
       margin-bottom: 30px;
     }
-
     .upload-box {
       border: 1px solid #ddd;
       padding: 40px;
-      margin: 0 auto 30px;
-      width: fit-content;
+      margin-bottom: 30px;
+      display: inline-block;
     }
-
     .upload-label {
       display: block;
       background-color: black;
@@ -40,13 +36,11 @@
       margin-bottom: 10px;
       cursor: pointer;
     }
-
     .status {
       color: green;
       margin-bottom: 10px;
       font-weight: bold;
     }
-
     .run-button {
       background-color: black;
       color: #7fff00;
@@ -58,65 +52,41 @@
       margin-top: 10px;
       display: none;
     }
-
     .km-container {
-      margin: 30px 0 20px;
-      text-align: left;
       display: flex;
-      justify-content: center;
+      justify-content: flex-start;
+      align-items: flex-end;
+      margin-top: 30px;
+      padding-left: 60px;
+      gap: 10px;
     }
-
     .km-number {
       font-family: 'Jost', sans-serif;
-      font-style: italic;
       font-weight: 800;
-      font-size: 160px;
-    }
-
-    .km-unit {
-      margin-left: 10px;
-      font-size: 64px;
+      font-style: italic;
+      font-size: 180px;
       line-height: 1;
-      align-self: flex-end;
-      font-family: 'Jost', sans-serif;
-      font-style: italic;
-      font-weight: 800;
     }
-
+    .km-unit {
+      font-size: 72px;
+      line-height: 1;
+      margin-bottom: 10px;
+    }
     .grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 30px;
       max-width: 600px;
-      margin: 80px auto 0;
+      margin: 40px auto 0; /* 간격 3분의 1로 줄임 */
       text-align: left;
     }
-
     .stat {
       font-size: 22px;
       font-weight: bold;
     }
-
     .label {
       font-size: 14px;
       color: gray;
-    }
-
-    .font-controls, .align-controls, .bg-controls {
-      margin-top: 30px;
-    }
-
-    .font-controls button, .align-controls button, .bg-controls button {
-      margin: 5px;
-      padding: 8px 12px;
-      font-size: 14px;
-      cursor: pointer;
-      border-radius: 5px;
-      height: 40px;
-    }
-
-    .font-controls button {
-      font-size: 20px;
     }
   </style>
 </head>
@@ -131,32 +101,9 @@
     <button class="run-button" id="run-btn" onclick="runAnimation()">RUN</button>
   </div>
 
-  <div class="font-controls">
-    <div><strong>Font</strong></div>
-    <button style="font-family: 'Jost', sans-serif; font-style: italic; font-weight: 800;" onclick="setFont('Jost')">Jost</button>
-    <button style="font-family: 'Orbitron', sans-serif; font-weight: 700;" onclick="setFont('Orbitron')">Orbitron</button>
-    <button style="font-family: 'Bebas Neue', sans-serif;" onclick="setFont('Bebas Neue')">Bebas Neue</button>
-    <button style="font-family: 'Big Shoulders Inline Text', cursive;" onclick="setFont('Big Shoulders Inline Text')">Big Shoulders</button>
-    <button style="font-family: 'Caveat Brush', cursive;" onclick="setFont('Caveat Brush')">Caveat Brush</button>
-    <button style="font-family: 'Rock Salt', cursive;" onclick="setFont('Rock Salt')">Rock Salt</button>
-    <button style="font-family: 'Handjet', cursive;" onclick="setFont('Handjet')">Handjet</button>
-  </div>
-
-  <div class="align-controls">
-    <div><strong>Align</strong></div>
-    <button onclick="setAlign('left')">⬅️ Left</button>
-    <button onclick="setAlign('center')">↔️ Center</button>
-  </div>
-
-  <div class="bg-controls">
-    <div><strong>Background</strong></div>
-    <button onclick="setBackground('black')">Black</button>
-    <button onclick="setBackground('white')">White</button>
-  </div>
-
   <div class="km-container" id="km-container">
     <div class="km-number" id="km">0.00</div>
-    <div class="km-unit" id="km-unit">km</div>
+    <div class="km-unit" id="km-unit">KM</div>
   </div>
 
   <div class="grid">
@@ -174,7 +121,7 @@
     function parseValuesByLine(text) {
       const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
       const numbers = lines.flatMap(line => line.match(/[\d.:']{1,5}/g) || []);
-      return {
+      const parsed = {
         km: numbers[0] || null,
         pace: numbers[1] || null,
         time: numbers[2] || null,
@@ -183,6 +130,8 @@
         heartrate: numbers[5] || null,
         cadence: numbers[6] || null,
       };
+      console.log("파싱 결과:", parsed);
+      return parsed;
     }
 
     document.getElementById("file-upload").addEventListener("change", async (event) => {
@@ -190,12 +139,12 @@
       if (!file) return;
       document.getElementById("upload-status").textContent = "업로드 완료";
       document.getElementById("run-btn").style.display = "inline-block";
-
       const reader = new FileReader();
       reader.onload = async () => {
         const img = reader.result;
         const result = await Tesseract.recognize(img, 'eng');
         const text = result.data.text;
+        console.log('OCR 텍스트:', text);
         parsedData = parseValuesByLine(text);
       };
       reader.readAsDataURL(file);
@@ -204,7 +153,6 @@
     function animateNumber(id, start, end, duration) {
       const el = document.getElementById(id);
       let startTime;
-
       function update(currentTime) {
         if (!startTime) startTime = currentTime;
         const progress = Math.min((currentTime - startTime) / duration, 1);
@@ -212,7 +160,6 @@
         el.textContent = value;
         if (progress < 1) requestAnimationFrame(update);
       }
-
       requestAnimationFrame(update);
     }
 
@@ -223,42 +170,6 @@
         document.getElementById(key).textContent = parsedData[key] || "-";
       });
     }
-
-    function setFont(fontName) {
-      const km = document.getElementById("km");
-      const kmUnit = document.getElementById("km-unit");
-
-      const smallFonts = ['Jost', 'Orbitron'];
-      const isJost = fontName === 'Jost';
-      const fontSize = smallFonts.includes(fontName) ? 160 : 200;
-
-      km.style.fontFamily = fontName;
-      km.style.fontSize = fontSize + "px";
-      km.style.fontStyle = isJost ? "italic" : "normal";
-      km.style.fontWeight = isJost ? "800" : "700";
-
-      kmUnit.style.fontFamily = fontName;
-      kmUnit.style.fontSize = (fontSize * 0.4) + "px";
-      kmUnit.style.fontStyle = isJost ? "italic" : "normal";
-      kmUnit.style.fontWeight = isJost ? "800" : "700";
-    }
-
-    function setAlign(direction) {
-      const kmContainer = document.getElementById("km-container");
-      kmContainer.style.justifyContent = direction === 'center' ? 'center' : 'flex-start';
-      document.querySelector(".grid").style.textAlign = direction;
-    }
-
-    function setBackground(color) {
-      const isBlack = color === 'black';
-      document.body.style.backgroundColor = isBlack ? "#000" : "#fff";
-      document.body.style.color = isBlack ? "#fff" : "#000";
-    }
-
-    // 초기 폰트 설정 (Jost)
-    window.onload = () => {
-      setFont('Jost');
-    };
   </script>
 </body>
 </html>
