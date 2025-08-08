@@ -7,99 +7,22 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@1,800&family=Orbitron:wght@700&family=Bebas+Neue&family=Big+Shoulders+Inline+Text:wght@700&family=Caveat+Brush&family=Rock+Salt&family=Handjet:wght@500&display=swap" rel="stylesheet">
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 40px;
-      background-color: #fff;
-      color: #000;
-    }
-    h1 {
-      font-weight: bold;
-    }
-    .subtitle {
-      font-size: 14px;
-      margin-bottom: 30px;
-    }
-    .upload-box {
-      border: 1px solid #ddd;
-      padding: 40px;
-      margin-bottom: 30px;
-      display: inline-block;
-    }
-    .upload-label {
-      display: block;
-      background-color: black;
-      color: white;
-      padding: 10px 20px;
-      font-weight: bold;
-      margin-bottom: 10px;
-      cursor: pointer;
-    }
-    .status {
-      color: green;
-      margin-bottom: 10px;
-      font-weight: bold;
-    }
-    .run-button {
-      background-color: black;
-      color: #7fff00;
-      padding: 15px 30px;
-      font-size: 24px;
-      border: 2px solid #0070ff;
-      border-radius: 5px;
-      cursor: pointer;
-      margin-top: 10px;
-      display: none;
-    }
-    .km-row {
-      display: flex;
-      align-items: baseline;
-      justify-content: flex-start;
-      margin: 30px auto 10px;
-      max-width: 600px;
-    }
-    #km {
-      font-family: 'Jost', sans-serif;
-      font-style: italic;
-      font-weight: 800;
-      font-size: 160px;
-      line-height: 1;
-    }
-    #km-unit {
-      margin-left: 10px;
-      font-size: 64px;
-      line-height: 1;
-      transform: translateY(-10px);
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 15px;
-      max-width: 600px;
-      margin: 20px auto 0;
-      text-align: left;
-    }
-    .stat {
-      font-size: 22px;
-      font-weight: bold;
-    }
-    .label {
-      font-size: 14px;
-      color: gray;
-    }
-    .font-controls, .align-controls, .bg-controls {
-      margin-top: 30px;
-    }
-    .font-controls button, .align-controls button, .bg-controls button {
-      margin: 5px;
-      padding: 8px 12px;
-      font-size: 14px;
-      cursor: pointer;
-      border-radius: 5px;
-      height: 40px;
-    }
-    .font-controls button { font-size: 20px; }
+    body { font-family: Arial, sans-serif; text-align: center; padding: 40px; background-color: #fff; color: #000; }
+    h1 { font-weight: bold; }
+    .subtitle { font-size: 14px; margin-bottom: 30px; }
+    .upload-box { border: 1px solid #ddd; padding: 20px; margin-bottom: 20px; display: inline-block; }
+    .upload-label { display: block; background-color: black; color: white; padding: 10px 20px; font-weight: bold; margin-bottom: 10px; cursor: pointer; }
+    .status { color: green; margin-bottom: 10px; font-weight: bold; }
+    .run-button { background-color: black; color: #7fff00; padding: 15px 30px; font-size: 24px; border: 2px solid #0070ff; border-radius: 5px; cursor: pointer; margin-top: 10px; display: none; }
+    .controls { margin-top: 20px; }
+    .controls div { margin-bottom: 10px; font-weight: bold; }
+    .controls button { margin: 5px; padding: 5px 10px; border: 2px solid #000; border-radius: 5px; cursor: pointer; height: 40px; }
+    .km-display { display: flex; align-items: flex-end; justify-content: flex-start; gap: 8px; margin: 40px auto 10px; width: fit-content; }
+    #km { line-height: 1; }
+    #km-unit { line-height: 1; transform: translateY(10px); }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; max-width: 600px; margin: 20px auto 0; }
+    .stat { font-size: 22px; font-weight: bold; }
+    .label { font-size: 14px; color: gray; }
   </style>
 </head>
 <body>
@@ -113,8 +36,8 @@
     <button class="run-button" id="run-btn" onclick="runAnimation()">RUN</button>
   </div>
 
-  <div class="font-controls">
-    <div><strong>Font</strong></div>
+  <div class="controls">
+    <div>Font</div>
     <button style="font-family: 'Jost', sans-serif; font-style: italic; font-weight: 800;" onclick="setFont('Jost')">Jost</button>
     <button style="font-family: 'Orbitron', sans-serif; font-weight: 700;" onclick="setFont('Orbitron')">Orbitron</button>
     <button style="font-family: 'Bebas Neue', sans-serif; font-weight: 400;" onclick="setFont('Bebas Neue')">Bebas Neue</button>
@@ -122,21 +45,17 @@
     <button style="font-family: 'Caveat Brush', cursive; font-weight: 400;" onclick="setFont('Caveat Brush')">Caveat Brush</button>
     <button style="font-family: 'Rock Salt', cursive; font-weight: 400;" onclick="setFont('Rock Salt')">Rock Salt</button>
     <button style="font-family: 'Handjet', cursive; font-weight: 500;" onclick="setFont('Handjet')">Handjet</button>
-  </div>
 
-  <div class="align-controls">
-    <div><strong>Align</strong></div>
+    <div>Align</div>
     <button onclick="setAlign('left')">⬅️ Left</button>
     <button onclick="setAlign('center')">↔️ Center</button>
-  </div>
 
-  <div class="bg-controls">
-    <div><strong>Background</strong></div>
+    <div>Background</div>
     <button onclick="setBackground('black')">Black</button>
     <button onclick="setBackground('white')">White</button>
   </div>
 
-  <div class="km-row" id="km-row">
+  <div class="km-display" id="km-display">
     <div id="km">0.00</div>
     <div id="km-unit">km</div>
   </div>
@@ -156,15 +75,16 @@
     function parseValuesByLine(text) {
       const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
       const numbers = lines.flatMap(line => line.match(/[\d.:']{1,5}/g) || []);
-      return {
+      const parsed = {
         km: numbers[0] || null,
         pace: numbers[1] || null,
         time: numbers[2] || null,
         calories: numbers[3] || null,
         elevation: numbers[4] || null,
         heartrate: numbers[5] || null,
-        cadence: numbers[6] || null
+        cadence: numbers[6] || null,
       };
+      return parsed;
     }
 
     document.getElementById("file-upload").addEventListener("change", async (event) => {
@@ -176,8 +96,7 @@
       reader.onload = async () => {
         const img = reader.result;
         const result = await Tesseract.recognize(img, 'eng');
-        const text = result.data.text;
-        parsedData = parseValuesByLine(text);
+        parsedData = parseValuesByLine(result.data.text);
       };
       reader.readAsDataURL(file);
     });
@@ -197,7 +116,8 @@
 
     function runAnimation() {
       animateNumber("km", 0, parseFloat(parsedData.km || 0), 2000);
-      ["pace", "time", "calories", "elevation", "heartrate", "cadence"].forEach(key => {
+      const keys = ["pace", "time", "calories", "elevation", "heartrate", "cadence"];
+      keys.forEach(key => {
         document.getElementById(key).textContent = parsedData[key] || "-";
       });
     }
@@ -205,32 +125,30 @@
     function setFont(fontName) {
       const km = document.getElementById("km");
       const unit = document.getElementById("km-unit");
+
       const smallFonts = ["Jost", "Orbitron"];
       const baseSize = smallFonts.includes(fontName) ? 160 : 200;
-      const mainSize = (fontName === "Rock Salt") ? Math.round(baseSize * 0.3) : baseSize;
+
+      // Rock Salt만 75% 크기로 축소
+      const mainSize = (fontName === "Rock Salt") ? Math.round(baseSize * 0.75) : baseSize;
+
       const isJost = fontName === "Jost";
 
       km.style.fontFamily = fontName;
-      km.style.fontSize = mainSize + "px";
-      km.style.fontStyle = isJost ? "italic" : "normal";
+      km.style.fontSize   = mainSize + "px";
+      km.style.fontStyle  = isJost ? "italic" : "normal";
       km.style.fontWeight = isJost ? "800" : "700";
 
       unit.style.fontFamily = fontName;
-      unit.style.fontSize = Math.round(mainSize * 0.4) + "px";
-      unit.style.fontStyle = isJost ? "italic" : "normal";
+      unit.style.fontSize   = Math.round(mainSize * 0.4) + "px";
+      unit.style.fontStyle  = isJost ? "italic" : "normal";
       unit.style.fontWeight = isJost ? "800" : "700";
     }
 
     function setAlign(direction) {
-      const kmRow = document.getElementById("km-row");
-      const grid = document.querySelector(".grid");
-      if (direction === 'center') {
-        kmRow.style.justifyContent = 'center';
-        grid.style.textAlign = 'center';
-      } else {
-        kmRow.style.justifyContent = 'flex-start';
-        grid.style.textAlign = 'left';
-      }
+      const kmDisplay = document.getElementById("km-display");
+      kmDisplay.style.justifyContent = direction === 'center' ? 'center' : 'flex-start';
+      document.querySelector(".grid").style.textAlign = direction;
     }
 
     function setBackground(color) {
