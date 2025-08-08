@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>RUNNING MILEAGE ANIMATION MAKER — 9:16</title>
+  <title>RUNNING MILEAGE ANIMATION MAKER</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@1,800&family=Orbitron:wght@700&family=Bebas+Neue&family=Big+Shoulders+Inline+Text:wght@700&family=Caveat+Brush&family=Handjet:wght@500&display=swap" rel="stylesheet">
   <style>
@@ -30,36 +30,34 @@
     .align-row,.bg-row{ display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
     .run-button{ background:#000; color:#7fff00; border-color:#0070ff; margin-top:6px; }
 
-    /* ===== 9:16 스테이지 프레임 ===== */
+    /* ===== 스테이지 ===== */
     .stage-outer{ padding:10px 0 24px; }
-    .stage-frame{
-      aspect-ratio: 9 / 16;                   /* ★ 9:16 고정 */
-      height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px);
-      max-height: 780px;
-      width: auto;
-      margin: 0 auto;
-      border: 1px solid #000;
-      border-radius: 16px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;   /* 내부 중앙 */
-      align-items: center;
-      background: inherit; color: inherit;
+    .stage-inner{ width:100%; max-width:var(--maxw); margin:0 auto; padding:0 var(--pad); }
+
+    .km-row-wrap{
+      width:100%;
+      display:flex; justify-content:center;
+      margin: 18px 0 8px;
+    }
+    .km-row{
+      display:flex; align-items:baseline; gap:10px;
+      transform-origin:left bottom; will-change:transform;
+    }
+    #km{
+      font-family:'Jost',sans-serif; font-style:italic; font-weight:800;
+      font-size:200px; line-height:1; white-space:nowrap;
+    }
+    #km-unit{
+      font-size:80px; line-height:1; transform:translateY(-10px);
+      opacity:0; transition:opacity 400ms ease; white-space:nowrap;
     }
 
-    .stage-inner{ width:92%; max-width:360px; margin:0 auto; }
-    .km-row{ display:flex; align-items:baseline; justify-content:center; gap:10px; margin: 4vh 0 1.5vh; }
-    #km{ font-family:'Jost',sans-serif; font-style:italic; font-weight:800; font-size:22vw; line-height:1; }
-    #km-unit{ font-size:8.8vw; line-height:1; transform:translateY(-10px); opacity:0; transition:opacity 400ms ease; }
-
-    .grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top: 1vh; color:inherit; }
+    .grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:10px; color:inherit; }
     .stat{ font-size:16px; font-weight:800; color:inherit; text-align:center; }
     .label{ font-size:12px; color:inherit; opacity:.9; text-align:center; }
 
-    /* 포커스 모드: 설정 UI 숨기고 스테이지만 */
+    /* 포커스 모드 */
     body.focus .top-ui{ display:none; }
-    body.focus .stage-outer{ padding:0; }
     body.focus #exit-focus{
       display:block; position:fixed; z-index:20;
       top: env(safe-area-inset-top, 8px); right:10px;
@@ -70,10 +68,6 @@
 
     .bg-black{ background:#000; color:#fff; }
     .bg-white{ background:#fff; color:#000; }
-
-    @media (min-width: 769px){
-      .stage-frame{ max-width: 430px; } /* 데스크탑에서도 9:16 유지(좁게) */
-    }
   </style>
 </head>
 <body class="bg-white">
@@ -82,7 +76,7 @@
     <div class="subtitle">by JS @runarchive.js</div>
   </header>
 
-  <!-- 상단 설정 UI(모바일에서 포커스 모드 시 숨김) -->
+  <!-- 설정 UI -->
   <div class="top-ui">
     <div class="wrap">
       <section class="section upload-box">
@@ -119,33 +113,31 @@
         </div>
       </section>
 
-      <!-- 컨트롤 아래 RUN -->
       <section class="section">
         <button class="run-button" id="run-btn" onclick="onRun()">RUN</button>
       </section>
     </div>
   </div>
 
-  <!-- 포커스 모드 종료 -->
   <button id="exit-focus" title="Close" onclick="exitFocus()">✕</button>
 
-  <!-- 9:16 스테이지 -->
+  <!-- 스테이지 -->
   <section class="stage-outer">
-    <div class="stage-frame" id="stage-frame">
-      <div class="stage-inner" id="stage">
+    <div class="stage-inner" id="stage">
+      <div class="km-row-wrap">
         <div class="km-row" id="km-row">
           <div id="km">0.00</div>
           <div id="km-unit">km</div>
         </div>
+      </div>
 
-        <div class="grid">
-          <div><div class="stat" id="pace">-</div><div class="label">Avg. Pace</div></div>
-          <div><div class="stat" id="time">-</div><div class="label">Time</div></div>
-          <div><div class="stat" id="calories">-</div><div class="label">Calories</div></div>
-          <div><div class="stat" id="elevation">-</div><div class="label">Elevation Gain</div></div>
-          <div><div class="stat" id="heartrate">-</div><div class="label">Avg. Heart Rate</div></div>
-          <div><div class="stat" id="cadence">-</div><div class="label">Cadence</div></div>
-        </div>
+      <div class="grid">
+        <div><div class="stat" id="pace">-</div><div class="label">Avg. Pace</div></div>
+        <div><div class="stat" id="time">-</div><div class="label">Time</div></div>
+        <div><div class="stat" id="calories">-</div><div class="label">Calories</div></div>
+        <div><div class="stat" id="elevation">-</div><div class="label">Elevation Gain</div></div>
+        <div><div class="stat" id="heartrate">-</div><div class="label">Avg. Heart Rate</div></div>
+        <div><div class="stat" id="cadence">-</div><div class="label">Cadence</div></div>
       </div>
     </div>
   </section>
@@ -180,7 +172,7 @@
       reader.readAsDataURL(file);
     });
 
-    // 더 부드러운 카운트업
+    // easeOutCubic 카운트업
     const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
     function animateNumber(id,start,end,duration){
       return new Promise(resolve=>{
@@ -197,21 +189,43 @@
       });
     }
 
+    // === 상단 숫자+km를 하단 그리드 가로폭에 맞춤 ===
+    function fitKmRow() {
+      const grid = document.querySelector('.grid');      // 기준: 하단 그리드 폭
+      const wrap = document.querySelector('.km-row-wrap');
+      const row  = document.getElementById('km-row');
+
+      const avail = (grid?.clientWidth || wrap.clientWidth) - 8; // 약간 여유
+      wrap.style.width = avail + 'px';                            // 래퍼 폭 고정
+
+      // 현재 정렬 상태에 맞춰 기준점 유지
+      const gridAlignCenter = (getComputedStyle(grid).textAlign === 'center');
+      row.style.transformOrigin = gridAlignCenter ? 'center bottom' : 'left bottom';
+
+      // 스케일 계산
+      row.style.transform = 'scale(1)';      // 원복 후 실제 필요폭 측정
+      const need  = row.scrollWidth;
+      const scale = Math.min(1, avail / need);
+      row.style.transform = `scale(${scale})`;
+    }
+
     async function runAnimation(){
       const unit = document.getElementById("km-unit");
       unit.style.opacity = 0;
+      await Promise.resolve().then(fitKmRow);           // 애니 전 1차 맞춤
       const endVal = parseFloat(parsedData.km || 0);
       await animateNumber("km", 0, isNaN(endVal)?0:endVal, 2200);
       unit.style.opacity = 1;
       ["pace","time","calories","elevation","heartrate","cadence"].forEach(k=>{
         document.getElementById(k).textContent = parsedData[k] || "-";
       });
+      fitKmRow();                                       // 애니 후 다시 맞춤
     }
 
     // 액션들
     function onRun(){
       document.body.classList.add('focus');
-      document.getElementById('stage-frame').scrollIntoView({behavior:'smooth', block:'center'});
+      document.getElementById('stage').scrollIntoView({behavior:'smooth', block:'center'});
       runAnimation();
     }
     function exitFocus(){
@@ -222,24 +236,26 @@
     function setFont(font){
       const km = document.getElementById("km");
       const unit = document.getElementById("km-unit");
-      const small = ["Jost","Orbitron"];
-      const base = small.includes(font) ? 160 : 200;
+      const small = ["Jost","Orbitron"];  // 160px
+      const base  = small.includes(font) ? 160 : 200;
       const isJost = font === "Jost";
       km.style.fontFamily = font;
-      km.style.fontSize = base + "px";
-      km.style.fontStyle = isJost ? "italic" : "normal";
+      km.style.fontSize   = base + "px";
+      km.style.fontStyle  = isJost ? "italic" : "normal";
       km.style.fontWeight = isJost ? "800" : "700";
       unit.style.fontFamily = font;
-      unit.style.fontSize = Math.round(base*0.4) + "px";
-      unit.style.fontStyle = isJost ? "italic" : "normal";
+      unit.style.fontSize   = Math.round(base*0.4) + "px";
+      unit.style.fontStyle  = isJost ? "italic" : "normal";
       unit.style.fontWeight = isJost ? "800" : "700";
+      fitKmRow();
     }
 
     function setAlign(dir){
-      const kmRow = document.getElementById("km-row");
+      const row  = document.getElementById("km-row");
       const grid = document.querySelector(".grid");
-      if(dir==='center'){ kmRow.style.justifyContent='center'; grid.style.textAlign='center'; }
-      else { kmRow.style.justifyContent='flex-start'; grid.style.textAlign='left'; }
+      if(dir==='center'){ row.style.transformOrigin='center bottom'; grid.style.textAlign='center'; }
+      else { row.style.transformOrigin='left bottom'; grid.style.textAlign='left'; }
+      fitKmRow();
     }
 
     function setBackground(color){
@@ -248,8 +264,9 @@
       else { b.classList.remove('bg-black'); b.classList.add('bg-white'); }
     }
 
-    // 기본 폰트
-    window.onload = ()=> setFont('Jost');
+    window.addEventListener('resize', fitKmRow);
+    window.addEventListener('orientationchange', ()=> setTimeout(fitKmRow, 150));
+    window.onload = ()=> { setFont('Jost'); fitKmRow(); };
   </script>
 </body>
 </html>
