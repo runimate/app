@@ -52,29 +52,25 @@
       margin-top: 10px;
       display: none;
     }
-    .km-container {
+    .km-row {
       display: flex;
-      flex-direction: row;
       align-items: baseline;
       justify-content: flex-start;
       margin: 30px auto 10px;
       max-width: 600px;
     }
-    .km-number {
+    #km {
       font-family: 'Jost', sans-serif;
       font-style: italic;
       font-weight: 800;
       font-size: 160px;
       line-height: 1;
     }
-    .km-unit {
-      font-family: 'Jost', sans-serif;
-      font-style: italic;
-      font-weight: 800;
+    #km-unit {
+      margin-left: 10px;
       font-size: 64px;
       line-height: 1;
-      transform: translateY(-10px); /* KM 숫자 대비 10px 내려감 */
-      margin-left: 8px;
+      transform: translateY(-10px);
     }
     .grid {
       display: grid;
@@ -140,9 +136,9 @@
     <button onclick="setBackground('white')">White</button>
   </div>
 
-  <div class="km-container" id="km-container">
-    <div class="km-number" id="km">0.00</div>
-    <div class="km-unit" id="km-unit">km</div>
+  <div class="km-row" id="km-row">
+    <div id="km">0.00</div>
+    <div id="km-unit">km</div>
   </div>
 
   <div class="grid">
@@ -167,7 +163,7 @@
         calories: numbers[3] || null,
         elevation: numbers[4] || null,
         heartrate: numbers[5] || null,
-        cadence: numbers[6] || null,
+        cadence: numbers[6] || null
       };
     }
 
@@ -201,8 +197,7 @@
 
     function runAnimation() {
       animateNumber("km", 0, parseFloat(parsedData.km || 0), 2000);
-      const keys = ["pace", "time", "calories", "elevation", "heartrate", "cadence"];
-      keys.forEach(key => {
+      ["pace", "time", "calories", "elevation", "heartrate", "cadence"].forEach(key => {
         document.getElementById(key).textContent = parsedData[key] || "-";
       });
     }
@@ -210,10 +205,9 @@
     function setFont(fontName) {
       const km = document.getElementById("km");
       const unit = document.getElementById("km-unit");
-
       const smallFonts = ["Jost", "Orbitron"];
       const baseSize = smallFonts.includes(fontName) ? 160 : 200;
-      const mainSize = (fontName === "Rock Salt") ? Math.round(baseSize * 1.5) : baseSize;
+      const mainSize = (fontName === "Rock Salt") ? Math.round(baseSize * 0.3) : baseSize;
       const isJost = fontName === "Jost";
 
       km.style.fontFamily = fontName;
@@ -228,9 +222,15 @@
     }
 
     function setAlign(direction) {
-      const kmContainer = document.getElementById("km-container");
-      kmContainer.style.justifyContent = direction === 'center' ? 'center' : 'flex-start';
-      document.querySelector(".grid").style.textAlign = direction;
+      const kmRow = document.getElementById("km-row");
+      const grid = document.querySelector(".grid");
+      if (direction === 'center') {
+        kmRow.style.justifyContent = 'center';
+        grid.style.textAlign = 'center';
+      } else {
+        kmRow.style.justifyContent = 'flex-start';
+        grid.style.textAlign = 'left';
+      }
     }
 
     function setBackground(color) {
