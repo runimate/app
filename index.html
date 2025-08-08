@@ -7,27 +7,29 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@1,800&family=Orbitron:wght@700&family=Bebas+Neue&family=Big+Shoulders+Inline+Text:wght@700&family=Caveat+Brush&family=Handjet:wght@500&display=swap" rel="stylesheet">
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; padding: 40px; background: #fff; color: #000; }
+    body { font-family: Arial, sans-serif; text-align: center; padding: 40px; background:#fff; color:#000; }
     h1 { font-weight: bold; }
     .subtitle { font-size: 14px; margin-bottom: 30px; }
 
     .upload-box { border: 1px solid #ddd; padding: 40px; margin-bottom: 30px; display: inline-block; }
-    .upload-label { display: block; background: #000; color: #fff; padding: 10px 20px; font-weight: bold; margin-bottom: 10px; cursor: pointer; }
-    .status { color: green; margin-bottom: 10px; font-weight: bold; }
-    .run-button { background: #000; color: #7fff00; padding: 15px 30px; font-size: 24px; border: 2px solid #0070ff; border-radius: 5px; cursor: pointer; margin-top: 10px; display: none; }
+    .upload-label { display: block; background:#000; color:#fff; padding:10px 20px; font-weight:700; margin-bottom:10px; cursor:pointer; }
+    .status { color: green; margin-bottom:10px; font-weight:700; }
+    .run-button { background:#000; color:#7fff00; padding:15px 30px; font-size:24px; border:2px solid #0070ff; border-radius:5px; cursor:pointer; margin-top:10px; display:none; }
 
-    .km-row { display: flex; align-items: baseline; justify-content: flex-start; margin: 30px auto 10px; max-width: 600px; gap: 10px; }
-    #km { font-family: 'Jost', sans-serif; font-style: italic; font-weight: 800; font-size: 160px; line-height: 1; }
-    /* 처음엔 숨김, 숫자 애니 후 페이드인 */
-    #km-unit { margin-left: 10px; font-size: 64px; line-height: 1; transform: translateY(-10px); opacity: 0; transition: opacity 400ms ease; }
+    .km-row { display:flex; align-items:baseline; justify-content:flex-start; margin:30px auto 10px; max-width:600px; gap:10px; }
+    #km { font-family:'Jost',sans-serif; font-style:italic; font-weight:800; font-size:160px; line-height:1; }
+    /* 처음엔 숨김, 숫자 애니 뒤에 페이드인 */
+    #km-unit { font-size:64px; line-height:1; transform:translateY(-10px); opacity:0; transition:opacity 400ms ease; }
 
-    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; max-width: 600px; margin: 20px auto 0; text-align: left; }
-    .stat { font-size: 22px; font-weight: bold; }
-    .label { font-size: 14px; color: gray; }
+    .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:15px; max-width:600px; margin:20px auto 0; text-align:left; }
+    .stat { font-size:22px; font-weight:700; color:inherit; }
+    .label { font-size:14px; color:inherit; } /* 회색 제거 → 본문색(기본 블랙) 상속 */
 
     .font-controls, .align-controls, .bg-controls { margin-top: 30px; }
-    .font-controls button, .align-controls button, .bg-controls button { margin: 5px; padding: 8px 12px; font-size: 14px; cursor: pointer; border-radius: 5px; height: 40px; }
-    .font-controls button { font-size: 20px; }
+    .font-controls button, .align-controls button, .bg-controls button {
+      margin:5px; padding:8px 12px; font-size:14px; cursor:pointer; border-radius:5px; height:40px;
+    }
+    .font-controls button { font-size:20px; }
   </style>
 </head>
 <body>
@@ -95,27 +97,26 @@
       reader.onload = async () => {
         const img = reader.result;
         const result = await Tesseract.recognize(img, 'eng');
-        const text = result.data.text;
-        parsedData = parseValuesByLine(text);
+        parsedData = parseValuesByLine(result.data.text);
       };
       reader.readAsDataURL(file);
     });
 
+    // 부드러운 이징(가속→감속) 적용
+    const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+
     // 애니메이션을 Promise로 만들어 완료 시점을 잡기 쉽게
     function animateNumber(id, start, end, duration) {
-      return new Promise((resolve) => {
+      return new Promise(resolve => {
         const el = document.getElementById(id);
         let startTime;
         function update(currentTime) {
           if (!startTime) startTime = currentTime;
-          const progress = Math.min((currentTime - startTime) / duration, 1);
-          const value = (start + (end - start) * progress).toFixed(2);
+          const raw = Math.min((currentTime - startTime) / duration, 1);
+          const eased = easeOutCubic(raw);
+          const value = (start + (end - start) * eased).toFixed(2);
           el.textContent = value;
-          if (progress < 1) {
-            requestAnimationFrame(update);
-          } else {
-            resolve();
-          }
+          if (raw < 1) requestAnimationFrame(update); else resolve();
         }
         requestAnimationFrame(update);
       });
@@ -126,9 +127,9 @@
       const unit = document.getElementById("km-unit");
       unit.style.opacity = 0; // 재실행 대비 리셋
       const endVal = parseFloat(parsedData.km || 0);
-      await animateNumber("km", 0, isNaN(endVal) ? 0 : endVal, 2000);
-      // 부드러운 페이드인
-      unit.style.opacity = 1;
+      await animateNumber("km", 0, isNaN(endVal) ? 0 : endVal, 2200); // 살짝 더 길고 부드럽게
+      unit.style.opacity = 1; // 페이드인
+
       // 하단 값 채우기
       ["pace","time","calories","elevation","heartrate","cadence"].forEach(k=>{
         document.getElementById(k).textContent = parsedData[k] || "-";
