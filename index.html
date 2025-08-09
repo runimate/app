@@ -34,17 +34,8 @@
     .stage-outer{ padding:10px 0 24px; }
     .stage-inner{ width:100%; max-width:var(--maxw); margin:0 auto; padding:0 var(--pad); }
 
-    .km-row-wrap{
-      display:flex; justify-content:center;
-      margin:18px auto 8px;
-      width:100%;
-    }
-    .km-row{
-      display:flex; align-items:baseline; gap:10px;
-      justify-content:flex-start;
-      transform-origin:left bottom; /* 좌측 하단 고정 */
-      will-change:transform;
-    }
+    .km-row-wrap{ display:flex; justify-content:center; margin:18px auto 8px; width:100%; }
+    .km-row{ display:flex; align-items:baseline; gap:10px; transform-origin:center bottom; will-change:transform; }
     #km{
       font-family:'Jost',sans-serif; font-style:italic; font-weight:800;
       font-size:200px; line-height:1; white-space:nowrap;
@@ -78,7 +69,7 @@
     <div class="subtitle">by JS @runarchive.js</div>
   </header>
 
-  <!-- 설정 UI -->
+  <!-- 설정 UI (모바일 우선) -->
   <div class="top-ui">
     <div class="wrap">
       <section class="section upload-box">
@@ -139,27 +130,28 @@
   <script>
     let parsedData = {};
 
+    // ✅ 강력한 토큰 인식: -- | 12.34 | 1:28:33 | 59:26 | 7'22" | 1234
+    const TOKEN_RE = /--|\d+\.\d+|\d+:\d+:\d+|\d+:\d+|\d{1,2}'\d{2}"?|\d+/g;
+
     function parseValuesByLine(text){
       const lines = text.trim().split('\n').map(l=>l.trim()).filter(Boolean);
-      const numbers = lines.flatMap(line => {
-        // '--' 처리
-        if (/--/.test(line)) return ['--'];
-        return line.match(/[\d:]+/g) || [];
-      });
-      // Time 필드 시:분:초 변형 대응
-      if (numbers.length >= 3 && numbers[1].includes(':') && numbers[2].includes(':')) {
-        numbers[1] = numbers[1] + numbers[2]; // 예: '59:26' → 그대로 / '1:28:33'도 유지
-        numbers.splice(2,1);
-      }
-      return {
-        km: numbers[0] || null,
-        pace: numbers[1] || null,
-        time: numbers[2] || null,
-        calories: numbers[3] || null,
-        elevation: numbers[4] || null,
-        heartrate: numbers[5] || null,
-        cadence: numbers[6] || null,
+      const tokens = lines.flatMap(line => line.match(TOKEN_RE) || []);
+
+      // 맵핑 순서는 기존 로직 유지 (KM, Pace, Time, Calories, Elevation, Heart, Cadence)
+      const data = {
+        km:        tokens[0] || null,
+        pace:      tokens[1] || null,
+        time:      tokens[2] || null,
+        calories:  tokens[3] || null,
+        elevation: tokens[4] || null,
+        heartrate: tokens[5] || null,
+        cadence:   tokens[6] || null,
       };
+
+      // 심박 '--' → 화면용 em dash
+      if (data.heartrate && /^-+$/.test(data.heartrate)) data.heartrate = '—';
+
+      return data;
     }
 
     document.getElementById("file-upload").addEventListener("change", async (e)=>{
@@ -175,6 +167,7 @@
       reader.readAsDataURL(file);
     });
 
+    // 부드러운 카운트업 (easeOutCubic)
     const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
     function animateNumber(id,start,end,duration){
       return new Promise(resolve=>{
@@ -191,6 +184,7 @@
       });
     }
 
+    // 상단 숫자+km를 하단 그리드/스테이지/뷰포트의 가용폭에 맞춰 자동 스케일
     function fitKmRow() {
       const stage = document.getElementById('stage');
       const grid  = document.getElementById('stats-grid');
@@ -198,12 +192,12 @@
       const row   = document.getElementById('km-row');
 
       const vw = document.documentElement.clientWidth;
-      const safe = vw - 2*16;
+      const safe = vw - 2*16; // 좌우 패딩 고려
       const candidates = [grid?.clientWidth || 0, stage.clientWidth, safe].filter(Boolean);
       const avail = Math.max(0, Math.min(...candidates)) - 8;
 
       wrap.style.width = avail + 'px';
-      row.style.transformOrigin = 'left bottom'; // 좌측 고정
+      row.style.transformOrigin = 'center bottom';
       row.style.transform = 'scale(1)';
 
       const need  = row.scrollWidth;
@@ -214,16 +208,21 @@
     async function runAnimation(){
       const unit = document.getElementById("km-unit");
       unit.style.opacity = 0;
-      fitKmRow();
+      await Promise.resolve().then(fitKmRow);           // 애니 전 1차 맞춤
       const endVal = parseFloat(parsedData.km || 0);
       await animateNumber("km", 0, isNaN(endVal)?0:endVal, 2200);
       unit.style.opacity = 1;
+
       ["pace","time","calories","elevation","heartrate","cadence"].forEach(k=>{
-        document.getElementById(k).textContent = parsedData[k] || "-";
+        const val = parsedData[k];
+        document.getElementById(k).textContent =
+          (val !== null && val !== undefined && val !== '') ? val : "-";
       });
-      fitKmRow();
+
+      fitKmRow();                                       // 애니 후 다시 맞춤
     }
 
+    // 액션들
     function onRun(){
       document.body.classList.add('focus');
       document.getElementById('stage').scrollIntoView({behavior:'smooth', block:'center'});
@@ -237,7 +236,7 @@
     function setFont(font){
       const km = document.getElementById("km");
       const unit = document.getElementById("km-unit");
-      const small = ["Jost","Orbitron"];
+      const small = ["Jost","Orbitron"];  // 160px
       const base  = small.includes(font) ? 160 : 200;
       const isJost = font === "Jost";
       km.style.fontFamily = font;
