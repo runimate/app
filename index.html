@@ -7,82 +7,30 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@1,800&family=Orbitron:wght@700&family=Bebas+Neue&family=Big+Shoulders+Inline+Text:wght@700&family=Caveat+Brush&family=Handjet:wght@500&display=swap" rel="stylesheet">
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 20px;
-      background-color: #fff;
-      color: #000;
+    body{font-family:Arial,sans-serif;text-align:center;padding:40px;background:#fff;color:#000}
+    h1{font-weight:700;margin:0 0 6px}
+    .subtitle{font-size:14px;margin-bottom:24px}
+    .upload-box{border:1px solid #ddd;padding:24px;margin:0 auto 24px;display:inline-block}
+    .upload-label{display:block;background:#000;color:#fff;padding:10px 18px;font-weight:700;margin-bottom:10px;cursor:pointer}
+    .status{color:#2e7d32;margin-bottom:10px;font-weight:700}
+    .run-button{background:#000;color:#7fff00;padding:12px 24px;font-size:20px;border:2px solid #0070ff;border-radius:6px;cursor:pointer;display:none}
+    .font-controls,.bg-controls{margin:18px 0}
+    .font-controls button,.bg-controls button{margin:4px;padding:8px 12px;border-radius:6px;cursor:pointer}
+    .font-controls button{font-size:18px}
+    /* 숫자 + km */
+    .km-row{display:flex;align-items:baseline;justify-content:center;margin:18px auto 10px;max-width:680px}
+    #km{font-family:'Jost',sans-serif;font-style:italic;font-weight:800;font-size:160px;line-height:1}
+    #km-unit{margin-left:10px;font-size:64px;line-height:1;opacity:0;transition:opacity .6s ease}
+    /* 하단 3x2 */
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;max-width:680px;margin:16px auto 0;text-align:center}
+    .stat{font-size:22px;font-weight:700}
+    .label{font-size:14px;color:#000}
+    @media (max-width:480px){
+      body{padding:24px}
+      .grid,.km-row{max-width:92%}
+      #km{font-size:120px}
+      #km-unit{font-size:48px}
     }
-    h1 { font-weight: bold; }
-    .subtitle { font-size: 14px; margin-bottom: 20px; }
-    .upload-box {
-      border: 1px solid #ddd;
-      padding: 20px;
-      margin-bottom: 20px;
-      display: inline-block;
-    }
-    .upload-label {
-      display: block;
-      background-color: black;
-      color: white;
-      padding: 10px 20px;
-      font-weight: bold;
-      margin-bottom: 10px;
-      cursor: pointer;
-    }
-    .status { color: green; margin-bottom: 10px; font-weight: bold; }
-    .run-button {
-      background-color: black;
-      color: #7fff00;
-      padding: 10px 20px;
-      font-size: 20px;
-      border: 2px solid #0070ff;
-      border-radius: 5px;
-      cursor: pointer;
-      display: none;
-    }
-    .km-row {
-      display: flex;
-      align-items: baseline;
-      justify-content: center;
-      margin: 20px auto 10px;
-      max-width: 90%;
-    }
-    #km {
-      font-family: 'Jost', sans-serif;
-      font-style: italic;
-      font-weight: 800;
-      font-size: 120px;
-      line-height: 1;
-    }
-    #km-unit {
-      margin-left: 8px;
-      font-size: 48px;
-      line-height: 1;
-      opacity: 0;
-      transition: opacity 0.8s ease-in-out;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      max-width: 90%;
-      margin: 10px auto 0;
-      text-align: center;
-    }
-    .stat { font-size: 20px; font-weight: bold; }
-    .label { font-size: 14px; color: black; }
-    .font-controls, .bg-controls { margin-top: 15px; }
-    .font-controls button, .bg-controls button {
-      margin: 4px;
-      padding: 6px 10px;
-      font-size: 14px;
-      cursor: pointer;
-      border-radius: 5px;
-      height: 36px;
-    }
-    .font-controls button { font-size: 18px; }
   </style>
 </head>
 <body>
@@ -91,19 +39,19 @@
 
   <div class="upload-box">
     <label for="file-upload" class="upload-label">기록 이미지 업로드</label>
-    <input type="file" id="file-upload" accept="image/*" style="display: none;" />
+    <input type="file" id="file-upload" accept="image/*" style="display:none"/>
     <div class="status" id="upload-status"></div>
     <button class="run-button" id="run-btn" onclick="runAnimation()">RUN</button>
   </div>
 
   <div class="font-controls">
     <div><strong>Font</strong></div>
-    <button style="font-family: 'Jost', sans-serif; font-style: italic; font-weight: 800;" onclick="setFont('Jost')">Jost</button>
-    <button style="font-family: 'Orbitron', sans-serif; font-weight: 700;" onclick="setFont('Orbitron')">Orbitron</button>
-    <button style="font-family: 'Bebas Neue', sans-serif; font-weight: 400;" onclick="setFont('Bebas Neue')">Bebas Neue</button>
-    <button style="font-family: 'Big Shoulders Inline Text', cursive; font-weight: 700;" onclick="setFont('Big Shoulders Inline Text')">Big Shoulders</button>
-    <button style="font-family: 'Caveat Brush', cursive; font-weight: 400;" onclick="setFont('Caveat Brush')">Caveat Brush</button>
-    <button style="font-family: 'Handjet', cursive; font-weight: 500;" onclick="setFont('Handjet')">Handjet</button>
+    <button style="font-family:'Jost',sans-serif;font-style:italic;font-weight:800" onclick="setFont('Jost')">Jost</button>
+    <button style="font-family:'Orbitron',sans-serif;font-weight:700" onclick="setFont('Orbitron')">Orbitron</button>
+    <button style="font-family:'Bebas Neue',sans-serif" onclick="setFont('Bebas Neue')">Bebas Neue</button>
+    <button style="font-family:'Big Shoulders Inline Text',cursive;font-weight:700" onclick="setFont('Big Shoulders Inline Text')">Big Shoulders</button>
+    <button style="font-family:'Caveat Brush',cursive" onclick="setFont('Caveat Brush')">Caveat Brush</button>
+    <button style="font-family:'Handjet',cursive" onclick="setFont('Handjet')">Handjet</button>
   </div>
 
   <div class="bg-controls">
@@ -129,119 +77,149 @@
   <script>
     let parsedData = {};
 
+    // 1) OCR 파서: dash 통일 + "--" 허용 + HH:MM:SS/ MM:SS + 페이스 + "55 m" + 정수
     function parseValuesByLine(text) {
+      // 전처리: 다양한 dash → '-', 하트 제거
       let norm = text
-        .replace(/[—–−]/g, '-')      // dash 통일
-        .replace(/-\s*-/g, '--')     // "--"로 통일
-        .replace(/[♡❤]/g, '');       // 하트 제거
+        .replace(/[—–−]/g, '-')   // em/en/minus dash → 하이픈
+        .replace(/[♡❤]/g, '');    // 아이콘 제거
 
-      const rawLines  = norm.trim().split('\n').map(l => l.trim()).filter(Boolean);
-      const rawTokens = rawLines.flatMap(line => line.match(/[\d:'"mMkK-]{1,10}/g) || []);
+      // 줄 단위 토큰 추출
+      let lines  = norm.split('\n').map(s => s.trim()).filter(Boolean);
 
-      const isValid = (t) =>
-        /^\d{1,2}\.\d{1,2}$/.test(t) ||            // km
-        /^\d{1,2}:\d{2}(?::\d{2})?$/.test(t) ||    // mm:ss or hh:mm:ss
-        /^\d{1,2}'\d{2}"?$/.test(t) ||             // pace
-        /^\d{1,4}\s*m$/i.test(t) ||                // m
-        /^\d{1,4}$/.test(t) ||                     // 정수
-        /^--$/.test(t);                            // 결측값
+      // OCR이 종종 "- -", "-  -"로 쪼개는 문제 → "--"로 합치기
+      lines = lines.map(l => l.replace(/-\s*-/g, '--'));
 
-      const tokens = rawTokens.filter(isValid);
+      // 전체에서 토큰 뽑기
+      let raw = lines.flatMap(l => l.match(/[\d:'"mMkK-]{1,12}/g) || []);
+
+      // 단독 하이픈들이 연속될 때도 "--"로 묶기
+      raw = raw.join(' ').replace(/(?:^|\s)-\s-(?=\s|$)/g, ' -- ').split(/\s+/);
+
+      const isValid = t =>
+        /^\d{1,2}\.\d{1,2}$/.test(t) ||           // 7.80
+        /^\d{1,2}:\d{2}(?::\d{2})?$/.test(t) ||   // 59:26 / 1:28:33
+        /^\d{1,2}[’']\d{2}[″"]?$/.test(t) ||      // 7'22" (유니코드 아포스트로피/더블프라임 포함)
+        /^\d{1,4}\s*m$/i.test(t) ||               // 55 m
+        /^\d{1,4}$/.test(t) ||                    // 656, 122
+        /^--$/.test(t) ||                         // 결측값 "--"
+        /^[–—]+$/.test(t);                        // em/en dash만 있는 경우
+
+      const tokens = raw.filter(isValid);
+
+      // em/en dash만 있는 경우 → "--"로 치환
+      const mapDash = v => (/^[–—]+$/.test(v) ? '--' : v);
 
       return {
-        km:        tokens[0] || null,
-        pace:      tokens[1] || null,
-        time:      tokens[2] || null,
-        calories:  tokens[3] || null,
-        elevation: tokens[4] || null,
-        heartrate: tokens[5] || null,
-        cadence:   tokens[6] || null
+        km:        tokens[0] ? mapDash(tokens[0]) : null,
+        pace:      tokens[1] ? mapDash(tokens[1]) : null,
+        time:      tokens[2] ? mapDash(tokens[2]) : null,
+        calories:  tokens[3] ? mapDash(tokens[3]) : null,
+        elevation: tokens[4] ? mapDash(tokens[4]) : null,
+        heartrate: tokens[5] ? mapDash(tokens[5]) : null,
+        cadence:   tokens[6] ? mapDash(tokens[6]) : null
       };
     }
 
-    document.getElementById("file-upload").addEventListener("change", async (event) => {
-      const file = event.target.files[0];
+    // 2) 파일 업로드 → OCR
+    document.getElementById('file-upload').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
       if (!file) return;
-      document.getElementById("upload-status").textContent = "업로드 완료";
-      document.getElementById("run-btn").style.display = "inline-block";
+      document.getElementById('upload-status').textContent = '업로드 완료';
+      document.getElementById('run-btn').style.display = 'inline-block';
+
       const reader = new FileReader();
       reader.onload = async () => {
         const img = reader.result;
-        const result = await Tesseract.recognize(img, 'eng');
-        parsedData = parseValuesByLine(result.data.text);
+        const result = await Tesseract.recognize(
+          img, 'eng',
+          { tessedit_char_whitelist: "0123456789:'\"mMkK- ", preserve_interword_spaces: '1' }
+        );
+        parsedData = parseValuesByLine(result.data.text || '');
+        console.log('OCR raw:', result.data.text);
+        console.log('Parsed:', parsedData);
       };
       reader.readAsDataURL(file);
     });
 
-    function animateNumber(id, start, end, duration) {
-      return new Promise((resolve) => {
+    // 3) 카운트업
+    function animateNumber(id, start, end, duration){
+      return new Promise((resolve)=>{
         const el = document.getElementById(id);
-        let startTime;
-        function update(currentTime) {
-          if (!startTime) startTime = currentTime;
-          const progress = Math.min((currentTime - startTime) / duration, 1);
-          const value = (start + (end - start) * progress).toFixed(2);
-          el.textContent = value;
-          if (progress < 1) requestAnimationFrame(update);
-          else resolve();
+        let t0;
+        const ease = x => 1 - Math.pow(1 - x, 3); // easeOutCubic
+        function frame(t){
+          if(!t0) t0 = t;
+          const p = Math.min((t - t0)/duration, 1);
+          const v = (start + (end - start) * ease(p)).toFixed(2);
+          el.textContent = v;
+          if(p < 1) requestAnimationFrame(frame); else resolve();
         }
-        requestAnimationFrame(update);
+        requestAnimationFrame(frame);
       });
     }
 
-    function fitKmRow() {
-      const kmRow = document.getElementById("km-row");
-      const gridWidth = document.querySelector(".grid").offsetWidth;
-      kmRow.style.maxWidth = gridWidth + "px";
+    // 4) 폭 맞추기
+    function fitKmRow(){
+      const kmRow = document.getElementById('km-row');
+      const gridW = document.querySelector('.grid').offsetWidth;
+      kmRow.style.maxWidth = gridW + 'px';
     }
+    window.addEventListener('resize', fitKmRow);
 
-    function runAnimation() {
-      const unit = document.getElementById("km-unit");
+    // 5) RUN
+    function runAnimation(){
+      const unit = document.getElementById('km-unit');
       unit.style.opacity = 0;
       fitKmRow();
 
       const endVal = parseFloat(parsedData.km || 0);
-      animateNumber("km", 0, isNaN(endVal) ? 0 : endVal, 2200).then(() => {
+      animateNumber('km', 0, isNaN(endVal) ? 0 : endVal, 2200).then(()=>{
         unit.style.opacity = 1;
+
         const show = (id, val) => {
-          const noData = val == null || /^--$/.test(String(val));
-          document.getElementById(id).textContent = noData ? '—' : val;
+          const s = String(val ?? '');
+          const isMissing = !s || /^--$/.test(s) || /^[–—]+$/.test(s) || /^-+$/.test(s);
+          document.getElementById(id).textContent = isMissing ? '—' : s;
         };
+
         show('pace',      parsedData.pace);
         show('time',      parsedData.time);
         show('calories',  parsedData.calories);
         show('elevation', parsedData.elevation);
         show('heartrate', parsedData.heartrate);
         show('cadence',   parsedData.cadence);
+
         fitKmRow();
       });
     }
 
-    function setFont(fontName) {
-      const km = document.getElementById("km");
-      const unit = document.getElementById("km-unit");
-      const smallFonts = ["Jost", "Orbitron"];
-      const baseSize = smallFonts.includes(fontName) ? 120 : 150;
-      const isJost = fontName === "Jost";
+    // 6) 폰트/배경 (기존 레이아웃 유지)
+    function setFont(fontName){
+      const km = document.getElementById('km');
+      const unit = document.getElementById('km-unit');
+      const small = ['Jost','Orbitron'].includes(fontName);
+      const base = small ? 160 : 200;
+      const isJost = fontName === 'Jost';
 
       km.style.fontFamily = fontName;
-      km.style.fontSize = baseSize + "px";
-      km.style.fontStyle = isJost ? "italic" : "normal";
-      km.style.fontWeight = isJost ? "800" : "700";
+      km.style.fontSize   = base + 'px';
+      km.style.fontStyle  = isJost ? 'italic' : 'normal';
+      km.style.fontWeight = isJost ? '800' : '700';
 
       unit.style.fontFamily = fontName;
-      unit.style.fontSize = Math.round(baseSize * 0.4) + "px";
-      unit.style.fontStyle = isJost ? "italic" : "normal";
-      unit.style.fontWeight = isJost ? "800" : "700";
+      unit.style.fontSize   = Math.round(base * 0.4) + 'px';
+      unit.style.fontStyle  = isJost ? 'italic' : 'normal';
+      unit.style.fontWeight = isJost ? '800' : '700';
+
+      fitKmRow();
     }
 
-    function setBackground(color) {
-      const isBlack = color === 'black';
-      document.body.style.backgroundColor = isBlack ? "#000" : "#fff";
-      document.body.style.color = isBlack ? "#fff" : "#000";
+    function setBackground(color){
+      const dark = color === 'black';
+      document.body.style.backgroundColor = dark ? '#000' : '#fff';
+      document.body.style.color = dark ? '#fff' : '#000';
     }
-
-    window.addEventListener('resize', fitKmRow);
   </script>
 </body>
 </html>
