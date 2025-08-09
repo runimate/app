@@ -34,15 +34,8 @@
     .stage-outer{ padding:10px 0 24px; }
     .stage-inner{ width:100%; max-width:var(--maxw); margin:0 auto; padding:0 var(--pad); }
 
-    .km-row-wrap{
-      display:flex; justify-content:center;
-      margin:18px auto 8px;
-      width:100%;
-    }
-    .km-row{
-      display:flex; align-items:baseline; gap:10px;
-      transform-origin:center bottom; will-change:transform;
-    }
+    .km-row-wrap{ display:flex; justify-content:center; margin:18px auto 8px; width:100%; }
+    .km-row{ display:flex; align-items:baseline; gap:10px; transform-origin:center bottom; will-change:transform; }
     #km{
       font-family:'Jost',sans-serif; font-style:italic; font-weight:800;
       font-size:200px; line-height:1; white-space:nowrap;
@@ -54,7 +47,7 @@
 
     .grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:10px; color:inherit; text-align:center; }
     .stat{ font-size:16px; font-weight:800; color:inherit; }
-    .label{ font-size:12px; color:inherit; opacity:.9; }
+    .label{ font-size:12px; color:inherit; }
 
     /* 포커스 모드 */
     body.focus .top-ui{ display:none; }
@@ -137,18 +130,28 @@
   <script>
     let parsedData = {};
 
+    // ✅ 강력한 토큰 인식: -- | 12.34 | 1:28:33 | 59:26 | 7'22" | 1234
+    const TOKEN_RE = /--|\d+\.\d+|\d+:\d+:\d+|\d+:\d+|\d{1,2}'\d{2}"?|\d+/g;
+
     function parseValuesByLine(text){
       const lines = text.trim().split('\n').map(l=>l.trim()).filter(Boolean);
-      const numbers = lines.flatMap(line => line.match(/[\d.:']{1,5}/g) || []);
-      return {
-        km: numbers[0] || null,
-        pace: numbers[1] || null,
-        time: numbers[2] || null,
-        calories: numbers[3] || null,
-        elevation: numbers[4] || null,
-        heartrate: numbers[5] || null,
-        cadence: numbers[6] || null,
+      const tokens = lines.flatMap(line => line.match(TOKEN_RE) || []);
+
+      // 맵핑 순서는 기존 로직 유지 (KM, Pace, Time, Calories, Elevation, Heart, Cadence)
+      const data = {
+        km:        tokens[0] || null,
+        pace:      tokens[1] || null,
+        time:      tokens[2] || null,
+        calories:  tokens[3] || null,
+        elevation: tokens[4] || null,
+        heartrate: tokens[5] || null,
+        cadence:   tokens[6] || null,
       };
+
+      // 심박 '--' → 화면용 em dash
+      if (data.heartrate && /^-+$/.test(data.heartrate)) data.heartrate = '—';
+
+      return data;
     }
 
     document.getElementById("file-upload").addEventListener("change", async (e)=>{
@@ -164,7 +167,7 @@
       reader.readAsDataURL(file);
     });
 
-    // easeOutCubic 카운트업
+    // 부드러운 카운트업 (easeOutCubic)
     const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
     function animateNumber(id,start,end,duration){
       return new Promise(resolve=>{
@@ -181,7 +184,7 @@
       });
     }
 
-    // === 상단 숫자+km를 "하단 그리드 폭 / stage 폭 / 뷰포트" 중 가장 안전한 폭에 맞춤 ===
+    // 상단 숫자+km를 하단 그리드/스테이지/뷰포트의 가용폭에 맞춰 자동 스케일
     function fitKmRow() {
       const stage = document.getElementById('stage');
       const grid  = document.getElementById('stats-grid');
@@ -191,7 +194,7 @@
       const vw = document.documentElement.clientWidth;
       const safe = vw - 2*16; // 좌우 패딩 고려
       const candidates = [grid?.clientWidth || 0, stage.clientWidth, safe].filter(Boolean);
-      const avail = Math.max(0, Math.min(...candidates)) - 8;   // 살짝 여유
+      const avail = Math.max(0, Math.min(...candidates)) - 8;
 
       wrap.style.width = avail + 'px';
       row.style.transformOrigin = 'center bottom';
@@ -209,9 +212,13 @@
       const endVal = parseFloat(parsedData.km || 0);
       await animateNumber("km", 0, isNaN(endVal)?0:endVal, 2200);
       unit.style.opacity = 1;
+
       ["pace","time","calories","elevation","heartrate","cadence"].forEach(k=>{
-        document.getElementById(k).textContent = parsedData[k] || "-";
+        const val = parsedData[k];
+        document.getElementById(k).textContent =
+          (val !== null && val !== undefined && val !== '') ? val : "-";
       });
+
       fitKmRow();                                       // 애니 후 다시 맞춤
     }
 
