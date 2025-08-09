@@ -1,156 +1,169 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>RUNNING MILEAGE ANIMATION MAKER</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@1,800&family=Orbitron:wght@700&family=Bebas+Neue&family=Big+Shoulders+Inline+Text:wght@700&family=Caveat+Brush&family=Handjet:wght@500&display=swap" rel="stylesheet">
   <style>
-    :root{ --pad:16px; --maxw:480px; }
-    *{box-sizing:border-box}
-    body{ margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; background:#fff; color:#000; }
-    header{ padding:var(--pad); text-align:center; }
-    h1{ margin:6px 0 2px; font-size:18px; font-weight:800; }
-    .subtitle{ font-size:12px; opacity:.8 }
-
-    .wrap{ width:100%; max-width:var(--maxw); margin:0 auto; padding:0 var(--pad); }
-    .section{ margin:14px 0; }
-
-    .upload-box{ border:1px solid #ddd; border-radius:10px; padding:16px; }
-    .upload-label{ display:block; background:#000; color:#fff; padding:12px 14px; font-weight:800; border-radius:8px; text-align:center; margin-bottom:10px; }
-    .status{ color:#17a34a; font-weight:700; font-size:13px; }
-
-    .control-title{ font-size:13px; font-weight:800; margin:10px 0; }
-    .font-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-    .font-grid button,.bg-row button,.run-button{
-      width:100%; height:44px; border-radius:10px; border:2px solid #000;
-      background:#fff; color:#000; font-size:14px; font-weight:700;
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+      background-color: #fff;
+      color: #000;
     }
-    .bg-row{ display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
-    .run-button{ background:#000; color:#7fff00; border-color:#0070ff; margin-top:6px; }
-
-    .stage-outer{ padding:10px 0 24px; }
-    .stage-inner{ width:100%; max-width:var(--maxw); margin:0 auto; padding:0 var(--pad); }
-
-    .km-row-wrap{ display:flex; justify-content:center; margin:18px auto 8px; width:100%; }
-    .km-row{ display:flex; align-items:baseline; gap:10px; transform-origin:center bottom; will-change:transform; }
-    #km{ font-family:'Jost',sans-serif; font-style:italic; font-weight:800; font-size:200px; line-height:1; white-space:nowrap; }
-    #km-unit{ font-size:80px; line-height:1; transform:translateY(-10px); opacity:0; transition:opacity 400ms ease; white-space:nowrap; }
-
-    .grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:10px; color:#000; text-align:center; }
-    .stat{ font-size:16px; font-weight:800; color:#000; }
-    .label{ font-size:12px; color:#000; opacity:.9; }
-
-    body.focus .top-ui{ display:none; }
-    body.focus #exit-focus{
-      display:block; position:fixed; z-index:20; top: env(safe-area-inset-top, 8px); right:10px;
-      width:40px; height:40px; border-radius:20px; border:2px solid #000; background:#fff; color:#000; font-weight:800;
+    h1 { font-weight: bold; }
+    .subtitle { font-size: 14px; margin-bottom: 20px; }
+    .upload-box {
+      border: 1px solid #ddd;
+      padding: 20px;
+      margin-bottom: 20px;
+      display: inline-block;
     }
-    #exit-focus{ display:none; }
-
-    .bg-black{ background:#000; color:#fff; }
-    .bg-white{ background:#fff; color:#000; }
+    .upload-label {
+      display: block;
+      background-color: black;
+      color: white;
+      padding: 10px 20px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      cursor: pointer;
+    }
+    .status { color: green; margin-bottom: 10px; font-weight: bold; }
+    .run-button {
+      background-color: black;
+      color: #7fff00;
+      padding: 10px 20px;
+      font-size: 20px;
+      border: 2px solid #0070ff;
+      border-radius: 5px;
+      cursor: pointer;
+      display: none;
+    }
+    .km-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      margin: 20px auto 10px;
+      max-width: 90%;
+    }
+    #km {
+      font-family: 'Jost', sans-serif;
+      font-style: italic;
+      font-weight: 800;
+      font-size: 120px;
+      line-height: 1;
+    }
+    #km-unit {
+      margin-left: 8px;
+      font-size: 48px;
+      line-height: 1;
+      opacity: 0;
+      transition: opacity 0.8s ease-in-out;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      max-width: 90%;
+      margin: 10px auto 0;
+      text-align: center;
+    }
+    .stat { font-size: 20px; font-weight: bold; }
+    .label { font-size: 14px; color: black; }
+    .font-controls, .bg-controls { margin-top: 15px; }
+    .font-controls button, .bg-controls button {
+      margin: 4px;
+      padding: 6px 10px;
+      font-size: 14px;
+      cursor: pointer;
+      border-radius: 5px;
+      height: 36px;
+    }
+    .font-controls button { font-size: 18px; }
   </style>
 </head>
-<body class="bg-white">
-  <header>
-    <h1>RUNNING MILEAGE ANIMATION MAKER</h1>
-    <div class="subtitle">by JS @runarchive.js</div>
-  </header>
+<body>
+  <h1>RUNNING MILEAGE ANIMATION MAKER</h1>
+  <div class="subtitle">by JS @runarchive.js</div>
 
-  <!-- 모바일 우선 UI -->
-  <div class="top-ui">
-    <div class="wrap">
-      <section class="section upload-box">
-        <label for="file-upload" class="upload-label">기록 이미지 업로드</label>
-        <input type="file" id="file-upload" accept="image/*" style="display:none;" />
-        <div class="status" id="upload-status"></div>
-      </section>
-
-      <section class="section">
-        <div class="control-title">Font</div>
-        <div class="font-grid">
-          <button style="font-family:'Jost'; font-style:italic; font-weight:800;" onclick="setFont('Jost')">Jost</button>
-          <button style="font-family:'Orbitron'; font-weight:700;" onclick="setFont('Orbitron')">Orbitron</button>
-          <button style="font-family:'Bebas Neue';" onclick="setFont('Bebas Neue')">Bebas</button>
-          <button style="font-family:'Big Shoulders Inline Text';" onclick="setFont('Big Shoulders Inline Text')">Big Sh.</button>
-          <button style="font-family:'Caveat Brush';" onclick="setFont('Caveat Brush')">Caveat</button>
-          <button style="font-family:'Handjet';" onclick="setFont('Handjet')">Handjet</button>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="control-title">Background</div>
-        <div class="bg-row">
-          <button onclick="setBackground('black')">Black</button>
-          <button onclick="setBackground('white')">White</button>
-        </div>
-      </section>
-
-      <section class="section">
-        <button class="run-button" id="run-btn" onclick="onRun()">RUN</button>
-      </section>
-    </div>
+  <div class="upload-box">
+    <label for="file-upload" class="upload-label">기록 이미지 업로드</label>
+    <input type="file" id="file-upload" accept="image/*" style="display: none;" />
+    <div class="status" id="upload-status"></div>
+    <button class="run-button" id="run-btn" onclick="runAnimation()">RUN</button>
   </div>
 
-  <button id="exit-focus" title="Close" onclick="exitFocus()">✕</button>
+  <div class="font-controls">
+    <div><strong>Font</strong></div>
+    <button style="font-family: 'Jost', sans-serif; font-style: italic; font-weight: 800;" onclick="setFont('Jost')">Jost</button>
+    <button style="font-family: 'Orbitron', sans-serif; font-weight: 700;" onclick="setFont('Orbitron')">Orbitron</button>
+    <button style="font-family: 'Bebas Neue', sans-serif; font-weight: 400;" onclick="setFont('Bebas Neue')">Bebas Neue</button>
+    <button style="font-family: 'Big Shoulders Inline Text', cursive; font-weight: 700;" onclick="setFont('Big Shoulders Inline Text')">Big Shoulders</button>
+    <button style="font-family: 'Caveat Brush', cursive; font-weight: 400;" onclick="setFont('Caveat Brush')">Caveat Brush</button>
+    <button style="font-family: 'Handjet', cursive; font-weight: 500;" onclick="setFont('Handjet')">Handjet</button>
+  </div>
 
-  <!-- 스테이지 -->
-  <section class="stage-outer">
-    <div class="stage-inner" id="stage">
-      <div class="km-row-wrap">
-        <div class="km-row" id="km-row">
-          <div id="km">0.00</div>
-          <div id="km-unit">km</div>
-        </div>
-      </div>
+  <div class="bg-controls">
+    <div><strong>Background</strong></div>
+    <button onclick="setBackground('black')">Black</button>
+    <button onclick="setBackground('white')">White</button>
+  </div>
 
-      <div class="grid" id="stats-grid">
-        <div><div class="stat" id="pace">-</div><div class="label">Avg. Pace</div></div>
-        <div><div class="stat" id="time">-</div><div class="label">Time</div></div>
-        <div><div class="stat" id="calories">-</div><div class="label">Calories</div></div>
-        <div><div class="stat" id="elevation">-</div><div class="label">Elevation Gain</div></div>
-        <div><div class="stat" id="heartrate">-</div><div class="label">Avg. Heart Rate</div></div>
-        <div><div class="stat" id="cadence">-</div><div class="label">Cadence</div></div>
-      </div>
-    </div>
-  </section>
+  <div class="km-row" id="km-row">
+    <div id="km">0.00</div>
+    <div id="km-unit">km</div>
+  </div>
+
+  <div class="grid">
+    <div><div class="stat" id="pace">-</div><div class="label">Avg. Pace</div></div>
+    <div><div class="stat" id="time">-</div><div class="label">Time</div></div>
+    <div><div class="stat" id="calories">-</div><div class="label">Calories</div></div>
+    <div><div class="stat" id="elevation">-</div><div class="label">Elevation Gain</div></div>
+    <div><div class="stat" id="heartrate">-</div><div class="label">Avg. Heart Rate</div></div>
+    <div><div class="stat" id="cadence">-</div><div class="label">Cadence</div></div>
+  </div>
 
   <script>
     let parsedData = {};
 
-    /* ▼▼ 여기 변경: 시간 1:28:33도 한 토큰으로 잡고 필터링 ▼▼ */
     function parseValuesByLine(text) {
-      const rawLines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
-      // 길이 여유를 10자로, 따옴표/콜론 포함
-      const rawTokens = rawLines.flatMap(line => line.match(/[\d:'"]{1,10}/g) || []);
+      let norm = text
+        .replace(/[—–−]/g, '-')      // dash 통일
+        .replace(/-\s*-/g, '--')     // "--"로 통일
+        .replace(/[♡❤]/g, '');       // 하트 제거
+
+      const rawLines  = norm.trim().split('\n').map(l => l.trim()).filter(Boolean);
+      const rawTokens = rawLines.flatMap(line => line.match(/[\d:'"mMkK-]{1,10}/g) || []);
 
       const isValid = (t) =>
-        /^\d{1,2}\.\d{1,2}$/.test(t) ||           // 거리 7.80
-        /^\d{1,2}:\d{2}(?::\d{2})?$/.test(t) ||   // 53:24 또는 1:28:33
-        /^\d{1,2}'\d{2}"?$/.test(t) ||            // 6'51"
-        /^\d{1,4}\s*m$/i.test(t) ||               // 36 m
-        /^\d{1,4}$/.test(t);                      // 정수(칼로리/심박/케이던스)
+        /^\d{1,2}\.\d{1,2}$/.test(t) ||            // km
+        /^\d{1,2}:\d{2}(?::\d{2})?$/.test(t) ||    // mm:ss or hh:mm:ss
+        /^\d{1,2}'\d{2}"?$/.test(t) ||             // pace
+        /^\d{1,4}\s*m$/i.test(t) ||                // m
+        /^\d{1,4}$/.test(t) ||                     // 정수
+        /^--$/.test(t);                            // 결측값
 
       const tokens = rawTokens.filter(isValid);
 
       return {
         km:        tokens[0] || null,
         pace:      tokens[1] || null,
-        time:      tokens[2] || null,   // ← 1:28:33도 제대로 들어옴
+        time:      tokens[2] || null,
         calories:  tokens[3] || null,
         elevation: tokens[4] || null,
         heartrate: tokens[5] || null,
         cadence:   tokens[6] || null
       };
     }
-    /* ▲▲ 변경 끝 ▲▲ */
 
-    document.getElementById("file-upload").addEventListener("change", async (e)=>{
-      const file = e.target.files[0]; if(!file) return;
+    document.getElementById("file-upload").addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
       document.getElementById("upload-status").textContent = "업로드 완료";
-      document.getElementById("run-btn").style.display = "block";
+      document.getElementById("run-btn").style.display = "inline-block";
       const reader = new FileReader();
       reader.onload = async () => {
         const img = reader.result;
@@ -160,91 +173,75 @@
       reader.readAsDataURL(file);
     });
 
-    const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
-    function animateNumber(id,start,end,duration){
-      return new Promise(resolve=>{
+    function animateNumber(id, start, end, duration) {
+      return new Promise((resolve) => {
         const el = document.getElementById(id);
         let startTime;
-        function update(now){
-          if(!startTime) startTime = now;
-          const raw = Math.min((now - startTime)/duration,1);
-          const eased = easeOutCubic(raw);
-          el.textContent = (start + (end-start)*eased).toFixed(2);
-          raw < 1 ? requestAnimationFrame(update) : resolve();
+        function update(currentTime) {
+          if (!startTime) startTime = currentTime;
+          const progress = Math.min((currentTime - startTime) / duration, 1);
+          const value = (start + (end - start) * progress).toFixed(2);
+          el.textContent = value;
+          if (progress < 1) requestAnimationFrame(update);
+          else resolve();
         }
         requestAnimationFrame(update);
       });
     }
 
     function fitKmRow() {
-      const stage = document.getElementById('stage');
-      const grid  = document.getElementById('stats-grid');
-      const wrap  = document.querySelector('.km-row-wrap');
-      const row   = document.getElementById('km-row');
-
-      const vw = document.documentElement.clientWidth;
-      const safe = vw - 2*16;
-      const candidates = [grid?.clientWidth || 0, stage.clientWidth, safe].filter(Boolean);
-      const avail = Math.max(0, Math.min(...candidates)) - 8;
-
-      wrap.style.width = avail + 'px';
-      row.style.transformOrigin = 'center bottom';
-      row.style.transform = 'scale(1)';
-
-      const need  = row.scrollWidth;
-      const scale = need ? Math.min(1, avail / need) : 1;
-      row.style.transform = `scale(${scale})`;
+      const kmRow = document.getElementById("km-row");
+      const gridWidth = document.querySelector(".grid").offsetWidth;
+      kmRow.style.maxWidth = gridWidth + "px";
     }
 
-    async function runAnimation(){
+    function runAnimation() {
       const unit = document.getElementById("km-unit");
       unit.style.opacity = 0;
-      await Promise.resolve().then(fitKmRow);
-      const endVal = parseFloat(parsedData.km || 0);
-      await animateNumber("km", 0, isNaN(endVal)?0:endVal, 2200);
-      unit.style.opacity = 1;
-      ["pace","time","calories","elevation","heartrate","cadence"].forEach(k=>{
-        document.getElementById(k).textContent = parsedData[k] || "-";
-      });
       fitKmRow();
+
+      const endVal = parseFloat(parsedData.km || 0);
+      animateNumber("km", 0, isNaN(endVal) ? 0 : endVal, 2200).then(() => {
+        unit.style.opacity = 1;
+        const show = (id, val) => {
+          const noData = val == null || /^--$/.test(String(val));
+          document.getElementById(id).textContent = noData ? '—' : val;
+        };
+        show('pace',      parsedData.pace);
+        show('time',      parsedData.time);
+        show('calories',  parsedData.calories);
+        show('elevation', parsedData.elevation);
+        show('heartrate', parsedData.heartrate);
+        show('cadence',   parsedData.cadence);
+        fitKmRow();
+      });
     }
 
-    function onRun(){
-      document.body.classList.add('focus');
-      document.getElementById('stage').scrollIntoView({behavior:'smooth', block:'center'});
-      runAnimation();
-    }
-    function exitFocus(){
-      document.body.classList.remove('focus');
-      window.scrollTo({top:0, behavior:'smooth'});
-    }
-
-    function setFont(font){
+    function setFont(fontName) {
       const km = document.getElementById("km");
       const unit = document.getElementById("km-unit");
-      const small = ["Jost","Orbitron"];  // 160px
-      const base  = small.includes(font) ? 160 : 200;
-      const isJost = font === "Jost";
-      km.style.fontFamily = font;
-      km.style.fontSize   = base + "px";
-      km.style.fontStyle  = isJost ? "italic" : "normal";
+      const smallFonts = ["Jost", "Orbitron"];
+      const baseSize = smallFonts.includes(fontName) ? 120 : 150;
+      const isJost = fontName === "Jost";
+
+      km.style.fontFamily = fontName;
+      km.style.fontSize = baseSize + "px";
+      km.style.fontStyle = isJost ? "italic" : "normal";
       km.style.fontWeight = isJost ? "800" : "700";
-      unit.style.fontFamily = font;
-      unit.style.fontSize   = Math.round(base*0.4) + "px";
-      unit.style.fontStyle  = isJost ? "italic" : "normal";
+
+      unit.style.fontFamily = fontName;
+      unit.style.fontSize = Math.round(baseSize * 0.4) + "px";
+      unit.style.fontStyle = isJost ? "italic" : "normal";
       unit.style.fontWeight = isJost ? "800" : "700";
-      fitKmRow();
     }
 
-    function setBackground(color){
-      const b = document.body;
-      if(color==='black'){ b.classList.remove('bg-white'); b.classList.add('bg-black'); }
-      else { b.classList.remove('bg-black'); b.classList.add('bg-white'); }
+    function setBackground(color) {
+      const isBlack = color === 'black';
+      document.body.style.backgroundColor = isBlack ? "#000" : "#fff";
+      document.body.style.color = isBlack ? "#fff" : "#000";
     }
 
     window.addEventListener('resize', fitKmRow);
-    window.addEventListener('orientationchange', ()=> setTimeout(fitKmRow, 150));
-    window.onload = ()=> { setFont('Jost'); fitKmRow(); };
   </script>
 </body>
 </html>
