@@ -2,339 +2,256 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>RUNNING MILEAGE ANIMATION MAKER</title>
-
-  <!-- Tesseract -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
-
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,700;1,800&family=Orbitron:wght@700&family=Bebas+Neue&family=Big+Shoulders+Inline+Text:wght@700&family=Caveat+Brush&family=Handjet:wght@500&display=swap" rel="stylesheet">
-
+  <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@1,800&family=Orbitron:wght@700&family=Bebas+Neue&family=Big+Shoulders+Inline+Text:wght@700&family=Caveat+Brush&family=Handjet:wght@500&display=swap" rel="stylesheet">
   <style>
-    :root{
-      /* 폰트별 기본 사이즈(모바일 기준) */
-      --kmSize: 180px;        /* 기본 */
-      --unitRatio: 0.40;      /* km = 숫자의 40% */
-    }
+    :root{ --pad:16px; --maxw:480px; }
+    *{box-sizing:border-box}
+    body{ margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; background:#fff; color:#000; }
+    header{ padding:var(--pad); text-align:center; }
+    h1{ margin:6px 0 2px; font-size:18px; font-weight:800; }
+    .subtitle{ font-size:12px; opacity:.8 }
 
-    *{ box-sizing:border-box; }
-    html,body{ margin:0; padding:0; }
-    body{
-      font-family: Arial, sans-serif;
-      color:#000; background:#fff;
-      text-align:center;
-      padding:24px 16px 40px;
-    }
+    .wrap{ width:100%; max-width:var(--maxw); margin:0 auto; padding:0 var(--pad); }
+    .section{ margin:14px 0; }
 
-    h1{ margin:0 0 6px; font-size: clamp(20px, 5.8vw, 28px); font-weight:900; letter-spacing:.3px; }
-    .subtitle{ font-size:12px; opacity:.7; margin-bottom:18px; }
+    .upload-box{ border:1px solid #ddd; border-radius:10px; padding:16px; }
+    .upload-label{ display:block; background:#000; color:#fff; padding:12px 14px; font-weight:800; border-radius:8px; text-align:center; margin-bottom:10px; }
+    .status{ color:#17a34a; font-weight:700; font-size:13px; }
 
-    /* 업로드 박스(첫번째 이미지 레이아웃) */
-    .upload-box{
-      width:100%; max-width:420px; margin:0 auto 18px;
-      border:1px solid #ddd; border-radius:10px; padding:18px 16px;
+    .control-title{ font-size:13px; font-weight:800; margin:10px 0; }
+    .font-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+    .font-grid button,.bg-row button,.run-button{
+      width:100%; height:44px; border-radius:10px; border:2px solid #000;
+      background:#fff; color:#000; font-size:14px; font-weight:700;
     }
-    .upload-label{
-      display:inline-block; background:#000; color:#fff;
-      padding:10px 16px; border-radius:8px; font-weight:700;
-    }
-    .hidden{ display:none; }
-    .status{ margin:10px 0; font-weight:700; color:#2e7d32; min-height:20px; }
+    .bg-row{ display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
+    .run-button{ background:#000; color:#7fff00; border-color:#0070ff; margin-top:6px; }
 
-    .run-button{
-      display:none; width:100%; max-width:240px;
-      margin:8px auto 0; padding:14px 16px; border-radius:10px;
-      background:#000; color:#7fff00; font-size:22px; font-weight:800;
-      border:2px solid #0a58ff; box-shadow:0 0 0 1px rgba(0,0,0,.04);
-    }
+    /* ===== 스테이지 ===== */
+    .stage-outer{ padding:10px 0 24px; }
+    .stage-inner{ width:100%; max-width:var(--maxw); margin:0 auto; padding:0 var(--pad); }
 
-    /* 컨트롤(폰트/배경) : 모바일 우선, 가운데 정렬 */
-    .controls{ max-width:680px; margin:8px auto 16px; }
-    .group-title{ font-weight:800; margin:8px 0 6px; }
-    .btns{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; }
-    .btn{
-      padding:9px 14px; border:1.5px solid #222; border-radius:10px;
-      background:#fff; cursor:pointer; font-weight:700; min-width:110px;
+    .km-row-wrap{
+      display:flex; justify-content:center;
+      margin:18px auto 8px;
+      width:100%;
     }
-    .btn:active{ transform:translateY(1px); }
-    .font-btn{ font-size:18px; height:44px; }
-
-    /* 상단 숫자 */
     .km-row{
-      max-width:min(92vw, 680px);
-      margin:16px auto 10px;
-      display:flex; align-items:baseline; justify-content:center;
-      gap:10px;
+      display:flex; align-items:baseline; gap:10px;
+      transform-origin:center bottom; will-change:transform;
     }
     #km{
-      font-family: 'Jost', sans-serif; /* 초기값 */
-      font-style: italic;
-      font-weight:800;
-      line-height:1;
-      /* 뷰포트 기반 + 상한제 */
-      font-size: clamp(80px, 18vw, var(--kmSize));
+      font-family:'Jost',sans-serif; font-style:italic; font-weight:800;
+      font-size:200px; line-height:1; white-space:nowrap;
     }
     #km-unit{
-      opacity:0; transition:opacity .45s ease;
-      line-height:1;
-      transform: translateY(.08em); /* 숫자와 하단선 맞춤 */
-      font-size: calc(var(--kmSize) * var(--unitRatio));
-      font-family: inherit; font-weight: inherit; font-style: inherit;
+      font-size:80px; line-height:1; transform:translateY(-10px);
+      opacity:0; transition:opacity 400ms ease; white-space:nowrap;
     }
-    .unit-visible #km-unit{ opacity:1; }
 
-    /* 3x2 그리드 */
-    .grid{
-      max-width: min(92vw, 680px);
-      margin:14px auto 0;
-      display:grid; grid-template-columns: repeat(3, 1fr);
-      column-gap: 12px; row-gap: 18px;
-      text-align:center;
+    .grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:10px; color:inherit; text-align:center; }
+    .stat{ font-size:16px; font-weight:800; color:inherit; }
+    .label{ font-size:12px; color:inherit; opacity:.9; }
+
+    /* 포커스 모드 */
+    body.focus .top-ui{ display:none; }
+    body.focus #exit-focus{
+      display:block; position:fixed; z-index:20;
+      top: env(safe-area-inset-top, 8px); right:10px;
+      width:40px; height:40px; border-radius:20px;
+      border:2px solid #000; background:#fff; color:#000; font-weight:800;
     }
-    .stat{ font-size: clamp(18px, 5.5vw, 28px); font-weight:900; }
-    .label{ font-size: clamp(12px, 3.8vw, 16px); margin-top:6px; font-weight:700; color:#000; }
+    #exit-focus{ display:none; }
 
-    /* 어두운 배경 스위치 대비 */
-    .dark body{ color:#fff; background:#000; }
+    .bg-black{ background:#000; color:#fff; }
+    .bg-white{ background:#fff; color:#000; }
   </style>
 </head>
-<body>
-  <h1>RUNNING MILEAGE ANIMATION MAKER</h1>
-  <div class="subtitle">by JS @runarchive.js</div>
+<body class="bg-white">
+  <header>
+    <h1>RUNNING MILEAGE ANIMATION MAKER</h1>
+    <div class="subtitle">by JS @runarchive.js</div>
+  </header>
 
-  <!-- 업로드 박스 (Run 버튼 포함) -->
-  <div class="upload-box">
-    <label for="file-upload" class="upload-label">기록 이미지 업로드</label>
-    <input id="file-upload" type="file" accept="image/*" class="hidden" />
-    <div id="upload-status" class="status"></div>
-    <button id="run-btn" class="run-button">RUN</button>
+  <!-- 설정 UI (모바일 우선) -->
+  <div class="top-ui">
+    <div class="wrap">
+      <section class="section upload-box">
+        <label for="file-upload" class="upload-label">기록 이미지 업로드</label>
+        <input type="file" id="file-upload" accept="image/*" style="display:none;" />
+        <div class="status" id="upload-status"></div>
+      </section>
+
+      <section class="section">
+        <div class="control-title">Font</div>
+        <div class="font-grid">
+          <button style="font-family:'Jost'; font-style:italic; font-weight:800;" onclick="setFont('Jost')">Jost</button>
+          <button style="font-family:'Orbitron'; font-weight:700;" onclick="setFont('Orbitron')">Orbitron</button>
+          <button style="font-family:'Bebas Neue';" onclick="setFont('Bebas Neue')">Bebas</button>
+          <button style="font-family:'Big Shoulders Inline Text';" onclick="setFont('Big Shoulders Inline Text')">Big Sh.</button>
+          <button style="font-family:'Caveat Brush';" onclick="setFont('Caveat Brush')">Caveat</button>
+          <button style="font-family:'Handjet';" onclick="setFont('Handjet')">Handjet</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="control-title">Background</div>
+        <div class="bg-row">
+          <button onclick="setBackground('black')">Black</button>
+          <button onclick="setBackground('white')">White</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <button class="run-button" id="run-btn" onclick="onRun()">RUN</button>
+      </section>
+    </div>
   </div>
 
-  <!-- 컨트롤: Font / Background (모바일 우선) -->
-  <div class="controls">
-    <div class="group">
-      <div class="group-title">Font</div>
-      <div class="btns">
-        <button class="btn font-btn" style="font-family:'Jost',sans-serif;font-style:italic;font-weight:800" data-font="Jost">Jost</button>
-        <button class="btn font-btn" style="font-family:'Orbitron',sans-serif;font-weight:700" data-font="Orbitron">Orbitron</button>
-        <button class="btn font-btn" style="font-family:'Bebas Neue',sans-serif" data-font="Bebas Neue">BEBAS NEUE</button>
-        <button class="btn font-btn" style="font-family:'Big Shoulders Inline Text',cursive" data-font="Big Shoulders Inline Text">Big Shoulders</button>
-        <button class="btn font-btn" style="font-family:'Caveat Brush',cursive" data-font="Caveat Brush">Caveat</button>
-        <button class="btn font-btn" style="font-family:'Handjet',cursive" data-font="Handjet">Handjet</button>
+  <button id="exit-focus" title="Close" onclick="exitFocus()">✕</button>
+
+  <!-- 스테이지 -->
+  <section class="stage-outer">
+    <div class="stage-inner" id="stage">
+      <div class="km-row-wrap">
+        <div class="km-row" id="km-row">
+          <div id="km">0.00</div>
+          <div id="km-unit">km</div>
+        </div>
+      </div>
+
+      <div class="grid" id="stats-grid">
+        <div><div class="stat" id="pace">-</div><div class="label">Avg. Pace</div></div>
+        <div><div class="stat" id="time">-</div><div class="label">Time</div></div>
+        <div><div class="stat" id="calories">-</div><div class="label">Calories</div></div>
+        <div><div class="stat" id="elevation">-</div><div class="label">Elevation Gain</div></div>
+        <div><div class="stat" id="heartrate">-</div><div class="label">Avg. Heart Rate</div></div>
+        <div><div class="stat" id="cadence">-</div><div class="label">Cadence</div></div>
       </div>
     </div>
-
-    <div class="group" style="margin-top:14px;">
-      <div class="group-title">Background</div>
-      <div class="btns">
-        <button class="btn" data-bg="black">Black</button>
-        <button class="btn" data-bg="white">White</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 숫자 + 단위 -->
-  <div id="km-row" class="km-row">
-    <div id="km">0.00</div>
-    <div id="km-unit">km</div>
-  </div>
-
-  <!-- 3x2 -->
-  <div class="grid">
-    <div>
-      <div id="pace" class="stat">—</div>
-      <div class="label">Avg. Pace</div>
-    </div>
-    <div>
-      <div id="time" class="stat">—</div>
-      <div class="label">Time</div>
-    </div>
-    <div>
-      <div id="calories" class="stat">—</div>
-      <div class="label">Calories</div>
-    </div>
-    <div>
-      <div id="elevation" class="stat">—</div>
-      <div class="label">Elevation Gain</div>
-    </div>
-    <div>
-      <div id="heartrate" class="stat">—</div>
-      <div class="label">Avg. Heart Rate</div>
-    </div>
-    <div>
-      <div id="cadence" class="stat">—</div>
-      <div class="label">Cadence</div>
-    </div>
-  </div>
+  </section>
 
   <script>
-    /* ---------- 상태 ---------- */
     let parsedData = {};
-    const $ = (id)=>document.getElementById(id);
 
-    /* ---------- OCR 텍스트 정규화 ---------- */
-    function normalizeOCR(raw){
-      if(!raw) return "";
-      let t = raw;
-
-      // 공백/줄바꿈 정리
-      t = t.replace(/\r/g,'').replace(/\t/g,' ').replace(/[ ]{2,}/g,' ');
-      // 스마트 따옴표 → ASCII
-      t = t.replace(/[‘’]/g,"'").replace(/[“”]/g,'"');
-      // km 줄 단위 합치기
-      t = t.replace(/K\s*i\s*l\s*o\s*m\s*e\s*t\s*e\s*r\s*s?/gi, "Kilometers");
-      // 한글 라벨 영문화 힌트(있으면)
-      t = t.replace(/킬로미터/gi,'Kilometers')
-           .replace(/시간/gi,'Time')
-           .replace(/칼로리/gi,'Calories')
-           .replace(/평균\s*페이스/gi,'Avg. Pace')
-           .replace(/고도\s*상승/gi,'Elevation Gain')
-           .replace(/평균\s*심박수/gi,'Avg. Heart Rate')
-           .replace(/케이던스/gi,'Cadence');
-
-      return t;
+    function parseValuesByLine(text){
+      const lines = text.trim().split('\n').map(l=>l.trim()).filter(Boolean);
+      const numbers = lines.flatMap(line => line.match(/[\d.:']{1,5}/g) || []);
+      return {
+        km: numbers[0] || null,
+        pace: numbers[1] || null,
+        time: numbers[2] || null,
+        calories: numbers[3] || null,
+        elevation: numbers[4] || null,
+        heartrate: numbers[5] || null,
+        cadence: numbers[6] || null,
+      };
     }
 
-    /* ---------- 안전한 match 헬퍼 ---------- */
-    const safe = (m)=>m && m[1] ? m[1].trim() : null;
-
-    /* ---------- 파서 ---------- */
-    function parseOCR(text){
-      const tt = normalizeOCR(text);
-
-      // 거리: 십진수(최대 2소수점) + Kilometers 라벨 근처
-      let km = safe(tt.match(/(\d{1,2}\.\d{1,2})(?=[^\S\r\n]*\bKilometers?\b)/i));
-      if(!km){
-        // 보정: 가장 큰 소수(예: 15.01)를 첫 값으로 — 화면 캡쳐에 라벨이 사라질 때 대비
-        const all = tt.match(/\b\d{1,2}\.\d{1,2}\b/g);
-        if(all && all.length) km = all[0];
-      }
-
-      // 페이스: 5'54" 형태(분'초") 찾기
-      const pace = safe(tt.match(/\b(\d{1,2}'\d{2}"?)\b/));
-
-      // 시간: h:mm:ss 또는 mm:ss (한 시간 이상도 인식)
-      let time = safe(tt.match(/\b(\d{1,2}:\d{2}:\d{2})\b/)); // 우선 h:mm:ss
-      if(!time) time = safe(tt.match(/\b(\d{1,2}:\d{2})\b/)); // mm:ss
-
-      // 칼로리: 2~4자리 숫자 (Calories 라벨 근처 우선)
-      let calories = safe(tt.match(/\b(\d{2,4})\b(?=[^\n]{0,20}\bCalories\b)/i));
-      if(!calories){
-        // 보정: 3~4자리 숫자 중 하나 (다른 수치와 충돌할 수도 있으니 라벨 우선)
-        calories = safe(tt.match(/\b(\d{3,4})\b/));
-      }
-
-      // 고도: 7 m 등 단위 포함
-      let elevation = safe(tt.match(/\b(\d{1,4}\s*m)\b(?=[^\n]{0,20}\bElevation\b)/i));
-      if(!elevation){
-        const em = safe(tt.match(/\b(\d{1,4})\s*m\b/i));
-        elevation = em ? `${em}` : null;
-      }
-
-      // 심박: "--" 또는 숫자
-      let heartrate = null;
-      if(/(^|[^\d-])--($|[^\d-])/m.test(tt)) heartrate = "--";
-      if(!heartrate) heartrate = safe(tt.match(/\b(\d{2,3})\b(?=[^\n]{0,20}\b(Heart|심박)\b)/i));
-
-      // 케이던스: 2~3자리
-      let cadence = safe(tt.match(/\b(\d{2,3})\b(?=[^\n]{0,20}\b(Cadence|케이던스)\b)/i));
-      if(!cadence){
-        const c = tt.match(/\b\d{2,3}\b/g);
-        if(c && c.length) cadence = c[c.length-1];
-      }
-
-      return { km, pace, time, calories, elevation, heartrate, cadence };
-    }
-
-    /* ---------- 숫자 애니메이션 ---------- */
-    function animateNumber(id, start, end, duration){
-      const el = $(id);
-      let st;
-      function easeOut(t){ return 1 - Math.pow(1-t, 3); } // 조금 더 부드럽게
-      function raf(ts){
-        if(!st) st = ts;
-        const p = Math.min((ts - st)/duration, 1);
-        const v = (start + (end - start) * easeOut(p)).toFixed(2);
-        el.textContent = v;
-        if(p < 1) requestAnimationFrame(raf);
-        else document.getElementById('km-row').classList.add('unit-visible'); // 끝난 뒤 km 페이드인
-      }
-      requestAnimationFrame(raf);
-    }
-
-    /* ---------- 이벤트: 업로드 ---------- */
-    $('file-upload').addEventListener('change', async (e)=>{
-      const file = e.target.files?.[0];
-      if(!file) return;
-
-      $('upload-status').textContent = '이미지 인식 중...';
+    document.getElementById("file-upload").addEventListener("change", async (e)=>{
+      const file = e.target.files[0]; if(!file) return;
+      document.getElementById("upload-status").textContent = "업로드 완료";
+      document.getElementById("run-btn").style.display = "block";
       const reader = new FileReader();
-      reader.onload = async ()=>{
+      reader.onload = async () => {
         const img = reader.result;
-        try{
-          const { data:{text} } = await Tesseract.recognize(img, 'eng');
-          parsedData = parseOCR(text);
-          $('upload-status').textContent = '업로드 완료';
-          $('run-btn').style.display = 'block';
-        }catch(err){
-          $('upload-status').textContent = '인식 실패. 다시 시도해주세요.';
-          console.error(err);
-        }
+        const result = await Tesseract.recognize(img, 'eng');
+        parsedData = parseValuesByLine(result.data.text);
       };
       reader.readAsDataURL(file);
     });
 
-    /* ---------- RUN ---------- */
-    $('run-btn').addEventListener('click', ()=>{
-      const set = (id, v)=> $(id).textContent = v ?? '—';
-
-      // km 애니메이션 & 단위 초기화
-      document.getElementById('km-row').classList.remove('unit-visible');
-      const kmVal = parseFloat(parsedData.km || '0') || 0;
-      animateNumber('km', 0, kmVal, 1700);
-
-      set('pace', parsedData.pace);
-      set('time', parsedData.time);
-      set('calories', parsedData.calories);
-      set('elevation', parsedData.elevation);
-      set('heartrate', parsedData.heartrate); // "--" 그대로 표시
-      set('cadence', parsedData.cadence);
-    });
-
-    /* ---------- 폰트 변경 ---------- */
-    // 사이즈: Jost / Orbitron → 160px, 나머지 → 200px
-    const smallFonts = new Set(['Jost','Orbitron']);
-    document.querySelectorAll('.font-btn').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        const font = btn.dataset.font;
-        const kmEl = $('km');
-        const unitEl = $('km-unit');
-
-        // 기본 크기 결정
-        const base = smallFonts.has(font) ? 160 : 200;
-        document.documentElement.style.setProperty('--kmSize', base+'px');
-
-        // 폰트/스타일
-        kmEl.style.fontFamily = font;
-        if(font === 'Jost'){ kmEl.style.fontStyle='italic'; kmEl.style.fontWeight='800'; }
-        else{ kmEl.style.fontStyle='normal'; kmEl.style.fontWeight='700'; }
-
-        // 단위 km도 동일 폰트/스타일
-        unitEl.style.fontFamily = font;
-        unitEl.style.fontStyle = kmEl.style.fontStyle;
-        unitEl.style.fontWeight = kmEl.style.fontWeight;
+    // easeOutCubic 카운트업
+    const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+    function animateNumber(id,start,end,duration){
+      return new Promise(resolve=>{
+        const el = document.getElementById(id);
+        let startTime;
+        function update(now){
+          if(!startTime) startTime = now;
+          const raw = Math.min((now - startTime)/duration,1);
+          const eased = easeOutCubic(raw);
+          el.textContent = (start + (end-start)*eased).toFixed(2);
+          raw < 1 ? requestAnimationFrame(update) : resolve();
+        }
+        requestAnimationFrame(update);
       });
-    });
+    }
 
-    /* ---------- 배경 변경 ---------- */
-    document.querySelectorAll('[data-bg]').forEach(b=>{
-      b.addEventListener('click', ()=>{
-        const isBlack = b.dataset.bg === 'black';
-        document.body.style.background = isBlack ? '#000' : '#fff';
-        document.body.style.color = isBlack ? '#fff' : '#000';
+    // === 상단 숫자+km를 "하단 그리드 폭 / stage 폭 / 뷰포트" 중 가장 안전한 폭에 맞춤 ===
+    function fitKmRow() {
+      const stage = document.getElementById('stage');
+      const grid  = document.getElementById('stats-grid');
+      const wrap  = document.querySelector('.km-row-wrap');
+      const row   = document.getElementById('km-row');
+
+      const vw = document.documentElement.clientWidth;
+      const safe = vw - 2*16; // 좌우 패딩 고려
+      const candidates = [grid?.clientWidth || 0, stage.clientWidth, safe].filter(Boolean);
+      const avail = Math.max(0, Math.min(...candidates)) - 8;   // 살짝 여유
+
+      wrap.style.width = avail + 'px';
+      row.style.transformOrigin = 'center bottom';
+      row.style.transform = 'scale(1)';
+
+      const need  = row.scrollWidth;
+      const scale = need ? Math.min(1, avail / need) : 1;
+      row.style.transform = `scale(${scale})`;
+    }
+
+    async function runAnimation(){
+      const unit = document.getElementById("km-unit");
+      unit.style.opacity = 0;
+      await Promise.resolve().then(fitKmRow);           // 애니 전 1차 맞춤
+      const endVal = parseFloat(parsedData.km || 0);
+      await animateNumber("km", 0, isNaN(endVal)?0:endVal, 2200);
+      unit.style.opacity = 1;
+      ["pace","time","calories","elevation","heartrate","cadence"].forEach(k=>{
+        document.getElementById(k).textContent = parsedData[k] || "-";
       });
-    });
+      fitKmRow();                                       // 애니 후 다시 맞춤
+    }
+
+    // 액션들
+    function onRun(){
+      document.body.classList.add('focus');
+      document.getElementById('stage').scrollIntoView({behavior:'smooth', block:'center'});
+      runAnimation();
+    }
+    function exitFocus(){
+      document.body.classList.remove('focus');
+      window.scrollTo({top:0, behavior:'smooth'});
+    }
+
+    function setFont(font){
+      const km = document.getElementById("km");
+      const unit = document.getElementById("km-unit");
+      const small = ["Jost","Orbitron"];  // 160px
+      const base  = small.includes(font) ? 160 : 200;
+      const isJost = font === "Jost";
+      km.style.fontFamily = font;
+      km.style.fontSize   = base + "px";
+      km.style.fontStyle  = isJost ? "italic" : "normal";
+      km.style.fontWeight = isJost ? "800" : "700";
+      unit.style.fontFamily = font;
+      unit.style.fontSize   = Math.round(base*0.4) + "px";
+      unit.style.fontStyle  = isJost ? "italic" : "normal";
+      unit.style.fontWeight = isJost ? "800" : "700";
+      fitKmRow();
+    }
+
+    function setBackground(color){
+      const b = document.body;
+      if(color==='black'){ b.classList.remove('bg-white'); b.classList.add('bg-black'); }
+      else { b.classList.remove('bg-black'); b.classList.add('bg-white'); }
+    }
+
+    window.addEventListener('resize', fitKmRow);
+    window.addEventListener('orientationchange', ()=> setTimeout(fitKmRow, 150));
+    window.onload = ()=> { setFont('Jost'); fitKmRow(); };
   </script>
 </body>
 </html>
