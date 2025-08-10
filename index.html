@@ -6,13 +6,13 @@
   <title>RUNNING MILEAGE ANIMATION MAKER</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
 
-  <!-- Google Fonts (요청 세트) -->
-  <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@1,800&family=Orbitron:wght@700&family=Big+Shoulders+Inline+Text:wght@700&family=Anton+SC&family=Special+Gothic+Expanded+One&family=Permanent+Marker&family=Fugaz+One&family=Londrina+Shadow&family=Caesar+Dressing&display=swap" rel="stylesheet">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Orbitron:wght@700&family=Fugaz+One&family=Special+Gothic+Expanded+One&family=Notable&family=Monoton&family=Permanent+Marker&family=Lobster&family=Rock+Salt&display=swap" rel="stylesheet">
 
   <style>
     :root{ --pad:16px; --maxw:480px; }
     *{box-sizing:border-box}
-    body{ margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; background:#fff; color:#000; }
+    body{ margin:0; font-family:'Anton', sans-serif; background:#fff; color:#000; }
     header{ padding:var(--pad); text-align:center; }
     h1{ margin:6px 0 2px; font-size:18px; font-weight:800; }
     .subtitle{ font-size:12px; opacity:.8 }
@@ -37,31 +37,29 @@
     .stage-outer{ padding:10px 0 24px; }
     .stage-inner{ width:100%; max-width:var(--maxw); margin:0 auto; padding:0 var(--pad); }
 
-    /* 상단 거리: 좌측 기준 고정 */
     .km-row-wrap{
       display:flex; justify-content:flex-start;
-      margin:18px auto 8px; width:100%;
+      margin:18px auto 8px;
+      width:100%;
     }
     .km-row{
       display:flex; align-items:baseline; gap:10px;
       transform-origin:left bottom; will-change:transform;
     }
-    /* 기본 사이즈: 99.99km 대응 위해 줄임 (Jost/Orbitron 130px, 그 외 160px 기준에서 스케일) */
     #km{
-      font-family:'Jost',sans-serif; font-style:italic; font-weight:800;
-      font-size:130px; line-height:1; white-space:nowrap;
+      font-family:'Anton',sans-serif;
+      font-size:160px; line-height:1; white-space:nowrap;
     }
     #km-unit{
-      font-size:52px; line-height:1; transform:translateY(-8px);
+      font-size:64px; line-height:1; transform:translateY(-10px);
       opacity:0; transition:opacity 400ms ease; white-space:nowrap;
     }
 
-    /* 하단 정보: 2개(Avg. Pace, Time)만 */
-    .grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-top:10px; color:inherit; text-align:center; }
-    .stat{ font-size:20px; font-weight:800; color:inherit; }
-    .label{ font-size:13px; color:inherit; opacity:.9; }
+    .grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:10px; text-align:left; }
+    .stat{ font-size:20px; font-weight:800; }
+    .label{ font-size:14px; opacity:.9; }
 
-    /* 포커스 모드: 상단 UI 숨김 */
+    /* 포커스 모드 */
     body.focus .top-ui{ display:none; }
     body.focus #exit-focus{
       display:block; position:fixed; z-index:20;
@@ -73,9 +71,6 @@
 
     .bg-black{ background:#000; color:#fff; }
     .bg-white{ background:#fff; color:#000; }
-
-    /* 측정용 프로브(화면엔 안보임) */
-    .probe{ position:absolute; left:-99999px; top:-99999px; visibility:hidden; white-space:nowrap; }
   </style>
 </head>
 <body class="bg-white">
@@ -96,15 +91,15 @@
       <section class="section">
         <div class="control-title">Font</div>
         <div class="font-grid">
-          <button style="font-family:'Jost'; font-style:italic; font-weight:800;" onclick="setFont('Jost')">Jost</button>
-          <button style="font-family:'Orbitron'; font-weight:700;" onclick="setFont('Orbitron')">Orbitron</button>
-          <button style="font-family:'Big Shoulders Inline Text';" onclick="setFont('Big Shoulders Inline Text')">Big Sh.</button>
-          <button style="font-family:'Anton SC';" onclick="setFont('Anton SC')">Anton SC</button>
+          <button style="font-family:'Anton';" onclick="setFont('Anton')">Anton</button>
+          <button style="font-family:'Orbitron';" onclick="setFont('Orbitron')">Orbitron</button>
+          <button style="font-family:'Fugaz One';" onclick="setFont('Fugaz One')">Fugaz One</button>
           <button style="font-family:'Special Gothic Expanded One';" onclick="setFont('Special Gothic Expanded One')">Special Gothic</button>
-          <button style="font-family:'Permanent Marker';" onclick="setFont('Permanent Marker')">Permanent</button>
-          <button style="font-family:'Fugaz One';" onclick="setFont('Fugaz One')">Fugaz</button>
-          <button style="font-family:'Londrina Shadow';" onclick="setFont('Londrina Shadow')">Londrina</button>
-          <button style="font-family:'Caesar Dressing';" onclick="setFont('Caesar Dressing')">Caesar</button>
+          <button style="font-family:'Notable';" onclick="setFont('Notable')">Notable</button>
+          <button style="font-family:'Monoton';" onclick="setFont('Monoton')">Monoton</button>
+          <button style="font-family:'Permanent Marker';" onclick="setFont('Permanent Marker')">Permanent Marker</button>
+          <button style="font-family:'Lobster';" onclick="setFont('Lobster')">Lobster</button>
+          <button style="font-family:'Rock Salt';" onclick="setFont('Rock Salt')">Rock Salt</button>
         </div>
       </section>
 
@@ -134,7 +129,6 @@
         </div>
       </div>
 
-      <!-- 하단 2개만 -->
       <div class="grid" id="stats-grid">
         <div><div class="stat" id="pace">-</div><div class="label">Avg. Pace</div></div>
         <div><div class="stat" id="time">-</div><div class="label">Time</div></div>
@@ -142,40 +136,17 @@
     </div>
   </section>
 
-  <!-- 프로브(99.99 km 기준 폭 측정용) -->
-  <div id="probe" class="probe">
-    <span id="probe-num">99.99</span><span id="probe-unit" style="margin-left:10px">km</span>
-  </div>
-
   <script>
     let parsedData = {};
 
-    /* ---------- OCR 파싱 (pace / time 강화) ---------- */
-    function extractTimes(text){
-      const tokens = (text.match(/\b\d{1,2}[:']\d{1,2}(?::\d{2})?\b/g) || []);
-      let pace = null, time = null;
-
-      // pace: 따옴표 포함된 토큰 우선
-      const paceCand = tokens.find(t => t.includes("'"));
-      if (paceCand) pace = paceCand.replace(/"/g,'″').replace(/'/g,"'");
-
-      // time: 콜론 포함 + 가장 긴 것 우선
-      const timeCands = tokens.filter(t => t.includes(':'))
-                              .sort((a,b)=>b.length-a.length);
-      if (timeCands.length) time = timeCands[0];
-
-      return {pace,time};
-    }
-
-    function extractDistance(text){
-      const m = text.match(/\b\d{1,2}\.\d{1,2}\b/); // 0.00 ~ 99.99
-      return m ? m[0] : null;
-    }
-
-    function parseValues(text){
-      const {pace,time} = extractTimes(text);
-      const km = extractDistance(text);
-      return { km, pace, time };
+    function parseValuesByLine(text){
+      const lines = text.trim().split('\n').map(l=>l.trim()).filter(Boolean);
+      const numbers = lines.flatMap(line => line.match(/--|[\d.:']{1,5}/g) || []);
+      return {
+        km: numbers[0] || null,
+        pace: numbers[1] || null,
+        time: numbers[2] || null,
+      };
     }
 
     document.getElementById("file-upload").addEventListener("change", async (e)=>{
@@ -186,14 +157,11 @@
       reader.onload = async () => {
         const img = reader.result;
         const result = await Tesseract.recognize(img, 'eng');
-        parsedData = parseValues(result.data.text || '');
-        // 디버그:
-        // console.log(result.data.text, parsedData);
+        parsedData = parseValuesByLine(result.data.text);
       };
       reader.readAsDataURL(file);
     });
 
-    /* ---------- 애니메이션(좌측 고정, easeOutCubic) ---------- */
     const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
     function animateNumber(id,start,end,duration){
       return new Promise(resolve=>{
@@ -204,61 +172,30 @@
           const raw = Math.min((now - startTime)/duration,1);
           const eased = easeOutCubic(raw);
           el.textContent = (start + (end-start)*eased).toFixed(2);
-          if (raw < 1) requestAnimationFrame(update);
-          else resolve();
+          raw < 1 ? requestAnimationFrame(update) : resolve();
         }
         requestAnimationFrame(update);
       });
     }
 
-    /* ---------- 99.99 km 기준 폭에 맞춰 스케일 ---------- */
     function fitKmRow() {
-      const stage = document.getElementById('stage');
       const wrap  = document.querySelector('.km-row-wrap');
       const row   = document.getElementById('km-row');
-
-      const vwSafe = document.documentElement.clientWidth - 2*16; // 좌우 패딩
-      const avail  = Math.max(0, Math.min(stage.clientWidth, vwSafe));
-
-      // 현재 폰트/사이즈에 맞춰 '99.99 km' 프로브 폭 측정
-      const km    = document.getElementById('km');
-      const unit  = document.getElementById('km-unit');
-      const probe = document.getElementById('probe');
-      const pNum  = document.getElementById('probe-num');
-      const pUni  = document.getElementById('probe-unit');
-
-      pNum.style.fontFamily = km.style.fontFamily;
-      pNum.style.fontStyle  = km.style.fontStyle;
-      pNum.style.fontWeight = km.style.fontWeight;
-      pNum.style.fontSize   = km.style.fontSize;
-      pUni.style.fontFamily = unit.style.fontFamily || km.style.fontFamily;
-      pUni.style.fontStyle  = unit.style.fontStyle  || km.style.fontStyle;
-      pUni.style.fontWeight = unit.style.fontWeight || km.style.fontWeight;
-      pUni.style.fontSize   = unit.style.fontSize;
-
-      const need = probe.scrollWidth;   // '99.99 km' 필요 폭
-      wrap.style.width = avail + 'px';
+      wrap.style.width = '100%';
       row.style.transformOrigin = 'left bottom';
-      row.style.transform = 'scale(1)';
-      const scale = need ? Math.min(1, avail / need) : 1;
-      row.style.transform = `scale(${scale})`;
     }
 
     async function runAnimation(){
       const unit = document.getElementById("km-unit");
       unit.style.opacity = 0;
-      fitKmRow();                                   // 선적용
+      fitKmRow();
       const endVal = parseFloat(parsedData.km || 0);
       await animateNumber("km", 0, isNaN(endVal)?0:endVal, 2200);
       unit.style.opacity = 1;
-
-      document.getElementById("pace").textContent = parsedData.pace || "—";
-      document.getElementById("time").textContent = parsedData.time || "—";
-
-      fitKmRow();                                   // 최종 한번 더 맞춤
+      document.getElementById('pace').textContent = parsedData.pace || "-";
+      document.getElementById('time').textContent = parsedData.time || "-";
     }
 
-    /* ---------- 액션 ---------- */
     function onRun(){
       document.body.classList.add('focus');
       document.getElementById('stage').scrollIntoView({behavior:'smooth', block:'center'});
@@ -269,26 +206,11 @@
       window.scrollTo({top:0, behavior:'smooth'});
     }
 
-    /* ---------- 폰트/배경 ---------- */
     function setFont(font){
       const km = document.getElementById("km");
       const unit = document.getElementById("km-unit");
-
-      const small = ["Jost","Orbitron"];  // 작은 계열
-      const baseNum = small.includes(font) ? 130 : 160;  // 99.99 기준 줄인 사이즈
-      const baseUnit= Math.round(baseNum * 0.4);
-      const isJost  = font === "Jost";
-
       km.style.fontFamily = font;
-      km.style.fontSize   = baseNum + "px";
-      km.style.fontStyle  = isJost ? "italic" : "normal";
-      km.style.fontWeight = isJost ? "800" : "700";
-
       unit.style.fontFamily = font;
-      unit.style.fontSize   = baseUnit + "px";
-      unit.style.fontStyle  = isJost ? "italic" : "normal";
-      unit.style.fontWeight = isJost ? "800" : "700";
-
       fitKmRow();
     }
 
@@ -298,9 +220,7 @@
       else { b.classList.remove('bg-black'); b.classList.add('bg-white'); }
     }
 
-    window.addEventListener('resize', fitKmRow);
-    window.addEventListener('orientationchange', ()=> setTimeout(fitKmRow, 150));
-    window.onload = ()=> { setFont('Jost'); fitKmRow(); };
+    window.onload = ()=> { setFont('Anton'); fitKmRow(); };
   </script>
 </body>
 </html>
