@@ -6,7 +6,7 @@
   <title>RUNNING MILEAGE ANIMATION MAKER</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
 
-  <!-- Google Fonts (8개) : Sedgwick→Gloria, Fugaz One 삭제 -->
+  <!-- Google Fonts (8개) -->
   <link href="https://fonts.googleapis.com/css2?family=Anton:wght@400&family=Orbitron:wght@700&family=Special+Gothic+Expanded+One&family=Notable&family=Monoton&family=Gloria+Hallelujah&family=Lobster&family=Rock+Salt&display=swap" rel="stylesheet">
 
   <style>
@@ -22,11 +22,9 @@
       font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
     }
 
-    /* 테마용 컬러 변수 (버튼 반전에 사용) */
-    .bg-white{ --bg:#fff; --fg:#000; }
-    .bg-black{ --bg:#000; --fg:#fff; }
-    .bg-white{ background:#fff; color:#000; }
-    .bg-black{ background:#000; color:#fff; }
+    /* 테마(버튼 반전 변수) */
+    .bg-white{ --bg:#fff; --fg:#000; background:#fff; color:#000; }
+    .bg-black{ --bg:#000; --fg:#fff; background:#000; color:#fff; }
 
     header{ padding:var(--pad); text-align:left; }
     h1{ margin:6px 0 2px; font-size:18px; font-weight:800; }
@@ -41,7 +39,7 @@
 
     .control-title{ font-size:13px; font-weight:800; margin:10px 0; }
 
-    /* 버튼 공통 */
+    /* 버튼 */
     .font-grid{
       display:grid;
       grid-template-columns:repeat(4,1fr); /* 4x2 */
@@ -55,9 +53,7 @@
       transition:transform .04s ease, background .2s ease, color .2s ease, border-color .2s ease;
     }
     .font-grid button:active, .bg-row button:active { transform:scale(0.99); }
-    .is-active{
-      background:var(--fg); color:var(--bg); border-color:var(--fg);
-    }
+    .is-active{ background:var(--fg); color:var(--bg); border-color:var(--fg); }
 
     .bg-row{ display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
     .run-button{ background:#000; color:#7fff00; border-color:#0070ff; margin-top:6px; }
@@ -87,11 +83,11 @@
       opacity:0; transition:opacity 450ms ease; white-space:nowrap;
     }
 
-    /* 하단 정보: Pace, Time만 (3열 중 1,2열만 사용) */
+    /* 하단 정보: 3열로 나누고 1,2열만 사용해서 더 붙게 */
     .grid{
       display:grid;
-      grid-template-columns:repeat(3,1fr);  /* ← 3등분으로 변경 */
-      gap:8px;                               /* 조금 더 붙게 8px */
+      grid-template-columns:repeat(3,1fr);  /* 3등분 */
+      gap:8px;                               /* 조금 더 붙게 */
       margin-top:0; color:inherit; text-align:left;
       align-items:start;
     }
@@ -117,7 +113,7 @@
 </head>
 <body class="bg-white">
   <header>
-    <h1>RUNNING MILEAGE ANIMATION V.0.9</h1>
+    <h1>RUNNING MILEAGE ANIMATION MAKER</h1>
     <div class="subtitle">by JS @runarchive.js</div>
   </header>
 
@@ -188,16 +184,16 @@
 
   <script>
     let parsedData = {};
-    const fontGrid = document.getElementById('font-grid');
+    const fontGridEl = document.getElementById('font-grid'); // ✅ 단일 선언로 통일
     const bgRow = document.getElementById('bg-row');
 
     /* ---------- OCR 정규화 & 파싱 ---------- */
     function normalizeOCR(s){
       return s
         .replace(/[\u2018\u2019\u2032\u2035]/g,"'")   // 프라임 → '
-        .replace(/[\u201C\u201D\u2033]/g,'"')       // 더블프라임 → "
-        .replace(/[·•]/g,'.')                       // 가운데점 → .
-        .replace(/\u200B|\u00A0/g,' ')              // zero width & nbsp → space
+        .replace(/[\u201C\u201D\u2033]/g,'"')         // 더블프라임 → "
+        .replace(/[·•]/g,'.')                         // 가운데점 → .
+        .replace(/\u200B|\u00A0/g,' ')                // zero width & nbsp → space
         .replace(/[ ]{2,}/g,' ')
         .trim();
     }
@@ -233,7 +229,7 @@
         const result = await Tesseract.recognize(img, 'eng');
         parsedData = parseFromOCR(result.data.text);
 
-        /* OCR 완료 즉시 Pace/Time 표시 (요청 #2) */
+        /* ✅ OCR 완료 즉시 Pace/Time 표시 */
         document.getElementById('pace').textContent = parsedData.pace || "-";
         document.getElementById('time').textContent = parsedData.time || "-";
       };
@@ -272,7 +268,8 @@
       measure.style.fontStyle  = kmCS.fontStyle;
       measure.style.fontWeight = kmCS.fontWeight;
 
-      const avail = stage.clientWidth - (parseInt(getComputedStyle(stage).paddingLeft) || 0);
+      const stagePaddingLeft = parseInt(getComputedStyle(document.querySelector('.stage-inner')).paddingLeft) || 0;
+      const avail = stage.clientWidth - stagePaddingLeft;
       const need  = measure.scrollWidth + 10 + unitEl.scrollWidth; // 숫자 + 간격 + 단위
       const safe  = 0.9; // 안전계수
       const scale = need ? Math.min(1, (avail * safe) / need) : 1;
@@ -287,7 +284,7 @@
 
       fitKmRow(); // 시작 전 맞춤
 
-      // 0.5초 대기 후 시작 (요청사항)
+      // 0.5초 대기 후 시작
       await new Promise(r=>setTimeout(r, 500));
 
       const endVal = parseFloat(parsedData.km || 0);
@@ -295,7 +292,7 @@
 
       unit.style.opacity = 1; // 단위 페이드인
 
-      // 하단 정보는 이미 OCR 시점에 표시됨(유지 목적으로 한 번 더 동기화)
+      // 유지 겸 동기화
       document.getElementById('pace').textContent = parsedData.pace || "-";
       document.getElementById('time').textContent = parsedData.time || "-";
 
@@ -336,8 +333,8 @@
       document.documentElement.style.setProperty('--gapBelowKm', gap + 'px');
 
       // 버튼 active 토글
-      const targetBtn = fontGrid.querySelector(`button[data-font="${CSS.escape(font)}"]`);
-      updateActive(fontGrid, targetBtn);
+      const targetBtn = fontGridEl.querySelector(`button[data-font="${CSS.escape(font)}"]`);
+      updateActive(fontGridEl, targetBtn);
 
       fitKmRow();
     }
@@ -354,8 +351,7 @@
     }
 
     /* ---------- 이벤트 바인딩 ---------- */
-    const fontGrid = document.getElementById('font-grid');
-    fontGrid.addEventListener('click', (e)=>{
+    fontGridEl.addEventListener('click', (e)=>{
       const btn = e.target.closest('button[data-font]');
       if(!btn) return;
       setFont(btn.dataset.font);
