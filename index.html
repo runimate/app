@@ -6,18 +6,27 @@
   <title>RUNNING MILEAGE ANIMATION MAKER</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
 
-  <!-- Google Fonts (9개) : Sedgwick Ave Display → Gloria Hallelujah 교체 -->
-  <link href="https://fonts.googleapis.com/css2?family=Anton:wght@400&family=Orbitron:wght@700&family=Fugaz+One&family=Special+Gothic+Expanded+One&family=Notable&family=Monoton&family=Gloria+Hallelujah&family=Lobster&family=Rock+Salt&display=swap" rel="stylesheet">
+  <!-- Google Fonts (8개) : Sedgwick→Gloria, Fugaz One 삭제 -->
+  <link href="https://fonts.googleapis.com/css2?family=Anton:wght@400&family=Orbitron:wght@700&family=Special+Gothic+Expanded+One&family=Notable&family=Monoton&family=Gloria+Hallelujah&family=Lobster&family=Rock+Salt&display=swap" rel="stylesheet">
 
   <style>
     :root{
       --pad:16px;
       --maxw:480px;
-      --gapBelowKm: 12px; /* 기본(모든 폰트) km-아래 간격 */
+      --gapBelowKm: 12px; /* 기본 km-아래 간격 */
     }
     *{box-sizing:border-box}
     html, body { background:#fff; color:#000; }
-    body{ margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; }
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    }
+
+    /* 테마용 컬러 변수 (버튼 반전에 사용) */
+    .bg-white{ --bg:#fff; --fg:#000; }
+    .bg-black{ --bg:#000; --fg:#fff; }
+    .bg-white{ background:#fff; color:#000; }
+    .bg-black{ background:#000; color:#fff; }
 
     header{ padding:var(--pad); text-align:left; }
     h1{ margin:6px 0 2px; font-size:18px; font-weight:800; }
@@ -31,11 +40,25 @@
     .status{ color:#17a34a; font-weight:700; font-size:13px; }
 
     .control-title{ font-size:13px; font-weight:800; margin:10px 0; }
-    .font-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-    .font-grid button,.bg-row button,.run-button{
-      width:100%; height:44px; border-radius:10px; border:2px solid currentColor;
-      background:transparent; color:inherit; font-size:14px; font-weight:700;
+
+    /* 버튼 공통 */
+    .font-grid{
+      display:grid;
+      grid-template-columns:repeat(4,1fr); /* 4x2 */
+      gap:8px;
     }
+    .font-grid button,.bg-row button,.run-button{
+      width:100%; height:44px; border-radius:10px;
+      border:2px solid var(--fg);
+      background:transparent; color:var(--fg);
+      font-size:14px; font-weight:700; cursor:pointer;
+      transition:transform .04s ease, background .2s ease, color .2s ease, border-color .2s ease;
+    }
+    .font-grid button:active, .bg-row button:active { transform:scale(0.99); }
+    .is-active{
+      background:var(--fg); color:var(--bg); border-color:var(--fg);
+    }
+
     .bg-row{ display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
     .run-button{ background:#000; color:#7fff00; border-color:#0070ff; margin-top:6px; }
 
@@ -72,7 +95,8 @@
     .stat{ font-size:22px; font-weight:800; }
     .label{ font-size:14px; opacity:.9; }
 
-    /* 포커스 모드: 상단 UI 숨김 */
+    /* 포커스 모드: 상단 UI/헤더 숨김 */
+    body.focus header{ display:none; }
     body.focus .top-ui{ display:none; }
     body.focus #exit-focus{
       display:block; position:fixed; z-index:20;
@@ -81,10 +105,6 @@
       border:2px solid currentColor; background:transparent; color:inherit; font-weight:800;
     }
     #exit-focus{ display:none; }
-
-    /* 배경 토글 (페이지 전체) */
-    .bg-black{ background:#000; color:#fff; }
-    .bg-white{ background:#fff; color:#000; }
 
     /* km 기준폭 측정용 (숨김) */
     #km-measure{ position:absolute; visibility:hidden; left:-9999px; top:-9999px; white-space:nowrap; }
@@ -107,24 +127,23 @@
 
       <section class="section">
         <div class="control-title">Font</div>
-        <div class="font-grid">
-          <button style="font-family:'Anton', sans-serif;" onclick="setFont('Anton')">Anton</button>
-          <button style="font-family:'Orbitron', sans-serif;" onclick="setFont('Orbitron')">Orbitron</button>
-          <button style="font-family:'Fugaz One', cursive;" onclick="setFont('Fugaz One')">Fugaz One</button>
-          <button style="font-family:'Special Gothic Expanded One', sans-serif;" onclick="setFont('Special Gothic Expanded One')">Gothic</button>
-          <button style="font-family:'Notable', sans-serif;" onclick="setFont('Notable')">Notable</button>
-          <button style="font-family:'Monoton', cursive;" onclick="setFont('Monoton')">Monoton</button>
-          <button style="font-family:'Gloria Hallelujah', cursive;" onclick="setFont('Gloria Hallelujah')">Gloria</button>
-          <button style="font-family:'Lobster', cursive;" onclick="setFont('Lobster')">Lobster</button>
-          <button style="font-family:'Rock Salt', cursive;" onclick="setFont('Rock Salt')">Rock Salt</button>
+        <div class="font-grid" id="font-grid">
+          <button data-font="Anton" style="font-family:'Anton', sans-serif;">Anton</button>
+          <button data-font="Orbitron" style="font-family:'Orbitron', sans-serif;">Orbitron</button>
+          <button data-font="Special Gothic Expanded One" style="font-family:'Special Gothic Expanded One', sans-serif;">Gothic</button>
+          <button data-font="Notable" style="font-family:'Notable', sans-serif;">Notable</button>
+          <button data-font="Monoton" style="font-family:'Monoton', cursive;">Monoton</button>
+          <button data-font="Gloria Hallelujah" style="font-family:'Gloria Hallelujah', cursive;">Gloria</button>
+          <button data-font="Lobster" style="font-family:'Lobster', cursive;">Lobster</button>
+          <button data-font="Rock Salt" style="font-family:'Rock Salt', cursive;">Rock Salt</button>
         </div>
       </section>
 
       <section class="section">
         <div class="control-title">Background</div>
-        <div class="bg-row">
-          <button onclick="setBackground('black')">Black</button>
-          <button onclick="setBackground('white')">White</button>
+        <div class="bg-row" id="bg-row">
+          <button data-bg="black">Black</button>
+          <button data-bg="white">White</button>
         </div>
       </section>
 
@@ -164,6 +183,8 @@
 
   <script>
     let parsedData = {};
+    const fontGrid = document.getElementById('font-grid');
+    const bgRow = document.getElementById('bg-row');
 
     /* ---------- OCR 정규화 & 파싱 ---------- */
     function normalizeOCR(s){
@@ -250,11 +271,15 @@
       row.style.transform = `scale(${scale})`;
     }
 
+    /* ---------- 애니메이션 실행 ---------- */
     async function runAnimation(){
       const unit = document.getElementById("km-unit");
       unit.style.opacity = 0;
 
       fitKmRow(); // 시작 전 맞춤
+
+      // 0.5초 대기 후 시작 (요청사항 #2)
+      await new Promise(r=>setTimeout(r, 500));
 
       const endVal = parseFloat(parsedData.km || 0);
       await animateNumber("km", 0, isNaN(endVal)?0:endVal, 2200);
@@ -268,15 +293,10 @@
       fitKmRow(); // 애니 후 재맞춤
     }
 
-    /* ---------- 액션 ---------- */
-    function onRun(){
-      document.body.classList.add('focus');
-      document.getElementById('stage').scrollIntoView({behavior:'smooth', block:'start'});
-      runAnimation();
-    }
-    function exitFocus(){
-      document.body.classList.remove('focus');
-      window.scrollTo({top:0, behavior:'smooth'});
+    /* ---------- 유틸: 버튼 active 토글 ---------- */
+    function updateActive(groupEl, targetBtn){
+      [...groupEl.querySelectorAll('button')].forEach(b=>b.classList.remove('is-active'));
+      if(targetBtn) targetBtn.classList.add('is-active');
     }
 
     /* ---------- 폰트 적용 (Rock Salt만 간격 확장) ---------- */
@@ -285,7 +305,7 @@
       const unit = document.getElementById("km-unit");
 
       // 폰트별 기본 크기
-      const smallSet  = new Set(["Orbitron","Fugaz One","Notable"]);
+      const smallSet  = new Set(["Orbitron","Notable"]);
       const scriptSet = new Set(["Gloria Hallelujah","Lobster","Rock Salt","Monoton","Special Gothic Expanded One"]);
 
       let base = 200;
@@ -306,6 +326,10 @@
       const gap = (font === "Rock Salt") ? 28 : 12; // px
       document.documentElement.style.setProperty('--gapBelowKm', gap + 'px');
 
+      // 버튼 active 토글
+      const targetBtn = fontGrid.querySelector(`button[data-font="${CSS.escape(font)}"]`);
+      updateActive(fontGrid, targetBtn);
+
       fitKmRow();
     }
 
@@ -314,11 +338,44 @@
       const b = document.body;
       if(color==='black'){ b.classList.remove('bg-white'); b.classList.add('bg-black'); }
       else { b.classList.remove('bg-black'); b.classList.add('bg-white'); }
+
+      // 배경 버튼 active 토글
+      const targetBtn = bgRow.querySelector(`button[data-bg="${color}"]`);
+      updateActive(bgRow, targetBtn);
+    }
+
+    /* ---------- 이벤트 바인딩 ---------- */
+    fontGrid.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button[data-font]');
+      if(!btn) return;
+      setFont(btn.dataset.font);
+    });
+    bgRow.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button[data-bg]');
+      if(!btn) return;
+      setBackground(btn.dataset.bg);
+    });
+
+    /* ---------- 액션 ---------- */
+    function onRun(){
+      document.body.classList.add('focus'); // 헤더/상단UI 숨김 (요청사항 #3)
+      document.getElementById('stage').scrollIntoView({behavior:'smooth', block:'start'});
+      runAnimation();
+    }
+    function exitFocus(){
+      document.body.classList.remove('focus');
+      window.scrollTo({top:0, behavior:'smooth'});
     }
 
     window.addEventListener('resize', fitKmRow);
     window.addEventListener('orientationchange', ()=> setTimeout(fitKmRow, 150));
-    window.onload = ()=> { setFont('Anton'); fitKmRow(); };
+
+    /* 초기화 */
+    window.onload = ()=>{
+      setFont('Anton');
+      setBackground('white'); /* 기본 선택 표시 */
+      fitKmRow();
+    };
   </script>
 </body>
 </html>
