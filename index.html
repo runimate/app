@@ -95,7 +95,7 @@
 </head>
 <body class="bg-white">
   <header>
-    <h1>RUNNING MILEAGE ANIMATION MAKER</h1>
+    <h1>RUNNING MILEAGE ANIMATION V.0.0.9</h1>
     <div class="subtitle">by JS @runarchive.js</div>
   </header>
 
@@ -103,7 +103,7 @@
   <div class="top-ui">
     <div class="wrap">
       <section class="section upload-box">
-        <label for="file-upload" class="upload-label">기록 이미지 업로드</label>
+        <label for="file-upload" class="upload-label">Upload NRC record image</label>
         <input type="file" id="file-upload" accept="image/*" style="display:none;" />
         <div class="status" id="upload-status"></div>
       </section>
@@ -194,7 +194,7 @@
 
     document.getElementById("file-upload").addEventListener("change", async (e)=>{
       const file = e.target.files[0]; if(!file) return;
-      document.getElementById("upload-status").textContent = "업로드 완료";
+      document.getElementById("upload-status").textContent = "Uploaded!";
       document.getElementById("run-btn").style.display = "block";
       const reader = new FileReader();
       reader.onload = async () => {
