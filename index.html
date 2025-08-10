@@ -6,7 +6,7 @@
   <title>RUNNING MILEAGE ANIMATION MAKER</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
 
-  <!-- Google Fonts (요청한 새 폰트들 포함) -->
+  <!-- Google Fonts (요청한 폰트 구성) -->
   <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,700;1,800&family=Orbitron:wght@700&family=Anton+SC&family=Special+Gothic+Expanded+One&family=Permanent+Marker&family=Fugaz+One&family=Londrina+Shadow&family=Caesar+Dressing&display=swap" rel="stylesheet">
 
   <style>
@@ -40,18 +40,17 @@
 
     .km-row-wrap{
       display:flex; justify-content:center;
-      margin:18px auto 8px;
-      width:100%;
+      margin:18px auto 8px; width:100%;
     }
     .km-row{
       display:flex; align-items:baseline; gap:10px;
-      transform-origin:left bottom; /* 좌측 앵커 고정 */
+      transform-origin:left bottom; /* 좌측 라인 고정 */
       will-change:transform;
     }
     #km{
       font-family:'Jost',sans-serif; font-style:italic; font-weight:800;
       font-size:200px; line-height:1; white-space:nowrap;
-      font-variant-numeric: tabular-nums; /* 자릿수 변화에도 좌측 정렬 안정화 */
+      font-variant-numeric: tabular-nums;
     }
     #km-unit{
       font-size:80px; line-height:1; transform:translateY(-10px);
@@ -145,58 +144,49 @@
   <script>
     let parsedData = {};
 
-    /* ---------- OCR 파싱: Pace를 먼저 떼고, Time은 HH:MM:SS 우선 매칭 ---------- */
-    function parseTextSmart(raw) {
-      if (!raw) return {};
-      // 다양한 dash/quote 정규화
-      let text = raw.replace(/[\u2012\u2013\u2014\u2015]/g, "-")
-                    .replace(/[′’]/g, "'")
-                    .replace(/[″”]/g, '"');
-
-      // Pace 먼저 추출 (예: 6'51")
-      const paceMatch = text.match(/\b(\d{1,2})'\s?(\d{2})"?\b/);
-      let pace = paceMatch ? `${paceMatch[1]}'${paceMatch[2]}"` : null;
-      if (paceMatch) {
-        // Pace가 있는 부분을 공백으로 치환하여 Time 탐색과 충돌 방지
-        text = text.replace(paceMatch[0], " ");
+    // --- 라인 기반 근접 파싱 ---
+    function normalize(raw){
+      return (raw||"")
+        .replace(/[\u2012\u2013\u2014\u2015]/g,"-")
+        .replace(/[′’]/g,"'")
+        .replace(/[″”]/g,'"');
+    }
+    function pickNear(lines, labelRe, valueRe, altRe){
+      for(let i=0;i<lines.length;i++){
+        if(labelRe.test(lines[i])){
+          for(let j=Math.max(0,i-2); j<=i+1 && j<lines.length; j++){
+            const m = lines[j].match(valueRe);
+            if(m) return m[0];
+          }
+        }
       }
+      // fallback: 문서 전체에서
+      const text = lines.join("\n");
+      return (text.match(valueRe)?.[0]) || (altRe? text.match(altRe)?.[0] : null) || null;
+    }
 
-      // Time: HH:MM:SS 우선 → MM:SS
-      let time = null;
-      const hms = text.match(/\b\d{1,2}:\d{2}:\d{2}\b/);
-      if (hms) {
-        time = hms[0];
-      } else {
-        const ms = text.match(/\b\d{1,2}:\d{2}\b/);
-        time = ms ? ms[0] : null;
-      }
+    function parseTextSmart(raw){
+      const text = normalize(raw);
+      const lines = text.split(/\n+/).map(s=>s.trim()).filter(Boolean);
 
-      // 거리(km): 소수 포함 숫자 하나 (가능하면 소수)
-      const kmMatch = text.match(/\b\d{1,2}\.\d{1,2}\b/);
-      const km = kmMatch ? kmMatch[0] : (text.match(/\b\d{1,3}\b/)?.[0] ?? null);
+      // Pace (6'51")
+      const pace = pickNear(lines, /avg\.?\s*pace/i, /\b\d{1,2}'\s?\d{2}"\b/);
 
-      // 칼로리(대개 2~4자리)
-      const cal = text.match(/\b\d{2,4}\b(?=.*\bCal(ories)?\b)/i)?.[0]
-               || text.match(/\b\d{2,4}\b(?![^\n]*:)/)?.[0] || null;
+      // Time: HH:MM:SS > MM:SS
+      let time = pickNear(lines, /\btime\b/i, /\b\d{1,2}:\d{2}:\d{2}\b/, /\b\d{1,2}:\d{2}\b/);
+      if(!time){ time = pickNear(lines, /\btime\b/i, /\b\d{1,2}:\d{2}\b/); }
 
-      // 고도 상승(숫자+m)
-      const elev = text.match(/\b\d{1,4}\s?m\b/i)?.[0] || null;
+      // Distance: 소수 우선
+      const km = (text.match(/\b\d{1,2}\.\d{1,2}\b/)||[])[0] || (text.match(/\b\d{1,3}\b/)||[])[0] || null;
 
-      // 심박: 숫자 2~3자리 or '--'류 기호
-      let hr = null;
-      const hrDash = /(^|[^\d])(--|—|―)([^\d]|$)/; // —,― 포함
-      if (hrDash.test(text)) {
-        hr = "—";
-      } else {
-        const hrNum = text.match(/\b\d{2,3}\b(?=[^\n]*Heart|\bAvg\.?\s*Heart\b)/i)
-                  || text.match(/\b\d{2,3}\b(?!\s*m\b)/);
-        hr = hrNum ? hrNum[0] : null;
-      }
+      // Calories / Elevation / HR / Cadence
+      const calories  = pickNear(lines, /\bcal(ories)?\b/i, /\b\d{2,4}\b/);
+      const elevation = pickNear(lines, /elevation\s*gain/i, /\b\d{1,4}\s?m\b/i, /\b\d{1,4}\b/);
+      let heartrate   = pickNear(lines, /avg\.?\s*heart/i, /\b\d{2,3}\b/);
+      if(!heartrate && /(^|[^\d])(--|—|―)([^\d]|$)/.test(text)) heartrate = "—";
+      const cadence   = pickNear(lines, /\bcadence\b/i, /\b\d{2,3}\b/);
 
-      // 케이던스(2~3자리)
-      const cad = text.match(/\b\d{2,3}\b(?=[^\n]*Cadence\b)/i)?.[0] || null;
-
-      return { km, pace, time, calories: cal, elevation: elev, heartrate: hr, cadence: cad };
+      return { km, pace, time, calories, elevation, heartrate, cadence };
     }
 
     document.getElementById("file-upload").addEventListener("change", async (e)=>{
@@ -212,24 +202,28 @@
       reader.readAsDataURL(file);
     });
 
-    /* ---------- 좌측 고정 카운트업 ---------- */
+    // --- 좌측 고정 카운트업 + 진행 중 폭 재맞춤(스로틀) ---
     const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
     function animateNumber(id,start,end,duration){
       return new Promise(resolve=>{
         const el = document.getElementById(id);
-        let startTime;
+        let startTime, lastFit = 0;
         function update(now){
           if(!startTime) startTime = now;
           const raw = Math.min((now - startTime)/duration,1);
           const eased = easeOutCubic(raw);
           el.textContent = (start + (end-start)*eased).toFixed(2);
-          raw < 1 ? requestAnimationFrame(update) : resolve();
+
+          // 120ms 간격으로 폭 재계산(폰트/글자폭 변동 대응)
+          if(now - lastFit > 120){ fitKmRow(); lastFit = now; }
+
+          raw < 1 ? requestAnimationFrame(update) : (fitKmRow(), resolve());
         }
         requestAnimationFrame(update);
       });
     }
 
-    /* ---------- 상단 숫자+km 폭 자동 맞춤(하단 그리드/스테이지/뷰포트 중 최소 폭 사용) ---------- */
+    // --- 상단 숫자+km 폭 자동 맞춤 ---
     function fitKmRow() {
       const stage = document.getElementById('stage');
       const grid  = document.getElementById('stats-grid');
@@ -237,12 +231,12 @@
       const row   = document.getElementById('km-row');
 
       const vw = document.documentElement.clientWidth;
-      const safe = vw - 2*16; // 좌우 패딩 고려
+      const safe = vw - 2*16;
       const candidates = [grid?.clientWidth || 0, stage.clientWidth, safe].filter(Boolean);
-      const avail = Math.max(0, Math.min(...candidates)) - 8;   // 살짝 여유
+      const avail = Math.max(0, Math.min(...candidates)) - 8;
 
       wrap.style.width = avail + 'px';
-      row.style.transformOrigin = 'left bottom';  // 좌측 고정 유지
+      row.style.transformOrigin = 'left bottom';
       row.style.transform = 'scale(1)';
 
       const need  = row.scrollWidth;
@@ -260,7 +254,6 @@
       await animateNumber("km", 0, isNaN(endVal)?0:endVal, 2200);
       unit.style.opacity = 1;
 
-      // 데이터 표기 (심박 '--' 처리는 parseTextSmart에서 '—'로 통일)
       const show = (id, v) => document.getElementById(id).textContent = (v ?? "-");
       show("pace", parsedData.pace ?? "-");
       show("time", parsedData.time ?? "-");
@@ -268,11 +261,9 @@
       show("elevation", parsedData.elevation ?? "-");
       show("heartrate", parsedData.heartrate ?? "-");
       show("cadence", parsedData.cadence ?? "-");
-
-      fitKmRow();
     }
 
-    /* ---------- 액션 ---------- */
+    // --- 액션/UI ---
     function onRun(){
       document.body.classList.add('focus');
       document.getElementById('stage').scrollIntoView({behavior:'smooth', block:'center'});
@@ -283,21 +274,15 @@
       window.scrollTo({top:0, behavior:'smooth'});
     }
 
-    /* ---------- 폰트 변경 ---------- */
+    // --- 폰트 적용 ---
     function setFont(font){
       const km = document.getElementById("km");
       const unit = document.getElementById("km-unit");
-
-      // 폰트별 기본 크기 맵(시각 균형 보정)
       const sizeMap = {
-        "Jost": 160,
-        "Orbitron": 160,
-        "Anton SC": 200,
-        "Special Gothic Expanded One": 200,
-        "Permanent Marker": 200,
-        "Fugaz One": 200,
-        "Londrina Shadow": 210,   // 윤곽 폰트 약간 키움
-        "Caesar Dressing": 210
+        "Jost": 160, "Orbitron": 160,
+        "Anton SC": 200, "Special Gothic Expanded One": 200,
+        "Permanent Marker": 200, "Fugaz One": 200,
+        "Londrina Shadow": 210, "Caesar Dressing": 210
       };
       const base  = sizeMap[font] || 200;
       const isJost = font === "Jost";
@@ -319,6 +304,11 @@
       const b = document.body;
       if(color==='black'){ b.classList.remove('bg-white'); b.classList.add('bg-black'); }
       else { b.classList.remove('bg-black'); b.classList.add('bg-white'); }
+    }
+
+    // 폰트가 실제 로드된 후에도 한 번 더 맞춤
+    if ('fonts' in document) {
+      document.fonts.ready.then(()=> setTimeout(fitKmRow, 0));
     }
 
     window.addEventListener('resize', fitKmRow);
