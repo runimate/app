@@ -6,7 +6,7 @@
   <title>RUNNING MILEAGE ANIMATION MAKER</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
 
-  <!-- Google Fonts (8종, 기본 Anton) -->
+  <!-- 폰트(기본 Anton) -->
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Orbitron:wght@700&family=Fugaz+One&family=Special+Gothic+Expanded+One&family=Notable&family=Monoton&family=Permanent+Marker&family=Lobster&display=swap" rel="stylesheet">
 
   <style>
@@ -16,7 +16,6 @@
     header{ padding:var(--pad); text-align:left; }
     h1{ margin:6px 0 2px; font-size:18px; font-weight:800; }
     .subtitle{ font-size:12px; opacity:.8 }
-
     .wrap{ width:100%; max-width:var(--maxw); margin:0 auto; padding:0 var(--pad); }
     .section{ margin:14px 0; }
 
@@ -25,7 +24,6 @@
     .status{ font-weight:700; font-size:13px; }
 
     .control-title{ font-size:13px; font-weight:800; margin:10px 0; }
-    /* 4 x 2 그리드로 변경 */
     .font-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
     .font-grid button,.bg-row button,.run-button{
       width:100%; height:44px; border-radius:10px; border:2px solid;
@@ -34,11 +32,10 @@
     .bg-row{ display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
     .run-button{ font-weight:900; margin-top:6px; }
 
-    /* ===== 스테이지 ===== */
     .stage-outer{ padding:6px 0 24px; }
     .stage-inner{ width:100%; max-width:var(--maxw); margin:0 auto; padding:0 var(--pad); }
 
-    /* 거리 숫자: 좌측 고정 */
+    /* 좌측 고정 큰 숫자 */
     .km-row{ display:flex; align-items:baseline; gap:10px; transform-origin:left bottom; will-change:transform; font-family:'Anton',sans-serif; }
     #km{ line-height:1; white-space:nowrap; }
     #km-unit{ font-size:0.4em; line-height:1; transform:translateY(-10px); opacity:0; transition:opacity 380ms ease; white-space:nowrap; }
@@ -57,7 +54,7 @@
       width:40px; height:40px; border-radius:20px; border:2px solid; background:transparent; font-weight:800;
     }
 
-    /* 배경 전체 토글 */
+    /* 배경 토글 (페이지 전체) */
     .bg-white{ background:#fff; color:#000; }
     .bg-black{ background:#000; color:#fff; }
     .bg-white .upload-box,.bg-white .font-grid button,.bg-white .bg-row button,.bg-white .run-button,.bg-white #exit-focus{ background:#fff; color:#000; border-color:#000; }
@@ -67,18 +64,17 @@
     .bg-black .upload-label{ background:#fff; color:#000; }
     .bg-black .status{ color:#7fff00; }
 
-    /* 숨김 측정용 */
-    .measure{ position:absolute; left:-9999px; top:-9999px; visibility:hidden; display:flex; align-items:baseline; gap:10px; white-space:nowrap; transform:none !important; }
+    /* 화면 밖 측정용 */
+    .measure{ position:absolute; left:-9999px; top:-9999px; visibility:hidden; display:flex; align-items:baseline; gap:10px; white-space:nowrap; }
   </style>
 </head>
-
 <body class="bg-white">
   <header class="wrap">
     <h1>RUNNING MILEAGE ANIMATION MAKER</h1>
     <div class="subtitle">by JS @runarchive.js</div>
   </header>
 
-  <!-- 상단 설정 -->
+  <!-- 상단 UI -->
   <div class="top-ui">
     <div class="wrap">
       <section class="section upload-box">
@@ -120,19 +116,19 @@
   <!-- 스테이지 -->
   <section class="stage-outer">
     <div class="stage-inner wrap" id="stage">
-      <!-- 거리(좌측 고정) -->
       <div class="km-row" id="km-row">
         <div id="km">0.00</div>
         <div id="km-unit">km</div>
       </div>
 
-      <!-- 숨김 측정용 (99.99 + km) -->
-      <div id="measure" class="km-row measure">
-        <div id="km-sample">99.99</div>
-        <div id="km-unit-sample">km</div>
+      <!-- 측정: 최대(99.99)와 실제 목표값 -->
+      <div id="measureMax" class="measure" style="font-family:'Anton',sans-serif;">
+        <div>99.99</div><div style="font-size:0.4em;transform:translateY(-10px)">km</div>
+      </div>
+      <div id="measureEnd" class="measure" style="font-family:'Anton',sans-serif;">
+        <div id="m-end">0.00</div><div style="font-size:0.4em;transform:translateY(-10px)">km</div>
       </div>
 
-      <!-- 하단 2칸 -->
       <div class="stats">
         <div class="stat-block"><div id="pace" class="stat-val">—</div><div class="stat-label">Avg. Pace</div></div>
         <div class="stat-block"><div id="time" class="stat-val">—</div><div class="stat-label">Time</div></div>
@@ -141,7 +137,7 @@
   </section>
 
   <script>
-    /* ---------- OCR 파싱 ---------- */
+    /* ===== OCR 파싱 ===== */
     const PACE_RE   = /(\d{1,2})\s*['’]\s*(\d{1,2})(?:\s*["”]{1,2})?/;
     const TIME_RE   = /\b\d{1,2}:\d{2}(?::\d{2})?\b/;
     const DIST_RE   = /\b(\d{1,2}\.\d{1,2})\b/;
@@ -165,7 +161,8 @@
         time = times[0];
       }
 
-      const noHR = HR_DASH_RE.test(text);
+      const noHR = HR_DASH_RE.test(text); // (보유중, 지금은 UI 미노출)
+
       return { km: dist, pace, time, noHR };
     }
 
@@ -181,12 +178,19 @@
         const img = reader.result;
         const { data:{ text } } = await Tesseract.recognize(img,'eng');
         parsed = parseText(text);
+
+        /* ✅ 업로드 직후 즉시 하단 값 채워넣기 */
+        document.getElementById('pace').textContent = parsed.pace || '—';
+        document.getElementById('time').textContent = parsed.time || '—';
+
+        /* 목표값 기준으로 스케일 미리 계산해둠 */
+        fitKmRow(parsed.km);
       };
       reader.readAsDataURL(file);
       document.getElementById('run-btn').style.display = 'block';
     });
 
-    /* ---------- 애니메이션(좌측 고정) ---------- */
+    /* ===== 애니메이션(좌측 고정) ===== */
     const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
     function countUpLeft(id, start, end, ms){
       const el = document.getElementById(id);
@@ -202,30 +206,38 @@
       });
     }
 
-    /* ---------- 폰트/배경 ---------- */
+    /* ===== 폰트/배경 ===== */
     function setFont(font){
-      const row   = document.getElementById('km-row');
-      const sampR = document.getElementById('measure');
-      row.style.fontFamily   = font;
-      sampR.style.fontFamily = font;
-      fitKmRow();
+      const row    = document.getElementById('km-row');
+      const mMax   = document.getElementById('measureMax');
+      const mEnd   = document.getElementById('measureEnd');
+      row.style.fontFamily = font;
+      mMax.style.fontFamily = font;
+      mEnd.style.fontFamily = font;
+      fitKmRow(parsed.km);
     }
+
     function setBackground(color){
       const b=document.body;
       if(color==='black'){ b.classList.remove('bg-white'); b.classList.add('bg-black'); }
       else { b.classList.remove('bg-black'); b.classList.add('bg-white'); }
     }
 
-    /* ---------- 폭 계산 (99.99 기준, SAFE 98%) ---------- */
-    const SAFE = 0.98; // 더 크게 보이도록
-    function fitKmRow(){
-      const row    = document.getElementById('km-row');
-      const stage  = document.getElementById('stage');
-      const meas   = document.getElementById('measure');
+    /* ===== 스케일 계산: 99.99와 실제값 중 더 넓은 폭 기준으로, 가능한 한 크게 ===== */
+    const SAFE = 0.98;
+    function fitKmRow(endText){
+      const stage = document.getElementById('stage');
+      const row   = document.getElementById('km-row');
 
-      const avail  = stage.clientWidth;        // 좌측 패딩 기준
-      const need   = meas.scrollWidth || 1;    // 99.99 + km 폭
-      const scale  = Math.min(1, (avail / need) * SAFE);
+      // 측정용 텍스트 갱신
+      document.getElementById('m-end').textContent = endText || document.getElementById('km').textContent;
+
+      const needMax = document.getElementById('measureMax').scrollWidth || 1;
+      const needEnd = document.getElementById('measureEnd').scrollWidth || 1;
+      const need    = Math.max(needMax, needEnd);   // 둘 중 더 넓은 폭
+      const avail   = stage.clientWidth || 1;
+
+      const scale = Math.min(1, (avail / need) * SAFE);
       row.style.transform = `scale(${scale})`;
     }
 
@@ -233,25 +245,22 @@
       document.body.classList.add('focus');
       document.getElementById('stage').scrollIntoView({behavior:'smooth', block:'start'});
 
+      // 목표값 기준으로 스케일 세팅 후 애니메이션
+      fitKmRow(parsed.km);
       document.getElementById('km-unit').style.opacity = 0;
-      fitKmRow();                                // 시작 전 스케일
 
       const end = parseFloat(parsed.km || '0') || 0;
       await countUpLeft('km', 0, end, 2200);
 
       document.getElementById('km-unit').style.opacity = 1;
-
-      document.getElementById('pace').textContent = parsed.pace || '—';
-      document.getElementById('time').textContent = parsed.time || '—';
-
-      fitKmRow();                                // 마무리 보정
+      fitKmRow(parsed.km);
     }
 
     function exitFocus(){ document.body.classList.remove('focus'); window.scrollTo({top:0, behavior:'smooth'}); }
 
-    window.addEventListener('resize', fitKmRow);
-    window.addEventListener('orientationchange', ()=> setTimeout(fitKmRow, 120));
-    window.onload = () => { setFont('Anton'); fitKmRow(); };
+    window.addEventListener('resize', ()=>fitKmRow(parsed.km));
+    window.addEventListener('orientationchange', ()=> setTimeout(()=>fitKmRow(parsed.km), 120));
+    window.onload = ()=>{ setFont('Anton'); fitKmRow('0.00'); };
   </script>
 </body>
 </html>
