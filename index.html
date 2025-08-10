@@ -87,11 +87,16 @@
       opacity:0; transition:opacity 450ms ease; white-space:nowrap;
     }
 
-    /* 하단 정보: Pace, Time만 */
+    /* 하단 정보: Pace, Time만 (3열 중 1,2열만 사용) */
     .grid{
-      display:grid; grid-template-columns:repeat(2,1fr); gap:10px;
+      display:grid;
+      grid-template-columns:repeat(3,1fr);  /* ← 3등분으로 변경 */
+      gap:8px;                               /* 조금 더 붙게 8px */
       margin-top:0; color:inherit; text-align:left;
+      align-items:start;
     }
+    .grid > div:nth-child(1){ grid-column:1 / 2; }
+    .grid > div:nth-child(2){ grid-column:2 / 3; }
     .stat{ font-size:22px; font-weight:800; }
     .label{ font-size:14px; opacity:.9; }
 
@@ -112,7 +117,7 @@
 </head>
 <body class="bg-white">
   <header>
-    <h1>RUNNING MILEAGE ANIMATION MAKER</h1>
+    <h1>RUNNING MILEAGE ANIMATION V.0.9</h1>
     <div class="subtitle">by JS @runarchive.js</div>
   </header>
 
@@ -227,6 +232,10 @@
         const img = reader.result;
         const result = await Tesseract.recognize(img, 'eng');
         parsedData = parseFromOCR(result.data.text);
+
+        /* OCR 완료 즉시 Pace/Time 표시 (요청 #2) */
+        document.getElementById('pace').textContent = parsedData.pace || "-";
+        document.getElementById('time').textContent = parsedData.time || "-";
       };
       reader.readAsDataURL(file);
     });
@@ -278,7 +287,7 @@
 
       fitKmRow(); // 시작 전 맞춤
 
-      // 0.5초 대기 후 시작 (요청사항 #2)
+      // 0.5초 대기 후 시작 (요청사항)
       await new Promise(r=>setTimeout(r, 500));
 
       const endVal = parseFloat(parsedData.km || 0);
@@ -286,7 +295,7 @@
 
       unit.style.opacity = 1; // 단위 페이드인
 
-      // 하단 정보 반영
+      // 하단 정보는 이미 OCR 시점에 표시됨(유지 목적으로 한 번 더 동기화)
       document.getElementById('pace').textContent = parsedData.pace || "-";
       document.getElementById('time').textContent = parsedData.time || "-";
 
@@ -345,6 +354,7 @@
     }
 
     /* ---------- 이벤트 바인딩 ---------- */
+    const fontGrid = document.getElementById('font-grid');
     fontGrid.addEventListener('click', (e)=>{
       const btn = e.target.closest('button[data-font]');
       if(!btn) return;
@@ -358,7 +368,7 @@
 
     /* ---------- 액션 ---------- */
     function onRun(){
-      document.body.classList.add('focus'); // 헤더/상단UI 숨김 (요청사항 #3)
+      document.body.classList.add('focus'); // 헤더/상단UI 숨김
       document.getElementById('stage').scrollIntoView({behavior:'smooth', block:'start'});
       runAnimation();
     }
