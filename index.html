@@ -13,7 +13,7 @@
     :root{
       --pad:16px;
       --maxw:480px;
-      --gapBelowKm: 12px; /* 기본 km-아래 간격 */
+      --gapBelowKm: 12px;
     }
     *{box-sizing:border-box}
     html, body { background:#fff; color:#000; }
@@ -21,28 +21,20 @@
       margin:0;
       font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
     }
-
-    /* 테마(버튼 반전 변수) */
     .bg-white{ --bg:#fff; --fg:#000; background:#fff; color:#000; }
     .bg-black{ --bg:#000; --fg:#fff; background:#000; color:#fff; }
-
     header{ padding:var(--pad); text-align:left; }
     h1{ margin:6px 0 2px; font-size:18px; font-weight:800; }
     .subtitle{ font-size:12px; opacity:.8 }
-
     .wrap{ width:100%; max-width:var(--maxw); margin:0 auto; padding:0 var(--pad); }
     .section{ margin:14px 0; }
-
     .upload-box{ border:1px solid #ddd; border-radius:10px; padding:16px; }
     .upload-label{ display:block; background:#000; color:#fff; padding:12px 14px; font-weight:800; border-radius:8px; text-align:center; margin-bottom:10px; }
     .status{ color:#17a34a; font-weight:700; font-size:13px; }
-
     .control-title{ font-size:13px; font-weight:800; margin:10px 0; }
-
-    /* 버튼 */
     .font-grid{
       display:grid;
-      grid-template-columns:repeat(4,1fr); /* 4x2 */
+      grid-template-columns:repeat(4,1fr);
       gap:8px;
     }
     .font-grid button,.bg-row button,.run-button{
@@ -54,27 +46,23 @@
     }
     .font-grid button:active, .bg-row button:active { transform:scale(0.99); }
     .is-active{ background:var(--fg); color:var(--bg); border-color:var(--fg); }
-
     .bg-row{ display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
     .run-button{ background:#000; color:#7fff00; border-color:#0070ff; margin-top:6px; }
-
-    /* ===== 스테이지 ===== */
     .stage-outer{ padding:10px 0 24px; }
     .stage-inner{ width:100%; max-width:var(--maxw); margin:0 auto; padding:0 var(--pad); }
-
     .km-row-wrap{
       display:flex;
-      justify-content:flex-start;           /* 좌측 기준 */
-      margin:6px auto var(--gapBelowKm);    /* 폰트별로 JS에서 제어 */
+      justify-content:flex-start;
+      margin:6px auto var(--gapBelowKm);
       width:100%;
     }
     .km-row{
       display:flex; align-items:baseline; gap:10px;
-      transform-origin:left bottom;         /* 좌측 고정 스케일 */
+      transform-origin:left bottom;
       will-change:transform;
     }
     #km{
-      font-family:'Anton', sans-serif;      /* 기본 Anton */
+      font-family:'Anton', sans-serif;
       font-size:200px; line-height:1; white-space:nowrap;
       letter-spacing:.5px;
     }
@@ -82,21 +70,17 @@
       font-size:80px; line-height:1; transform:translateY(-8px);
       opacity:0; transition:opacity 450ms ease; white-space:nowrap;
     }
-
-    /* 하단 정보: 3열로 나누고 1,2열만 사용해서 더 붙게 */
     .grid{
       display:grid;
-      grid-template-columns:repeat(3,1fr);  /* 3등분 */
-      gap:8px;                               /* 조금 더 붙게 */
+      grid-template-columns:repeat(3,1fr);
+      gap:8px;
       margin-top:0; color:inherit; text-align:left;
       align-items:start;
     }
-    .grid > div:nth-child(1){ grid-column:1 / 2; margin-left:5px; /* Avg. Pace를 5px 안쪽으로 들임 */ }
+    .grid > div:nth-child(1){ grid-column:1 / 2; margin-left:5px; }
     .grid > div:nth-child(2){ grid-column:2 / 3; }
     .stat{ font-size:22px; font-weight:800; }
-    .label{ font-size:14px; opacity:.9; }
-
-    /* 포커스 모드: 상단 UI/헤더 숨김 */
+    .label{ font-size:14px; opacity:.9 }
     body.focus header{ display:none; }
     body.focus .top-ui{ display:none; }
     body.focus #exit-focus{
@@ -106,8 +90,6 @@
       border:2px solid currentColor; background:transparent; color:inherit; font-weight:800;
     }
     #exit-focus{ display:none; }
-
-    /* km 기준폭 측정용 (숨김) */
     #km-measure{ position:absolute; visibility:hidden; left:-9999px; top:-9999px; white-space:nowrap; }
   </style>
 </head>
@@ -159,16 +141,13 @@
   <!-- 스테이지 -->
   <section class="stage-outer">
     <div class="stage-inner" id="stage">
-      <!-- 기준폭 측정 : 99.99 (크기 계산의 기준) -->
       <div id="km-measure">99.99</div>
-
       <div class="km-row-wrap">
         <div class="km-row" id="km-row">
           <div id="km">0.00</div>
           <div id="km-unit">km</div>
         </div>
       </div>
-
       <div class="grid">
         <div>
           <div class="stat" id="pace">-</div>
@@ -184,33 +163,28 @@
 
   <script>
     let parsedData = {};
-    const fontGridEl = document.getElementById('font-grid'); // ✅ 단일 선언로 통일
+    const fontGridEl = document.getElementById('font-grid');
     const bgRow = document.getElementById('bg-row');
 
-    /* ---------- OCR 정규화 & 파싱 ---------- */
     function normalizeOCR(s){
       return s
-        .replace(/[\u2018\u2019\u2032\u2035]/g,"'")   // 프라임 → '
-        .replace(/[\u201C\u201D\u2033]/g,'"')         // 더블프라임 → "
-        .replace(/[·•]/g,'.')                         // 가운데점 → .
-        .replace(/\u200B|\u00A0/g,' ')                // zero width & nbsp → space
+        .replace(/[\u2018\u2019\u2032\u2035]/g,"'")
+        .replace(/[\u201C\u201D\u2033]/g,'"')
+        .replace(/[·•]/g,'.')
+        .replace(/\u200B|\u00A0/g,' ')
         .replace(/[ ]{2,}/g,' ')
         .trim();
     }
 
     function parseFromOCR(textRaw){
       const text = normalizeOCR(textRaw);
-      // pace: 7'22"
       const paceMatch = text.match(/\b(\d{1,2})\s*'\s*(\d{2})\s*"?\b/);
-      // time: H:MM:SS 또는 MM:SS
       let timeMatch = text.match(/\b(\d{1,2}):(\d{2}):(\d{2})\b/);
       if(!timeMatch){
         const mmss = text.match(/\b(\d{1,2}):(\d{2})\b/);
         if(mmss) timeMatch = { 0:mmss[0] };
       }
-      // distance: 99.99 형태
       const distMatch = text.match(/\b(\d{1,2}\.\d{1,2})\b/);
-
       return {
         km: distMatch ? distMatch[1] : null,
         pace: paceMatch ? `${paceMatch[1]}'${paceMatch[2]}"` : "-",
@@ -218,7 +192,6 @@
       };
     }
 
-    /* ---------- 파일 업로드 ---------- */
     document.getElementById("file-upload").addEventListener("change", async (e)=>{
       const file = e.target.files[0]; if(!file) return;
       document.getElementById("upload-status").textContent = "업로드 완료";
@@ -228,15 +201,12 @@
         const img = reader.result;
         const result = await Tesseract.recognize(img, 'eng');
         parsedData = parseFromOCR(result.data.text);
-
-        /* ✅ OCR 완료 즉시 Pace/Time 표시 */
         document.getElementById('pace').textContent = parsedData.pace || "-";
         document.getElementById('time').textContent = parsedData.time || "-";
       };
       reader.readAsDataURL(file);
     });
 
-    /* ---------- 카운트업 (easeOutCubic) ---------- */
     const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
     function animateNumber(id,start,end,duration){
       return new Promise(resolve=>{
@@ -253,104 +223,74 @@
       });
     }
 
-    /* ---------- 좌측 고정 스케일: 99.99 기준 + 안전계수 0.9 ---------- */
     function fitKmRow(){
       const stage = document.getElementById('stage');
       const row   = document.getElementById('km-row');
       const measure = document.getElementById('km-measure');
       const kmEl = document.getElementById('km');
       const unitEl = document.getElementById('km-unit');
-
-      // 현재 폰트로 기준 텍스트(99.99) 측정
       const kmCS = window.getComputedStyle(kmEl);
       measure.style.fontFamily = kmCS.fontFamily;
       measure.style.fontSize   = kmCS.fontSize;
       measure.style.fontStyle  = kmCS.fontStyle;
       measure.style.fontWeight = kmCS.fontWeight;
-
       const stagePaddingLeft = parseInt(getComputedStyle(document.querySelector('.stage-inner')).paddingLeft) || 0;
       const avail = stage.clientWidth - stagePaddingLeft;
-      const need  = measure.scrollWidth + 10 + unitEl.scrollWidth; // 숫자 + 간격 + 단위
-      const safe  = 0.9; // 안전계수
+      const need  = measure.scrollWidth + 10 + unitEl.scrollWidth;
+      const safe  = 0.9;
       const scale = need ? Math.min(1, (avail * safe) / need) : 1;
-
       row.style.transform = `scale(${scale})`;
     }
 
-    /* ---------- 애니메이션 실행 ---------- */
     async function runAnimation(){
       const unit = document.getElementById("km-unit");
       unit.style.opacity = 0;
-
-      fitKmRow(); // 시작 전 맞춤
-
-      // 0.5초 대기 후 시작
+      fitKmRow();
       await new Promise(r=>setTimeout(r, 500));
-
       const endVal = parseFloat(parsedData.km || 0);
       await animateNumber("km", 0, isNaN(endVal)?0:endVal, 2200);
-
-      unit.style.opacity = 1; // 단위 페이드인
-
-      // 유지 겸 동기화
+      unit.style.opacity = 1;
       document.getElementById('pace').textContent = parsedData.pace || "-";
       document.getElementById('time').textContent = parsedData.time || "-";
-
-      fitKmRow(); // 애니 후 재맞춤
+      fitKmRow();
     }
 
-    /* ---------- 유틸: 버튼 active 토글 ---------- */
     function updateActive(groupEl, targetBtn){
       [...groupEl.querySelectorAll('button')].forEach(b=>b.classList.remove('is-active'));
       if(targetBtn) targetBtn.classList.add('is-active');
     }
 
-    /* ---------- 폰트 적용 (Rock Salt만 간격 확장) ---------- */
     function setFont(font){
       const km = document.getElementById("km");
       const unit = document.getElementById("km-unit");
-
-      // 폰트별 기본 크기
       const smallSet  = new Set(["Orbitron","Notable"]);
       const scriptSet = new Set(["Gloria Hallelujah","Lobster","Rock Salt","Monoton","Special Gothic Expanded One"]);
-
       let base = 200;
       if (smallSet.has(font)) base = 180;
       if (scriptSet.has(font)) base = 170;
-
       km.style.fontFamily = font + ", sans-serif";
       km.style.fontSize   = base + "px";
       km.style.fontStyle  = "normal";
       km.style.fontWeight = (font === "Orbitron" || font === "Notable") ? "700" : "700";
-
       unit.style.fontFamily = km.style.fontFamily;
       unit.style.fontSize   = Math.round(base * 0.4) + "px";
       unit.style.fontStyle  = "normal";
       unit.style.fontWeight = "700";
-
-      // Rock Salt일 때만 km 아래 간격 확장
-      const gap = (font === "Rock Salt") ? 28 : 12; // px
+      const gap = (font === "Rock Salt") ? 28 : 12;
       document.documentElement.style.setProperty('--gapBelowKm', gap + 'px');
-
-      // 버튼 active 토글
       const targetBtn = fontGridEl.querySelector(`button[data-font="${CSS.escape(font)}"]`);
       updateActive(fontGridEl, targetBtn);
-
       fitKmRow();
     }
 
-    /* ---------- 배경 ---------- */
     function setBackground(color){
       const b = document.body;
       if(color==='black'){ b.classList.remove('bg-white'); b.classList.add('bg-black'); }
       else { b.classList.remove('bg-black'); b.classList.add('bg-white'); }
-
-      // 배경 버튼 active 토글
       const targetBtn = bgRow.querySelector(`button[data-bg="${color}"]`);
       updateActive(bgRow, targetBtn);
     }
 
-    /* ---------- 이벤트 바인딩 ---------- */
     fontGridEl.addEventListener('click', (e)=>{
       const btn = e.target.closest('button[data-font]');
       if(!btn) return;
@@ -362,24 +302,25 @@
       setBackground(btn.dataset.bg);
     });
 
-    /* ---------- 액션 ---------- */
     function onRun(){
-      document.body.classList.add('focus'); // 헤더/상단UI 숨김
+      document.body.classList.add('focus');
       document.getElementById('stage').scrollIntoView({behavior:'smooth', block:'start'});
       runAnimation();
     }
+
     function exitFocus(){
       document.body.classList.remove('focus');
       window.scrollTo({top:0, behavior:'smooth'});
+      document.getElementById('km').textContent = "0.00"; // 초기화
+      document.getElementById('km-unit').style.opacity = 0; // 단위 숨김
     }
 
     window.addEventListener('resize', fitKmRow);
     window.addEventListener('orientationchange', ()=> setTimeout(fitKmRow, 150));
 
-    /* 초기화 */
     window.onload = ()=>{
       setFont('Anton');
-      setBackground('white'); /* 기본 선택 표시 */
+      setBackground('white');
       fitKmRow();
     };
   </script>
