@@ -5,10 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>RUNNING MILEAGE ANIMATION MAKER</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
-  <!-- Google Fonts (9개) -->
-  <link href="https://fonts.googleapis.com/css2?family=Anton:wght@400&family=Orbitron:wght@700&family=Fugaz+One&family=Special+Gothic+Expanded+One&family=Notable&family=Monoton&family=Sedgwick+Ave+Display&family=Lobster&family=Rock+Salt&display=swap" rel="stylesheet">
+
+  <!-- Google Fonts (9개) : Sedgwick Ave Display → Gloria Hallelujah 교체 -->
+  <link href="https://fonts.googleapis.com/css2?family=Anton:wght@400&family=Orbitron:wght@700&family=Fugaz+One&family=Special+Gothic+Expanded+One&family=Notable&family=Monoton&family=Gloria+Hallelujah&family=Lobster&family=Rock+Salt&display=swap" rel="stylesheet">
+
   <style>
-    :root{ --pad:16px; --maxw:480px; }
+    :root{
+      --pad:16px;
+      --maxw:480px;
+      --gapBelowKm: 12px; /* 기본(모든 폰트) km-아래 간격 */
+    }
     *{box-sizing:border-box}
     html, body { background:#fff; color:#000; }
     body{ margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; }
@@ -27,8 +33,8 @@
     .control-title{ font-size:13px; font-weight:800; margin:10px 0; }
     .font-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
     .font-grid button,.bg-row button,.run-button{
-      width:100%; height:44px; border-radius:10px; border:2px solid #000;
-      background:#fff; color:#000; font-size:14px; font-weight:700;
+      width:100%; height:44px; border-radius:10px; border:2px solid currentColor;
+      background:transparent; color:inherit; font-size:14px; font-weight:700;
     }
     .bg-row{ display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
     .run-button{ background:#000; color:#7fff00; border-color:#0070ff; margin-top:6px; }
@@ -39,19 +45,19 @@
 
     .km-row-wrap{
       display:flex;
-      justify-content:flex-start; /* 좌측 기준 */
-      margin:6px auto 6px;
+      justify-content:flex-start;           /* 좌측 기준 */
+      margin:6px auto var(--gapBelowKm);    /* 폰트별로 JS에서 제어 */
       width:100%;
     }
     .km-row{
       display:flex; align-items:baseline; gap:10px;
-      transform-origin:left bottom; /* 좌측 고정 스케일 */
+      transform-origin:left bottom;         /* 좌측 고정 스케일 */
       will-change:transform;
     }
     #km{
-      font-family:'Anton', sans-serif; /* 기본 Anton */
+      font-family:'Anton', sans-serif;      /* 기본 Anton */
       font-size:200px; line-height:1; white-space:nowrap;
-      letter-spacing:0.5px;
+      letter-spacing:.5px;
     }
     #km-unit{
       font-size:80px; line-height:1; transform:translateY(-8px);
@@ -59,9 +65,12 @@
     }
 
     /* 하단 정보: Pace, Time만 */
-    .grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:10px; color:inherit; text-align:left; }
-    .stat{ font-size:22px; font-weight:800; color:inherit; }
-    .label{ font-size:14px; color:inherit; opacity:.9; }
+    .grid{
+      display:grid; grid-template-columns:repeat(2,1fr); gap:10px;
+      margin-top:0; color:inherit; text-align:left;
+    }
+    .stat{ font-size:22px; font-weight:800; }
+    .label{ font-size:14px; opacity:.9; }
 
     /* 포커스 모드: 상단 UI 숨김 */
     body.focus .top-ui{ display:none; }
@@ -73,7 +82,7 @@
     }
     #exit-focus{ display:none; }
 
-    /* 배경 토글 */
+    /* 배경 토글 (페이지 전체) */
     .bg-black{ background:#000; color:#fff; }
     .bg-white{ background:#fff; color:#000; }
 
@@ -105,7 +114,7 @@
           <button style="font-family:'Special Gothic Expanded One', sans-serif;" onclick="setFont('Special Gothic Expanded One')">Special Gothic</button>
           <button style="font-family:'Notable', sans-serif;" onclick="setFont('Notable')">Notable</button>
           <button style="font-family:'Monoton', cursive;" onclick="setFont('Monoton')">Monoton</button>
-          <button style="font-family:'Sedgwick Ave Display', cursive;" onclick="setFont('Sedgwick Ave Display')">Sedgwick</button>
+          <button style="font-family:'Gloria Hallelujah', cursive;" onclick="setFont('Gloria Hallelujah')">Gloria Hallelujah</button>
           <button style="font-family:'Lobster', cursive;" onclick="setFont('Lobster')">Lobster</button>
           <button style="font-family:'Rock Salt', cursive;" onclick="setFont('Rock Salt')">Rock Salt</button>
         </div>
@@ -130,7 +139,7 @@
   <!-- 스테이지 -->
   <section class="stage-outer">
     <div class="stage-inner" id="stage">
-      <!-- 기준폭 측정 -->
+      <!-- 기준폭 측정 : 99.99 (크기 계산의 기준) -->
       <div id="km-measure">99.99</div>
 
       <div class="km-row-wrap">
@@ -163,30 +172,27 @@
         .replace(/[\u201C\u201D\u2033]/g,'"')       // 더블프라임 → "
         .replace(/[·•]/g,'.')                       // 가운데점 → .
         .replace(/\u200B|\u00A0/g,' ')              // zero width & nbsp → space
-        .replace(/[ ]{2,}/g,' ')                    // 다중 공백 정리
+        .replace(/[ ]{2,}/g,' ')
         .trim();
     }
 
     function parseFromOCR(textRaw){
       const text = normalizeOCR(textRaw);
-
-      // pace: 7'22" / 5'54" (공백 허용, 유니코드 허용)
+      // pace: 7'22"
       const paceMatch = text.match(/\b(\d{1,2})\s*'\s*(\d{2})\s*"?\b/);
-
       // time: H:MM:SS 또는 MM:SS
-      let timeMatch = text.match(/\b(\d{1,2}):(\d{2}):(\d{2})\b/); // H:MM:SS
+      let timeMatch = text.match(/\b(\d{1,2}):(\d{2}):(\d{2})\b/);
       if(!timeMatch){
-        const mmss = text.match(/\b(\d{1,2}):(\d{2})\b/);          // MM:SS
-        if(mmss) timeMatch = { groups:null, 0:mmss[0] };
+        const mmss = text.match(/\b(\d{1,2}):(\d{2})\b/);
+        if(mmss) timeMatch = { 0:mmss[0] };
       }
-
-      // distance: 1~2자 정수 + 소수점 2자리 (가장 그럴듯한 것 한 개)
+      // distance: 99.99 형태
       const distMatch = text.match(/\b(\d{1,2}\.\d{1,2})\b/);
 
       return {
         km: distMatch ? distMatch[1] : null,
         pace: paceMatch ? `${paceMatch[1]}'${paceMatch[2]}"` : "-",
-        time: timeMatch ? timeMatch[0] : "-",
+        time: timeMatch ? timeMatch[0] : "-"
       };
     }
 
@@ -224,17 +230,17 @@
     /* ---------- 좌측 고정 스케일: 99.99 기준 + 안전계수 0.9 ---------- */
     function fitKmRow(){
       const stage = document.getElementById('stage');
-      const wrap  = document.querySelector('.km-row-wrap');
       const row   = document.getElementById('km-row');
       const measure = document.getElementById('km-measure');
       const kmEl = document.getElementById('km');
       const unitEl = document.getElementById('km-unit');
 
-      // 측정 텍스트를 현재 폰트로 설정 (99.99 기준)
-      measure.style.fontFamily = kmEl.style.fontFamily || window.getComputedStyle(kmEl).fontFamily;
-      measure.style.fontSize   = kmEl.style.fontSize   || window.getComputedStyle(kmEl).fontSize;
-      measure.style.fontStyle  = kmEl.style.fontStyle  || window.getComputedStyle(kmEl).fontStyle;
-      measure.style.fontWeight = kmEl.style.fontWeight || window.getComputedStyle(kmEl).fontWeight;
+      // 현재 폰트로 기준 텍스트(99.99) 측정
+      const kmCS = window.getComputedStyle(kmEl);
+      measure.style.fontFamily = kmCS.fontFamily;
+      measure.style.fontSize   = kmCS.fontSize;
+      measure.style.fontStyle  = kmCS.fontStyle;
+      measure.style.fontWeight = kmCS.fontWeight;
 
       const avail = stage.clientWidth - (parseInt(getComputedStyle(stage).paddingLeft) || 0);
       const need  = measure.scrollWidth + 10 + unitEl.scrollWidth; // 숫자 + 간격 + 단위
@@ -248,21 +254,18 @@
       const unit = document.getElementById("km-unit");
       unit.style.opacity = 0;
 
-      // 시작 전 좌측 고정 스케일
-      fitKmRow();
+      fitKmRow(); // 시작 전 맞춤
 
       const endVal = parseFloat(parsedData.km || 0);
       await animateNumber("km", 0, isNaN(endVal)?0:endVal, 2200);
 
-      // 단위 페이드인
-      unit.style.opacity = 1;
+      unit.style.opacity = 1; // 단위 페이드인
 
-      // 하단 정보 반영 (2개만)
+      // 하단 정보 반영
       document.getElementById('pace').textContent = parsedData.pace || "-";
       document.getElementById('time').textContent = parsedData.time || "-";
 
-      // 애니 후 다시 맞춤
-      fitKmRow();
+      fitKmRow(); // 애니 후 재맞춤
     }
 
     /* ---------- 액션 ---------- */
@@ -276,15 +279,14 @@
       window.scrollTo({top:0, behavior:'smooth'});
     }
 
-    /* ---------- 폰트 적용 (각 폰트별 베이스 보정) ---------- */
+    /* ---------- 폰트 적용 (Rock Salt만 간격 확장) ---------- */
     function setFont(font){
       const km = document.getElementById("km");
       const unit = document.getElementById("km-unit");
 
-      // 폰트별 기본 크기(좌측 고정이므로 너무 크면 넘침, 조정)
-      // Jost는 빠졌고, Anton이 기본. 스크립트/손글씨 계열은 약간 작게.
-      const smallSet = new Set(["Orbitron","Fugaz One","Notable"]);
-      const scriptSet= new Set(["Sedgwick Ave Display","Lobster","Rock Salt","Monoton","Special Gothic Expanded One"]);
+      // 폰트별 기본 크기
+      const smallSet  = new Set(["Orbitron","Fugaz One","Notable"]);
+      const scriptSet = new Set(["Gloria Hallelujah","Lobster","Rock Salt","Monoton","Special Gothic Expanded One"]);
 
       let base = 200;
       if (smallSet.has(font)) base = 180;
@@ -292,13 +294,17 @@
 
       km.style.fontFamily = font + ", sans-serif";
       km.style.fontSize   = base + "px";
-      km.style.fontStyle  = (font === "Sedgwick Ave Display" || font === "Lobster" || font === "Rock Salt") ? "normal" : "normal";
+      km.style.fontStyle  = "normal";
       km.style.fontWeight = (font === "Orbitron" || font === "Notable") ? "700" : "700";
 
       unit.style.fontFamily = km.style.fontFamily;
       unit.style.fontSize   = Math.round(base * 0.4) + "px";
       unit.style.fontStyle  = "normal";
       unit.style.fontWeight = "700";
+
+      // Rock Salt일 때만 km 아래 간격 확장
+      const gap = (font === "Rock Salt") ? 28 : 12; // px
+      document.documentElement.style.setProperty('--gapBelowKm', gap + 'px');
 
       fitKmRow();
     }
