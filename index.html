@@ -6,8 +6,8 @@
   <title>RUNNING MILEAGE ANIMATION MAKER</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
 
-  <!-- Google Fonts (8개) -->
-  <link href="https://fonts.googleapis.com/css2?family=Anton:wght@400&family=Orbitron:wght@700&family=Special+Gothic+Expanded+One&family=Notable&family=Monoton&family=Gloria+Hallelujah&family=Lobster&family=Rock+Salt&display=swap" rel="stylesheet">
+  <!-- Google Fonts: Notable/Lobster 제거, Rubik Dirt / Rubik Glitch 추가 -->
+  <link href="https://fonts.googleapis.com/css2?family=Anton:wght@400&family=Orbitron:wght@700&family=Special+Gothic+Expanded+One&family=Rubik+Dirt&family=Monoton&family=Gloria+Hallelujah&family=Rubik+Glitch&family=Rock+Salt&display=swap" rel="stylesheet">
 
   <style>
     :root{
@@ -23,15 +23,21 @@
     }
     .bg-white{ --bg:#fff; --fg:#000; background:#fff; color:#000; }
     .bg-black{ --bg:#000; --fg:#fff; background:#000; color:#fff; }
+
     header{ padding:var(--pad); text-align:left; }
     h1{ margin:6px 0 2px; font-size:18px; font-weight:800; }
     .subtitle{ font-size:12px; opacity:.8 }
+
     .wrap{ width:100%; max-width:var(--maxw); margin:0 auto; padding:0 var(--pad); }
     .section{ margin:14px 0; }
+
     .upload-box{ border:1px solid #ddd; border-radius:10px; padding:16px; }
     .upload-label{ display:block; background:#000; color:#fff; padding:12px 14px; font-weight:800; border-radius:8px; text-align:center; margin-bottom:10px; }
     .status{ color:#17a34a; font-weight:700; font-size:13px; }
+
     .control-title{ font-size:13px; font-weight:800; margin:10px 0; }
+
+    /* 버튼 */
     .font-grid{
       display:grid;
       grid-template-columns:repeat(4,1fr);
@@ -46,10 +52,14 @@
     }
     .font-grid button:active, .bg-row button:active { transform:scale(0.99); }
     .is-active{ background:var(--fg); color:var(--bg); border-color:var(--fg); }
+
     .bg-row{ display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
     .run-button{ background:#000; color:#7fff00; border-color:#0070ff; margin-top:6px; }
+
+    /* ===== 스테이지 ===== */
     .stage-outer{ padding:10px 0 24px; }
     .stage-inner{ width:100%; max-width:var(--maxw); margin:0 auto; padding:0 var(--pad); }
+
     .km-row-wrap{
       display:flex;
       justify-content:flex-start;
@@ -70,6 +80,8 @@
       font-size:80px; line-height:1; transform:translateY(-8px);
       opacity:0; transition:opacity 450ms ease; white-space:nowrap;
     }
+
+    /* 하단 정보: 3열 중 1,2열 사용 */
     .grid{
       display:grid;
       grid-template-columns:repeat(3,1fr);
@@ -81,6 +93,8 @@
     .grid > div:nth-child(2){ grid-column:2 / 3; }
     .stat{ font-size:22px; font-weight:800; }
     .label{ font-size:14px; opacity:.9 }
+
+    /* 포커스 모드 */
     body.focus header{ display:none; }
     body.focus .top-ui{ display:none; }
     body.focus #exit-focus{
@@ -90,6 +104,7 @@
       border:2px solid currentColor; background:transparent; color:inherit; font-weight:800;
     }
     #exit-focus{ display:none; }
+
     #km-measure{ position:absolute; visibility:hidden; left:-9999px; top:-9999px; white-space:nowrap; }
   </style>
 </head>
@@ -103,7 +118,7 @@
   <div class="top-ui">
     <div class="wrap">
       <section class="section upload-box">
-        <label for="file-upload" class="upload-label">Upload NRC record image</label>
+        <label for="file-upload" class="upload-label">Upload your NRC record image</label>
         <input type="file" id="file-upload" accept="image/*" style="display:none;" />
         <div class="status" id="upload-status"></div>
       </section>
@@ -114,10 +129,10 @@
           <button data-font="Anton" style="font-family:'Anton', sans-serif;">Anton</button>
           <button data-font="Orbitron" style="font-family:'Orbitron', sans-serif;">Orbitron</button>
           <button data-font="Special Gothic Expanded One" style="font-family:'Special Gothic Expanded One', sans-serif;">Gothic</button>
-          <button data-font="Notable" style="font-family:'Notable', sans-serif;">Notable</button>
+          <button data-font="Rubik Dirt" style="font-family:'Rubik Dirt', cursive;">Rubik Dirt</button>
           <button data-font="Monoton" style="font-family:'Monoton', cursive;">Monoton</button>
           <button data-font="Gloria Hallelujah" style="font-family:'Gloria Hallelujah', cursive;">Gloria</button>
-          <button data-font="Lobster" style="font-family:'Lobster', cursive;">Lobster</button>
+          <button data-font="Rubik Glitch" style="font-family:'Rubik Glitch', cursive;">Rubik Glitch</button>
           <button data-font="Rock Salt" style="font-family:'Rock Salt', cursive;">Rock</button>
         </div>
       </section>
@@ -229,11 +244,13 @@
       const measure = document.getElementById('km-measure');
       const kmEl = document.getElementById('km');
       const unitEl = document.getElementById('km-unit');
+
       const kmCS = window.getComputedStyle(kmEl);
       measure.style.fontFamily = kmCS.fontFamily;
       measure.style.fontSize   = kmCS.fontSize;
       measure.style.fontStyle  = kmCS.fontStyle;
       measure.style.fontWeight = kmCS.fontWeight;
+
       const stagePaddingLeft = parseInt(getComputedStyle(document.querySelector('.stage-inner')).paddingLeft) || 0;
       const avail = stage.clientWidth - stagePaddingLeft;
       const need  = measure.scrollWidth + 10 + unitEl.scrollWidth;
@@ -263,8 +280,11 @@
     function setFont(font){
       const km = document.getElementById("km");
       const unit = document.getElementById("km-unit");
-      const smallSet  = new Set(["Orbitron","Notable"]);
-      const scriptSet = new Set(["Gloria Hallelujah","Lobster","Rock Salt","Monoton","Special Gothic Expanded One"]);
+
+      /* 크기 계열 정의 업데이트: Notable→Rubik Dirt, Lobster→Rubik Glitch */
+      const smallSet  = new Set(["Orbitron","Rubik Dirt"]);
+      const scriptSet = new Set(["Gloria Hallelujah","Rubik Glitch","Rock Salt","Monoton","Special Gothic Expanded One"]);
+
       let base = 200;
       if (smallSet.has(font)) base = 180;
       if (scriptSet.has(font)) base = 170;
@@ -272,17 +292,18 @@
       km.style.fontFamily = font + ", sans-serif";
       km.style.fontSize   = base + "px";
       km.style.fontStyle  = "normal";
-      km.style.fontWeight = (font === "Orbitron" || "Notable") ? "700" : "700";
+      km.style.fontWeight = "700";
+
       unit.style.fontFamily = km.style.fontFamily;
       unit.style.fontSize   = Math.round(base * 0.4) + "px";
       unit.style.fontStyle  = "normal";
       unit.style.fontWeight = "700";
 
-      /* Rock Salt 전용 위치/간격 조정 */
+      /* Rock Salt 전용 위치/간격 조정 (사용자 코드 그대로 유지: 25px) */
       if (font === "Rock Salt") {
-        km.style.transform = "translateX(25px)";         // ← 오른쪽으로 10px 이동
+        km.style.transform = "translateX(25px)";
       } else {
-        km.style.transform = "translateX(0)";            // 다른 폰트는 원위치
+        km.style.transform = "translateX(0)";
       }
       const gap = (font === "Rock Salt") ? 28 : 12;
       document.documentElement.style.setProperty('--gapBelowKm', gap + 'px');
