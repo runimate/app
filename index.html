@@ -83,6 +83,16 @@
     .stage-outer{ padding:10px 0 24px; }
     .stage-inner{ width:100%; max-width:var(--maxw); margin:0 auto; padding:0 var(--pad); }
 
+    /* 날짜 표시 (Type2 전용, 숫자 위) */
+    .date-display{
+      display:none;   /* Type2에서 보임 */
+      font-weight:900;
+      font-size:42px; /* 필요하면 조절 */
+      line-height:1.05;
+      margin:6px 0 8px; /* 숫자와 간격 */
+      white-space:nowrap;
+    }
+
     .km-row-wrap{
       display:flex;
       justify-content:flex-start;
@@ -108,7 +118,7 @@
       display:none; /* Type 2에서만 보임 */
       font-size:28px;
       line-height:1.05;
-      margin-top:8px;      /* 숫자와 Kilometers 간격 (기본) */
+      margin-top:16px;      /* 기본: 숫자와 Kilometers 간격 */
       margin-bottom:16px;   /* Kilometers와 하단 정보 간격 */
       font-weight:600;
     }
@@ -142,11 +152,20 @@
     /* 2칸 구성 (Layout / BG) */
     .two-col { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px; }
     .control-title.title-left { text-align:left; margin:14px 0 8px; }
+
+    /* 날짜 입력 UI (Type2에서만 표시) */
+    .date-row{ display:none; grid-template-columns:1fr; gap:8px; margin-top:12px; }
+    .date-row .control-title{ margin:0; }
+    .date-input{
+      height:44px; border:3px solid var(--fg); border-radius:var(--radius);
+      background:transparent; color:var(--fg); font-weight:700; padding:0 12px;
+      font-size:16px;
+    }
   </style>
 </head>
 <body class="bg-white">
   <header>
-    <h1>RUN MILEAGE ANIMATION V.0.9.0 BETA</h1>
+    <h1>RUNNING MILEAGE ANIMATION V.0.9.0 BETA</h1>
     <div class="subtitle">by JS @runarchive.js</div>
   </header>
 
@@ -191,6 +210,12 @@
         </div>
       </div>
 
+      <!-- 날짜 선택 (Type2 전용) -->
+      <div class="date-row" id="date-section">
+        <div class="control-title title-left">Date</div>
+        <input id="date-input" class="date-input" type="date"/>
+      </div>
+
       <!-- 폰트 -->
       <section class="section">
         <div class="control-title">Font</div>
@@ -221,6 +246,9 @@
     <div class="stage-inner" id="stage">
       <div id="km-measure">99.99</div>
 
+      <!-- Type2: 날짜 표시 -->
+      <div id="date-display" class="date-display"></div>
+
       <div class="km-row-wrap">
         <div class="km-row" id="km-row">
           <div id="km">0.00</div>
@@ -247,12 +275,25 @@
     let parsedData = {};
     let recordType = 'daily';  // daily | monthly
     let layoutType = 'type1';  // type1 | type2
-    let selectedFont = 'Anton';  // ★ 현재 선택된 폰트(간격 계산에 사용)
+    let selectedFont = 'Anton';  // 현재 선택 폰트
+    let selectedDate = new Date(); // Type2 날짜
 
-    const fontGridEl = document.getElementById('font-grid');
-    const bgRow = document.getElementById('bg-row');
-    const modeRow = document.getElementById('mode-row');
-    const layoutRow = document.getElementById('layout-row');
+    const fontGridEl  = document.getElementById('font-grid');
+    const bgRow       = document.getElementById('bg-row');
+    const modeRow     = document.getElementById('mode-row');
+    const layoutRow   = document.getElementById('layout-row');
+    const dateSection = document.getElementById('date-section');
+    const dateInput   = document.getElementById('date-input');
+    const dateDisplay = document.getElementById('date-display');
+
+    /* ---------- 유틸: 날짜 포맷 (13 AUG. 2025) ---------- */
+    const MONTH_ABBR = ["JAN.","FEB.","MAR.","APR.","MAY.","JUN.","JUL.","AUG.","SEP.","OCT.","NOV.","DEC."];
+    function formatDate(d){
+      const day = String(d.getDate());
+      const mon = MONTH_ABBR[d.getMonth()];
+      const yr  = d.getFullYear();
+      return `${day} ${mon} ${yr}`;
+    }
 
     /* ---------- OCR 정규화 & 파싱 ---------- */
     function normalizeOCR(s){
@@ -317,11 +358,11 @@
 
     /* ---------- 스케일 맞춤 ---------- */
     function fitKmRow(){
-      const stage = document.getElementById('stage');
-      const row   = document.getElementById('km-row');
+      const stage   = document.getElementById('stage');
+      const row     = document.getElementById('km-row');
       const measure = document.getElementById('km-measure');
-      const kmEl = document.getElementById('km');
-      const unitEl = document.getElementById('km-unit');
+      const kmEl    = document.getElementById('km');
+      const unitEl  = document.getElementById('km-unit');
 
       // 현재 폰트 기준 측정
       const kmCS = window.getComputedStyle(kmEl);
@@ -339,12 +380,22 @@
       const safe  = 0.9;
       const scale = need ? Math.min(1, (avail * safe) / need) : 1;
       row.style.transform = `scale(${scale})`;
+
+      // ★ 날짜 폭 동기화 (Type2)
+      syncDateWidth();
+    }
+
+    /* ---------- 날짜 폭을 km 숫자 폭에 맞추기 ---------- */
+    function syncDateWidth(){
+      if (layoutType !== 'type2') return;
+      const row = document.getElementById('km-row');
+      const width = row.getBoundingClientRect().width; // 스케일 적용 후 실제 폭
+      dateDisplay.style.width = width + 'px';
     }
 
     /* ---------- 애니메이션 실행 ---------- */
     async function runAnimation(){
       const unit = document.getElementById("km-unit");
-      // Type1만 단위 페이드; Type2는 단어형이라 별도 처리 없음
       if(layoutType==='type1'){ unit.style.opacity = 0; }
       fitKmRow();
 
@@ -365,7 +416,7 @@
 
     /* ---------- 폰트 ---------- */
     function setFont(font){
-      selectedFont = font; // ★ 현재 선택 폰트 저장
+      selectedFont = font;
 
       const km = document.getElementById("km");
       const unit = document.getElementById("km-unit");
@@ -397,12 +448,12 @@
       const gapType1 = (font === "Rock Salt") ? 28 : 12;
       document.documentElement.style.setProperty('--gapBelowKm', gapType1 + 'px');
 
-      // ★ Type2: 숫자 ↔ Kilometers 간격을 폰트별로 별도 제어
+      // Type2: 숫자 ↔ Kilometers 간격을 폰트별로 별도 제어
       const kmWord = document.getElementById('km-word');
       if (layoutType === 'type2') {
         kmWord.style.marginTop = (font === 'Rock Salt') ? '40px' : '16px';
       } else {
-        kmWord.style.marginTop = '16px'; // 기본값 유지
+        kmWord.style.marginTop = '16px';
       }
 
       const targetBtn = fontGridEl.querySelector(`button[data-font="${CSS.escape(font)}"]`);
@@ -427,21 +478,47 @@
       updateActive(modeRow, btn);
     }
 
+    /* ---------- 날짜 입력 ---------- */
+    function setDateFromInput(){
+      const val = dateInput.value; // yyyy-mm-dd
+      if(!val) return;
+      const [y,m,d] = val.split('-').map(Number);
+      selectedDate = new Date(y, m-1, d);
+      renderDateDisplay();
+      syncDateWidth();
+    }
+    function renderDateDisplay(){
+      if (layoutType !== 'type2') return;
+      dateDisplay.textContent = formatDate(selectedDate);
+    }
+
     /* ---------- 레이아웃 ---------- */
     function applyLayoutVisual(){
       const unit = document.getElementById('km-unit');
       const word = document.getElementById('km-word');
 
       if(layoutType==='type1'){
-        unit.style.display = '';
-        word.style.display = 'none';
-        // Type1 전환 시 기본값 복구
+        unit.style.display  = '';
+        word.style.display  = 'none';
+        dateSection.style.display = 'none';
+        dateDisplay.style.display = 'none';
         word.style.marginTop = '16px';
       }else{ // type2
-        unit.style.display = 'none';
-        word.style.display = 'block';
-        // ★ Type2 전환 순간에도 현재 폰트 기준으로 간격 적용
-        word.style.marginTop = (selectedFont === 'Rock Salt') ? '40px' : '16px';
+        unit.style.display  = 'none';
+        word.style.display  = 'block';
+        dateSection.style.display = 'grid';
+        dateDisplay.style.display = 'block';
+
+        // 날짜 기본값 세팅(처음 들어오면 오늘)
+        if(!dateInput.value){
+          const today = new Date();
+          const yyyy = today.getFullYear();
+          const mm = String(today.getMonth()+1).padStart(2,'0');
+          const dd = String(today.getDate()).padStart(2,'0');
+          dateInput.value = `${yyyy}-${mm}-${dd}`;
+          selectedDate = today;
+        }
+        renderDateDisplay();
       }
       fitKmRow();
     }
@@ -470,6 +547,7 @@
       const btn = e.target.closest('button[data-layout]'); if(!btn) return;
       setLayout(btn.dataset.layout);
     });
+    dateInput.addEventListener('change', setDateFromInput);
 
     /* ---------- 액션 ---------- */
     function onRun(){
@@ -484,16 +562,18 @@
       document.getElementById('km-unit').style.opacity = 0; // Type1 대비 초기화
     }
 
-    window.addEventListener('resize', fitKmRow);
+    window.addEventListener('resize', ()=>{ fitKmRow(); });
     window.addEventListener('orientationchange', ()=> setTimeout(fitKmRow, 150));
 
     /* 초기화 */
     window.onload = ()=>{
-      // 기본값: Daily / Type1 / White / Anton
       setRecordType('daily');
-      setLayout('type1');
+      setLayout('type1');      // 기본 Type1
       setBackground('white');
       setFont('Anton');
+      // date 기본값 (오늘) 미리 세팅
+      const t=new Date(); dateInput.value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+      selectedDate = t;
       fitKmRow();
     };
   </script>
