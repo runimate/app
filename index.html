@@ -138,6 +138,13 @@
     #exit-focus{ display:none; }
 
     #km-measure{ position:absolute; visibility:hidden; left:-9999px; top:-9999px; white-space:nowrap; }
+ 
+    .two-col {
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0,1fr));
+  gap:10px;
+}
+.control-title.title-left { text-align:left; margin:14px 0 8px; }
   </style>
 </head>
 <body class="bg-white">
@@ -166,21 +173,26 @@
         <button class="pill-btn" data-mode="monthly">Monthly</button>
       </div>
 
-      <!-- 레이아웃 & BG -->
-      <div class="row-head" style="margin-top:12px; justify-content:flex-start; gap:40px;">
-  <div class="label">Layout</div>
-  <div class="label">BG Color</div>
+<!-- 레이아웃 & BG (각 1/2 영역) -->
+<div class="two-col">
+  <!-- 왼쪽: Layout -->
+  <div>
+    <div class="control-title title-left">Layout</div>
+    <div class="seg-row cols-2" id="layout-row">
+      <button class="pill-btn" data-layout="type1">Type 1</button>
+      <button class="pill-btn" data-layout="type2">Type 2</button>
+    </div>
+  </div>
+
+  <!-- 오른쪽: BG Color -->
+  <div>
+    <div class="control-title title-left">BG Color</div>
+    <div class="bg-row" id="bg-row">
+      <button class="pill-btn" data-bg="white">White</button>
+      <button class="pill-btn" data-bg="black">Black</button>
+    </div>
+  </div>
 </div>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-        <div class="seg-row cols-2" id="layout-row">
-          <button class="pill-btn" data-layout="type1">Type 1</button>
-          <button class="pill-btn" data-layout="type2">Type 2</button>
-        </div>
-        <div class="bg-row" id="bg-row">
-          <button class="pill-btn" data-bg="white">White</button>
-          <button class="pill-btn" data-bg="black">Black</button>
-        </div>
-      </div>
 
       <!-- 폰트 -->
       <section class="section">
