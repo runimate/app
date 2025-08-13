@@ -87,7 +87,7 @@
     .date-display{
       display:none;   /* Type2에서 보임 */
       font-weight:900;
-      font-size:42px; /* 필요하면 조절 */
+      font-size:42px;
       line-height:1.05;
       margin:6px 0 8px; /* 숫자와 간격 */
       white-space:nowrap;
@@ -418,8 +418,11 @@
     function setFont(font){
       selectedFont = font;
 
-      const km = document.getElementById("km");
-      const unit = document.getElementById("km-unit");
+      const km      = document.getElementById("km");
+      const unit    = document.getElementById("km-unit");
+      const kmWord  = document.getElementById('km-word');
+      const dateDisp= document.getElementById('date-display'); // ★ 날짜 표시 엘리먼트
+
       const smallSet  = new Set(["Orbitron","Rubik Dirt"]);
       const scriptSet = new Set(["Gloria Hallelujah","Rubik Glitch","Rock Salt","Monoton","Special Gothic Expanded One"]);
 
@@ -437,6 +440,10 @@
       unit.style.fontStyle  = "normal";
       unit.style.fontWeight = "700";
 
+      /* ★ 날짜도 동일 폰트 사용 */
+      dateDisp.style.fontFamily = km.style.fontFamily;
+      dateDisp.style.fontWeight = "700";
+
       // Rock Salt만 살짝 우측 이동
       if (font === "Rock Salt") {
         km.style.transform = "translateX(25px)";
@@ -444,12 +451,11 @@
         km.style.transform = "translateX(0)";
       }
 
-      // Type1: km 아래 간격 변수로 제어
-      const gapType1 = (font === "Rock Salt") ? 28 : 12;
-      document.documentElement.style.setProperty('--gapBelowKm', gapType1 + 'px');
+      // Type1: km 아래 간격 변수
+      const gap = (font === "Rock Salt") ? 28 : 12;
+      document.documentElement.style.setProperty('--gapBelowKm', gap + 'px');
 
-      // Type2: 숫자 ↔ Kilometers 간격을 폰트별로 별도 제어
-      const kmWord = document.getElementById('km-word');
+      // Type2: 숫자 ↔ Kilometers 간격 폰트별 조정
       if (layoutType === 'type2') {
         kmWord.style.marginTop = (font === 'Rock Salt') ? '40px' : '16px';
       } else {
@@ -568,12 +574,14 @@
     /* 초기화 */
     window.onload = ()=>{
       setRecordType('daily');
-      setLayout('type1');      // 기본 Type1
+      setLayout('type1');
       setBackground('white');
       setFont('Anton');
-      // date 기본값 (오늘) 미리 세팅
-      const t=new Date(); dateInput.value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+
+      const t = new Date();
+      dateInput.value = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
       selectedDate = t;
+
       fitKmRow();
     };
   </script>
