@@ -6,11 +6,10 @@
   <title>RUNNING MILEAGE ANIMATION MAKER</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
 
-  <!-- Google Fonts: Rubik Dirt / Rubik Glitch 포함 -->
+  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Anton:wght@400&family=Orbitron:wght@700&family=Special+Gothic+Expanded+One&family=Rubik+Dirt&family=Monoton&family=Gloria+Hallelujah&family=Rubik+Glitch&family=Rock+Salt&display=swap" rel="stylesheet">
 
   <style>
-    /* 스타일 부분은 동일 (생략 가능) */
     :root{
       --pad:16px;
       --maxw:480px;
@@ -25,7 +24,106 @@
     }
     .bg-white{ --bg:#fff; --fg:#000; background:#fff; color:#000; }
     .bg-black{ --bg:#000; --fg:#fff; background:#000; color:#fff; }
-    /* 이하 동일 */
+
+    header{ padding:var(--pad); text-align:left; }
+    h1{ margin:6px 0 2px; font-size:18px; font-weight:800; }
+    .subtitle{ font-size:12px; opacity:.8 }
+
+    .wrap{ width:100%; max-width:var(--maxw); margin:0 auto; padding:0 var(--pad); }
+    .section{ margin:14px 0; }
+
+    .upload-box{ border:1px solid #ddd; border-radius:10px; padding:16px; }
+    .upload-label{
+      display:block; background:#000; color:#fff; padding:14px 16px; font-weight:800;
+      border-radius:12px; text-align:center; margin-bottom:10px;
+    }
+    .status{ color:#17a34a; font-weight:700; font-size:13px; }
+
+    .row-head{ display:flex; justify-content:space-between; gap:10px; margin:10px 0 6px; }
+    .row-head .label{ font-size:13px; font-weight:800; opacity:.9; }
+
+    .seg-row, .bg-row{ display:grid; gap:10px; }
+    .seg-row.cols-2{ grid-template-columns:repeat(2,1fr); }
+    .bg-row{ grid-template-columns:repeat(2,1fr); }
+
+    .pill-btn{
+      width:100%; height:48px; border-radius:var(--radius);
+      border:3px solid var(--fg);
+      background:transparent; color:var(--fg);
+      font-size:16px; font-weight:800; cursor:pointer;
+      transition:transform .04s ease, background .2s ease, color .2s ease, border-color .2s ease;
+    }
+    .pill-btn:active { transform:scale(0.99); }
+    .pill-btn.is-active{ background:var(--fg); color:var(--bg); }
+
+    .control-title{ font-size:13px; font-weight:800; margin:14px 0 8px; }
+
+    .font-grid{
+      display:grid; grid-template-columns:repeat(4,1fr); gap:10px;
+    }
+    .font-grid button{
+      height:48px; border-radius:var(--radius); border:3px solid var(--fg);
+      background:transparent; color:var(--fg); font-size:16px; font-weight:800; cursor:pointer;
+      transition:transform .04s ease, background .2s ease, color .2s ease, border-color .2s ease;
+    }
+    .font-grid button:active{ transform:scale(0.99); }
+    .font-grid button.is-active{ background:var(--fg); color:var(--bg); }
+
+    .run-button{
+      width:100%; height:52px; border-radius:16px;
+      background:#000; color:#7fff00; border:3px solid #0070ff; margin-top:10px; font-size:18px; font-weight:900;
+    }
+
+    .stage-outer{ padding:10px 0 24px; }
+    .stage-inner{ width:100%; max-width:var(--maxw); margin:0 auto; padding:0 var(--pad); }
+
+    .km-row-wrap{
+      display:flex;
+      justify-content:flex-start;
+      margin:6px auto var(--gapBelowKm);
+      width:100%;
+    }
+    .km-row{
+      display:flex; align-items:baseline; gap:10px;
+      transform-origin:left bottom;
+    }
+    #km{
+      font-family:'Anton', sans-serif;
+      font-size:200px; line-height:1; white-space:nowrap;
+    }
+    #km-unit{
+      font-size:80px; line-height:1; transform:translateY(-8px);
+      opacity:0; transition:opacity 450ms ease; white-space:nowrap;
+    }
+    #km-word {
+      display:none;
+      font-size:28px;
+      line-height:1.05;
+      margin-top:16px;
+      margin-bottom:16px;
+      font-weight:600;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:8px;
+      margin-top:0; color:inherit; text-align:left;
+      align-items:start;
+    }
+    .grid > div:nth-child(1){ grid-column:1 / 2; margin-left:15px; }
+    .grid > div:nth-child(2){ grid-column:2 / 3; }
+    .stat{ font-size:22px; font-weight:800; }
+    .label{ font-size:14px; opacity:.9 }
+
+    body.focus header{ display:none; }
+    body.focus .top-ui{ display:none; }
+    body.focus #exit-focus{
+      display:block; position:fixed; z-index:20;
+      top: env(safe-area-inset-top, 8px); right:10px;
+      width:40px; height:40px; border-radius:20px;
+      border:2px solid currentColor; background:transparent; color:inherit; font-weight:800;
+    }
+    #exit-focus{ display:none; }
   </style>
 </head>
 <body class="bg-white">
@@ -34,18 +132,15 @@
     <div class="subtitle">by JS @runarchive.js</div>
   </header>
 
-  <!-- 설정 UI -->
   <div class="top-ui">
     <div class="wrap">
 
-      <!-- 업로드 -->
       <section class="section upload-box">
         <label for="file-upload" class="upload-label">Upload your NRC record image</label>
         <input type="file" id="file-upload" accept="image/*" style="display:none;" />
         <div class="status" id="upload-status"></div>
       </section>
 
-      <!-- 기록 유형 -->
       <div class="row-head">
         <div class="label">Record Type</div>
       </div>
@@ -54,7 +149,6 @@
         <button class="pill-btn" data-mode="monthly">Monthly</button>
       </div>
 
-      <!-- 레이아웃 & BG -->
       <div class="row-head" style="margin-top:12px;">
         <div class="label">Layout</div>
         <div class="label" style="text-align:left;">BG Color</div>
@@ -70,7 +164,6 @@
         </div>
       </div>
 
-      <!-- 폰트 -->
       <section class="section">
         <div class="control-title">Font</div>
         <div class="font-grid" id="font-grid">
@@ -85,7 +178,6 @@
         </div>
       </section>
 
-      <!-- RUN -->
       <section class="section">
         <button class="run-button" id="run-btn" onclick="onRun()">RUN</button>
       </section>
@@ -95,18 +187,14 @@
 
   <button id="exit-focus" title="Close" onclick="exitFocus()">✕</button>
 
-  <!-- 스테이지 -->
   <section class="stage-outer">
     <div class="stage-inner" id="stage">
-      <div id="km-measure">99.99</div>
-
       <div class="km-row-wrap">
         <div class="km-row" id="km-row">
           <div id="km">0.00</div>
           <div id="km-unit">km</div>
         </div>
       </div>
-      <!-- Type2 전용 단어형 단위 -->
       <div id="km-word">Kilometers</div>
 
       <div class="grid">
@@ -123,7 +211,7 @@
   </section>
 
   <script>
-    /* 기존 JS 그대로 */
+    // JS는 기존 로직 그대로 (폰트 선택, BG 선택, 레이아웃 타입, 애니메이션 포함)
   </script>
 </body>
 </html>
