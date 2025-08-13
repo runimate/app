@@ -268,16 +268,25 @@
       let base = 200;
       if (smallSet.has(font)) base = 180;
       if (scriptSet.has(font)) base = 170;
+
       km.style.fontFamily = font + ", sans-serif";
       km.style.fontSize   = base + "px";
       km.style.fontStyle  = "normal";
-      km.style.fontWeight = (font === "Orbitron" || font === "Notable") ? "700" : "700";
+      km.style.fontWeight = (font === "Orbitron" || "Notable") ? "700" : "700";
       unit.style.fontFamily = km.style.fontFamily;
       unit.style.fontSize   = Math.round(base * 0.4) + "px";
       unit.style.fontStyle  = "normal";
       unit.style.fontWeight = "700";
+
+      /* Rock Salt 전용 위치/간격 조정 */
+      if (font === "Rock Salt") {
+        km.style.transform = "translateX(10px)";         // ← 오른쪽으로 10px 이동
+      } else {
+        km.style.transform = "translateX(0)";            // 다른 폰트는 원위치
+      }
       const gap = (font === "Rock Salt") ? 28 : 12;
       document.documentElement.style.setProperty('--gapBelowKm', gap + 'px');
+
       const targetBtn = fontGridEl.querySelector(`button[data-font="${CSS.escape(font)}"]`);
       updateActive(fontGridEl, targetBtn);
       fitKmRow();
@@ -319,8 +328,8 @@
     window.addEventListener('orientationchange', ()=> setTimeout(fitKmRow, 150));
 
     window.onload = ()=>{
-      setFont('Anton');
-      setBackground('white');
+      setFont('Anton');         // 기본 폰트
+      setBackground('white');   // 기본 배경
       fitKmRow();
     };
   </script>
