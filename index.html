@@ -6,7 +6,7 @@
   <title>RUNNING MILEAGE ANIMATION MAKER</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
 
-  <!-- Google Fonts: Rubik Dirt / Rubik Glitch 포함 -->
+  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Anton:wght@400&family=Orbitron:wght@700&family=Special+Gothic+Expanded+One&family=Rubik+Dirt&family=Monoton&family=Gloria+Hallelujah&family=Rubik+Glitch&family=Rock+Salt&display=swap" rel="stylesheet">
 
   <style>
@@ -19,9 +19,6 @@
       /* 간격 변수 */
       --dateGap: 12px;     /* 날짜(윗줄) ↔ 숫자 간격 */
       --kmWordGap: 16px;   /* 숫자 ↔ “Kilometers” 간격 (Type2) */
-
-      /* 날짜/라벨류 기본 서체 (Kilometers/날짜에 사용) */
-      --labelFont: system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
     }
     *{box-sizing:border-box}
     html, body { background:#fff; color:#000; }
@@ -96,9 +93,8 @@
       font-weight:900;
       font-size:42px;
       line-height:1.05;
-      margin:6px 0 var(--dateGap);
+      margin:6px 0 var(--dateGap); /* 변수로 간격 제어 */
       white-space:nowrap;
-      font-family: var(--labelFont);  /* 기본 라벨 폰트 고정 */
     }
 
     .km-row-wrap{
@@ -113,7 +109,7 @@
       will-change:transform;
     }
     #km{
-      font-family:'Anton', sans-serif;
+      font-family:'Anton', sans-serif; /* 기본 숫자 폰트는 Anton */
       font-size:200px; line-height:1; white-space:nowrap;
       letter-spacing:.5px;
     }
@@ -126,10 +122,10 @@
       display:none; /* Type 2에서만 보임 */
       font-size:28px;
       line-height:1.05;
-      margin-top:var(--kmWordGap);
+      margin-top:var(--kmWordGap);  /* 변수로 간격 제어 */
       margin-bottom:16px;
       font-weight:600;
-      font-family: var(--labelFont);  /* 기본 라벨 폰트 고정 */
+      /* 폰트는 기본 system-ui (선택 폰트 영향 X) */
     }
 
     /* 하단 정보: 3열 중 1,2열 사용 */
@@ -449,29 +445,33 @@
       unit.style.fontStyle  = "normal";
       unit.style.fontWeight = "700";
 
-      /* 날짜 폰트 규칙:
-         - Anton 선택 시: 날짜도 Anton
-         - 그 외: 날짜는 기본 라벨 폰트(= CSS var(--labelFont))
-      */
+      /* 날짜 폰트: Anton만 Anton, 그 외는 기본(system-ui) */
       if (font === "Anton") {
         dateDisp.style.fontFamily = "Anton, sans-serif";
       } else {
-        dateDisp.style.fontFamily = ""; // CSS 기본(var(--labelFont)) 사용
+        dateDisp.style.fontFamily = ""; // 기본 상속 (system-ui)
       }
       dateDisp.style.fontWeight = "700";
 
       // Rock Salt만 위치 조정 (X=25px, Y=-25px)
-      if (font === "Rock Salt") {
-        km.style.transform = "translate(25px, -25px)";
-      } else {
-        km.style.transform = "translate(0, 0)";
-      }
+      km.style.transform = (font === "Rock Salt") ? "translate(25px, -25px)" : "translate(0, 0)";
 
       // Type1: km 아래 간격
       const gapType1 = (font === "Rock Salt") ? 28 : 12;
       document.documentElement.style.setProperty('--gapBelowKm', gapType1 + 'px');
 
-      // 폰트별 간격 맵: 날짜↔숫자, 숫자↔Kilometers
+      /* 폰트별 날짜 크기/간격 + Kilometers 간격 */
+      const dateSizeByFont = {
+        "Anton": "42px",
+        "Orbitron": "38px",
+        "Rubik Dirt": "40px",
+        "Gloria Hallelujah": "44px",
+        "Rubik Glitch": "40px",
+        "Rock Salt": "40px",
+        "Monoton": "38px",
+        "Special Gothic Expanded One": "38px"
+      };
+
       const dateGapByFont = {
         "Anton": "10px",
         "Orbitron": "1px",
@@ -482,14 +482,27 @@
         "Monoton": "1px",
         "Special Gothic Expanded One": "1px"
       };
+
       const kmWordGapByFont = {
-        "Rock Salt": "40px" // Rock Salt는 더 띄움
-        // 그 외는 기본 16px
+        "Rock Salt": "40px"   // 나머지는 기본 16px
       };
 
-      document.documentElement.style.setProperty('--dateGap', dateGapByFont[font] || '12px');
-      document.documentElement.style.setProperty('--kmWordGap', kmWordGapByFont[font] || '16px');
+      // 날짜 크기
+      dateDisp.style.fontSize = dateSizeByFont[font] || "42px";
 
+      // 날짜↔숫자 간격: 변수 + 인라인로 동시에
+      const dateGap = dateGapByFont[font] || "12px";
+      document.documentElement.style.setProperty('--dateGap', dateGap);
+      dateDisp.style.marginBottom = dateGap;
+
+      // 숫자↔Kilometers 간격
+      const kmWordGap = kmWordGapByFont[font] || "16px";
+      document.documentElement.style.setProperty('--kmWordGap', kmWordGap);
+
+      // Kilometers는 항상 기본 폰트 유지(설정하지 않음)
+      kmWord.style.fontFamily = "";
+
+      // 폰트 버튼 active 표시
       const targetBtn = fontGridEl.querySelector(`button[data-font="${CSS.escape(font)}"]`);
       updateActive(fontGridEl, targetBtn);
 
