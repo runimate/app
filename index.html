@@ -15,6 +15,13 @@
       --maxw:480px;
       --gapBelowKm: 12px;
       --radius:14px;
+
+      /* 간격 변수 */
+      --dateGap: 12px;     /* 날짜(윗줄) ↔ 숫자 간격 */
+      --kmWordGap: 16px;   /* 숫자 ↔ “Kilometers” 간격 (Type2) */
+
+      /* 날짜/라벨류 기본 서체 (Kilometers/날짜에 사용) */
+      --labelFont: system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
     }
     *{box-sizing:border-box}
     html, body { background:#fff; color:#000; }
@@ -87,10 +94,11 @@
     .date-display{
       display:none;   /* Type2에서 보임 */
       font-weight:900;
-      font-size:42px; /* 필요하면 조절 */
+      font-size:42px;
       line-height:1.05;
-      margin:6px 0 8px; /* 숫자와 간격 */
+      margin:6px 0 var(--dateGap);
       white-space:nowrap;
+      font-family: var(--labelFont);  /* 기본 라벨 폰트 고정 */
     }
 
     .km-row-wrap{
@@ -118,9 +126,10 @@
       display:none; /* Type 2에서만 보임 */
       font-size:28px;
       line-height:1.05;
-      margin-top:16px;      /* 기본: 숫자와 Kilometers 간격 */
-      margin-bottom:16px;   /* Kilometers와 하단 정보 간격 */
+      margin-top:var(--kmWordGap);
+      margin-bottom:16px;
       font-weight:600;
+      font-family: var(--labelFont);  /* 기본 라벨 폰트 고정 */
     }
 
     /* 하단 정보: 3열 중 1,2열 사용 */
@@ -381,7 +390,7 @@
       const scale = need ? Math.min(1, (avail * safe) / need) : 1;
       row.style.transform = `scale(${scale})`;
 
-      // ★ 날짜 폭 동기화 (Type2)
+      // 날짜 폭 동기화 (Type2)
       syncDateWidth();
     }
 
@@ -418,10 +427,13 @@
     function setFont(font){
       selectedFont = font;
 
-      const km = document.getElementById("km");
-      const unit = document.getElementById("km-unit");
+      const km       = document.getElementById("km");
+      const unit     = document.getElementById("km-unit");
+      const kmWord   = document.getElementById("km-word");
+      const dateDisp = document.getElementById("date-display");
+
       const smallSet  = new Set(["Orbitron","Rubik Dirt"]);
-      const scriptSet = new Set(["Gloria Hallelujah","Rubik Glitch","","Monoton","Special Gothic Expanded One"]);
+      const scriptSet = new Set(["Gloria Hallelujah","Rubik Glitch","Rock Salt","Monoton","Special Gothic Expanded One"]);
 
       let base = 200;
       if (smallSet.has(font)) base = 180;
@@ -437,23 +449,46 @@
       unit.style.fontStyle  = "normal";
       unit.style.fontWeight = "700";
 
-    // Rock Salt만 위치 조정 (X=25px, Y=-10px)
-if (font === "Rock Salt") {
-  km.style.transform = "translate(25px, 20px)";
-} else {
-  km.style.transform = "translate(0, 0)";
-}
-      // Type1: km 아래 간격 변수로 제어
+      /* 날짜 폰트 규칙:
+         - Anton 선택 시: 날짜도 Anton
+         - 그 외: 날짜는 기본 라벨 폰트(= CSS var(--labelFont))
+      */
+      if (font === "Anton") {
+        dateDisp.style.fontFamily = "Anton, sans-serif";
+      } else {
+        dateDisp.style.fontFamily = ""; // CSS 기본(var(--labelFont)) 사용
+      }
+      dateDisp.style.fontWeight = "700";
+
+      // Rock Salt만 위치 조정 (X=25px, Y=-25px)
+      if (font === "Rock Salt") {
+        km.style.transform = "translate(25px, -25px)";
+      } else {
+        km.style.transform = "translate(0, 0)";
+      }
+
+      // Type1: km 아래 간격
       const gapType1 = (font === "Rock Salt") ? 28 : 12;
       document.documentElement.style.setProperty('--gapBelowKm', gapType1 + 'px');
 
-      // Type2: 숫자 ↔ Kilometers 간격을 폰트별로 별도 제어
-      const kmWord = document.getElementById('km-word');
-      if (layoutType === 'type2') {
-        kmWord.style.marginTop = (font === 'Rock Salt') ? '40px' : '16px';
-      } else {
-        kmWord.style.marginTop = '16px';
-      }
+      // 폰트별 간격 맵: 날짜↔숫자, 숫자↔Kilometers
+      const dateGapByFont = {
+        "Anton": "10px",
+        "Orbitron": "12px",
+        "Rubik Dirt": "14px",
+        "Gloria Hallelujah": "18px",
+        "Rubik Glitch": "14px",
+        "Rock Salt": "20px",
+        "Monoton": "12px",
+        "Special Gothic Expanded One": "12px"
+      };
+      const kmWordGapByFont = {
+        "Rock Salt": "40px" // Rock Salt는 더 띄움
+        // 그 외는 기본 16px
+      };
+
+      document.documentElement.style.setProperty('--dateGap', dateGapByFont[font] || '12px');
+      document.documentElement.style.setProperty('--kmWordGap', kmWordGapByFont[font] || '16px');
 
       const targetBtn = fontGridEl.querySelector(`button[data-font="${CSS.escape(font)}"]`);
       updateActive(fontGridEl, targetBtn);
