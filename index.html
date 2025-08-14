@@ -95,6 +95,9 @@
       line-height:1.05;
       margin:6px 0 var(--dateGap); /* 변수로 간격 제어 */
       white-space:nowrap;
+      /* ▼ 추가: 날짜 이동을 위한 기본값 */
+      transform: translate(0,0);
+      transform-origin: left bottom;
     }
 
     .km-row-wrap{
@@ -413,14 +416,33 @@
 
       // 폰트별 설정 맵 (크기/가중치/간격/위치)
       const fontSettings = {
-        "Anton":                      { base: 200, weight: 700, dateSize: "42px", dateGap: "10px", dateWeight: 700 },
-        "Big Shoulders Inline Text":  { base: 190, weight: 800, dateSize: "40px", dateGap: "12px", dateWeight: 400 }, // 날짜만 400
-        "Concert One":                { base: 180, weight: 700, dateSize: "44px", dateGap: "14px" },
-        "Orbitron":                   { base: 180, weight: 700, dateSize: "30px", dateGap: "0px"  },
-        "Special Gothic Expanded One":{ base: 170, weight: 700, dateSize: "38px", dateGap: "0px"  },
-        "Graduate":                   { base: 185, weight: 700, dateSize: "40px", dateGap: "5px"  },
-        "Gloria Hallelujah":          { base: 170, weight: 700, dateSize: "44px", dateGap: "18px" },
-        "Rock Salt":                  { base: 170, weight: 700, dateSize: "40px", dateGap: "5px", kmWordGap: "40px", translate: "25px,-25px" }
+        "Anton": {
+          base: 200, weight: 700, dateSize: "60px", dateGap: "10px", dateWeight: 700
+        },
+        "Big Shoulders Inline Text": {
+          base: 190, weight: 800, dateSize: "40px", dateGap: "12px", dateWeight: 700
+        },
+        "Concert One": {
+          base: 180, weight: 700, dateSize: "44px", dateGap: "14px", dateWeight: 700, dateTranslate: "0px, -10px" 
+        },
+        "Orbitron": {
+          base: 180, weight: 700, dateSize: "30px", dateGap: "0px", dateWeight: 700, dateTranslate: "0px, -15px"
+        },
+        "Special Gothic Expanded One": {
+          base: 170, weight: 700, dateSize: "38px", dateGap: "0px", dateWeight: 700, dateTranslate: "0px, -15px"
+        },
+        "Graduate": {
+          base: 185, weight: 700, dateSize: "40px", dateGap: "5px", dateWeight: 700
+        },
+        "Gloria Hallelujah": {
+          base: 170, weight: 700, dateSize: "44px", dateGap: "18px", dateWeight: 700
+        },
+        "Rock Salt": {
+          base: 170, weight: 700, dateSize: "40px", dateGap: "5px",
+          kmWordGap: "40px",
+          translate: "25px,-25px",     // Type1: KM 숫자 이동
+          dateTranslate: "8px,-10px"   // Type2: 날짜만 살짝 이동 (원하는 값으로 조절)
+        }
       };
       const cfg = fontSettings[font] || { base: 200, weight: 700, dateSize: "42px", dateGap: "12px" };
 
@@ -435,11 +457,21 @@
       unit.style.fontSize   = Math.round(cfg.base * 0.4) + "px";
       unit.style.fontWeight = cfg.weight;
 
-      /* 날짜: Anton 선택 시에만 Anton, 그 외는 기본(system-ui). 굵기는 dateWeight 우선 */
+      /* 날짜: Anton 선택 시에만 Anton, 그 외는 기본(system-ui).
+         굵기는 dateWeight가 있으면 그걸, 없으면 폰트 weight 사용 */
       dateDisp.style.fontFamily = (font === "Anton") ? "Anton, sans-serif" : "";
       dateDisp.style.fontWeight = (cfg.dateWeight != null ? cfg.dateWeight : cfg.weight);
       dateDisp.style.fontSize   = cfg.dateSize;
       dateDisp.style.marginBottom = cfg.dateGap;
+
+      /* Type2에서만 날짜 위치 오프셋 적용 */
+      if (layoutType === 'type2') {
+        dateDisp.style.transform = cfg.dateTranslate
+          ? `translate(${cfg.dateTranslate})`
+          : 'translate(0,0)';
+      } else {
+        dateDisp.style.transform = 'translate(0,0)';
+      }
 
       /* 변수로 간격 반영 */
       document.documentElement.style.setProperty('--dateGap',  cfg.dateGap);
@@ -497,6 +529,7 @@
         word.style.display  = 'none';
         dateSection.style.display = 'none';
         dateDisplay.style.display = 'none';
+        dateDisplay.style.transform = 'translate(0,0)'; // Type1 전환 시 날짜 위치 리셋
         word.style.marginTop = '16px';
       }else{ // type2
         unit.style.display  = 'none';
@@ -514,6 +547,8 @@
           selectedDate = today;
         }
         renderDateDisplay();
+        // 현재 선택 폰트 기준으로 날짜 translate 재적용
+        setFont(selectedFont);
       }
       fitKmRow();
     }
