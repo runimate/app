@@ -6,7 +6,7 @@
   <title>RUNNING MILEAGE ANIMATION MAKER</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
 
-  <!-- Google Fonts (업데이트) -->
+  <!-- Google Fonts (요청 세트 & 가중치) -->
   <link href="https://fonts.googleapis.com/css2?family=Anton:wght@400&family=Big+Shoulders+Inline+Text:wght@800&family=Road+Rage&family=Orbitron:wght@700&family=Special+Gothic+Expanded+One&family=Graduate&family=Gloria+Hallelujah&family=Rock+Salt&display=swap" rel="stylesheet">
 
   <style>
@@ -93,7 +93,7 @@
       font-weight:900;
       font-size:42px;
       line-height:1.05;
-      margin:6px 0 var(--dateGap);
+      margin:6px 0 var(--dateGap); /* 변수로 간격 제어 */
       white-space:nowrap;
     }
 
@@ -122,7 +122,7 @@
       display:none; /* Type 2에서만 보임 */
       font-size:28px;
       line-height:1.05;
-      margin-top:var(--kmWordGap);
+      margin-top:var(--kmWordGap);  /* 변수로 간격 제어 */
       margin-bottom:16px;
       font-weight:600;
       /* 폰트는 기본 system-ui (선택 폰트 영향 X) */
@@ -221,13 +221,13 @@
         <input id="date-input" class="date-input" type="date"/>
       </div>
 
-      <!-- 폰트 (업데이트) -->
+      <!-- 폰트 -->
       <section class="section">
         <div class="control-title">Font</div>
         <div class="font-grid" id="font-grid">
           <button data-font="Anton" style="font-family:'Anton', sans-serif;">Anton</button>
           <button data-font="Big Shoulders Inline Text" style="font-family:'Big Shoulders Inline Text', cursive;">Inline</button>
-          <button data-font="Road Rage" style="font-family:'Road Rage', cursive;">Road Rage</button>
+          <button data-font="Road Rage" style="font-family:'Road Rage', cursive;">Rage</button>
           <button data-font="Orbitron" style="font-family:'Orbitron', sans-serif;">Orbitron</button>
           <button data-font="Special Gothic Expanded One" style="font-family:'Special Gothic Expanded One', sans-serif;">Gothic</button>
           <button data-font="Graduate" style="font-family:'Graduate', serif;">Graduate</button>
@@ -428,82 +428,46 @@
       const kmWord   = document.getElementById("km-word");
       const dateDisp = document.getElementById("date-display");
 
-      /* 크기 보정 세트 (필요 시 조절) */
-      const smallSet  = new Set(["Orbitron","Big Shoulders Inline Text","Graduate"]);
-      const scriptSet = new Set(["Gloria Hallelujah","Rock Salt","Road Rage","Special Gothic Expanded One"]);
+      // 폰트별 설정 맵 (크기/가중치/간격/위치)
+      const fontSettings = {
+        "Anton":                      { base: 200, weight: 700, dateSize: "42px", dateGap: "10px" },
+        "Big Shoulders Inline Text":  { base: 190, weight: 800, dateSize: "40px", dateGap: "12px" },
+        "Road Rage":                  { base: 180, weight: 400, dateSize: "44px", dateGap: "14px" },
+        "Orbitron":                   { base: 180, weight: 700, dateSize: "38px", dateGap: "1px"  },
+        "Special Gothic Expanded One":{ base: 170, weight: 400, dateSize: "38px", dateGap: "1px"  },
+        "Graduate":                   { base: 185, weight: 400, dateSize: "40px", dateGap: "12px" },
+        "Gloria Hallelujah":          { base: 170, weight: 400, dateSize: "44px", dateGap: "18px" },
+        "Rock Salt":                  { base: 170, weight: 400, dateSize: "40px", dateGap: "10px", kmWordGap: "40px", translate: "25px,-25px" }
+      };
+      const cfg = fontSettings[font] || { base: 200, weight: 700, dateSize: "42px", dateGap: "12px" };
 
-      let base = 200;
-      if (smallSet.has(font)) base = 180;
-      if (scriptSet.has(font)) base = 170;
-
+      /* 숫자(KM) */
       km.style.fontFamily = font + ", sans-serif";
-      km.style.fontSize   = base + "px";
-      km.style.fontStyle  = "normal";
-      km.style.fontWeight = "700";
+      km.style.fontSize   = cfg.base + "px";
+      km.style.fontWeight = cfg.weight;
+      km.style.transform  = cfg.translate ? `translate(${cfg.translate})` : "translate(0,0)";
 
+      /* 단위 */
       unit.style.fontFamily = km.style.fontFamily;
-      unit.style.fontSize   = Math.round(base * 0.4) + "px";
-      unit.style.fontStyle  = "normal";
-      unit.style.fontWeight = "700";
+      unit.style.fontSize   = Math.round(cfg.base * 0.4) + "px";
+      unit.style.fontWeight = cfg.weight;
 
-      /* 날짜 폰트: Anton만 Anton, 그 외는 기본(system-ui) */
-      if (font === "Anton") {
-        dateDisp.style.fontFamily = "Anton, sans-serif";
-      } else {
-        dateDisp.style.fontFamily = ""; // 기본 상속 (system-ui)
-      }
-      dateDisp.style.fontWeight = "700";
+      /* 날짜: Anton 선택 시에만 Anton, 그 외는 기본(system-ui) */
+      dateDisp.style.fontFamily = (font === "Anton") ? "Anton, sans-serif" : "";
+      dateDisp.style.fontWeight = cfg.weight;
+      dateDisp.style.fontSize   = cfg.dateSize;
+      dateDisp.style.marginBottom = cfg.dateGap;
 
-      // Rock Salt만 위치 조정 (X=25px, Y=-25px)
-      km.style.transform = (font === "Rock Salt") ? "translate(25px, -25px)" : "translate(0, 0)";
+      /* 변수로 간격 반영 */
+      document.documentElement.style.setProperty('--dateGap',  cfg.dateGap);
+      document.documentElement.style.setProperty('--kmWordGap', cfg.kmWordGap || "16px");
 
-      // Type1: km 아래 간격
-      const gapType1 = (font === "Rock Salt") ? 28 : 12;
-      document.documentElement.style.setProperty('--gapBelowKm', gapType1 + 'px');
+      /* Type1: KM 아래 기본 간격 */
+      document.documentElement.style.setProperty('--gapBelowKm', font === "Rock Salt" ? "28px" : "12px");
 
-      /* 폰트별 날짜 크기/간격 + Kilometers 간격 (필요 시 값 조정) */
-      const dateSizeByFont = {
-        "Anton": "42px",
-        "Big Shoulders Inline Text": "40px",
-        "Road Rage": "40px",
-        "Orbitron": "38px",
-        "Special Gothic Expanded One": "38px",
-        "Graduate": "40px",
-        "Gloria Hallelujah": "44px",
-        "Rock Salt": "40px"
-      };
-
-      const dateGapByFont = {
-        "Anton": "10px",
-        "Big Shoulders Inline Text": "12px",
-        "Road Rage": "14px",
-        "Orbitron": "1px",
-        "Special Gothic Expanded One": "1px",
-        "Graduate": "10px",
-        "Gloria Hallelujah": "18px",
-        "Rock Salt": "10px"
-      };
-
-      const kmWordGapByFont = {
-        "Rock Salt": "40px"   // 나머지는 기본 16px
-      };
-
-      // 날짜 크기
-      dateDisp.style.fontSize = dateSizeByFont[font] || "42px";
-
-      // 날짜↔숫자 간격
-      const dateGap = dateGapByFont[font] || "12px";
-      document.documentElement.style.setProperty('--dateGap', dateGap);
-      dateDisp.style.marginBottom = dateGap;
-
-      // 숫자↔Kilometers 간격
-      const kmWordGap = kmWordGapByFont[font] || "16px";
-      document.documentElement.style.setProperty('--kmWordGap', kmWordGap);
-
-      // Kilometers는 항상 기본 폰트 유지
+      /* Kilometers는 항상 기본(system-ui)을 유지 */
       kmWord.style.fontFamily = "";
 
-      // 폰트 버튼 active 표시
       const targetBtn = fontGridEl.querySelector(`button[data-font="${CSS.escape(font)}"]`);
       updateActive(fontGridEl, targetBtn);
 
