@@ -170,7 +170,7 @@
 </head>
 <body class="bg-white">
   <header>
-    <h1>RUNNING MILEAGE ANIMATION V.0.9.0 BETA</h1>
+    <h1>RUN MILEAGE ANIMATOR V.0.9.0 BETA</h1>
     <div class="subtitle">by JS @runarchive.js</div>
   </header>
 
@@ -327,23 +327,6 @@
       };
     }
 
-    /* ---------- 파일 업로드 ---------- */
-    document.getElementById("file-upload").addEventListener("change", async (e)=>{
-      const file = e.target.files[0]; if(!file) return;
-      document.getElementById("upload-status").textContent = "Uploaded!";
-      document.getElementById("run-btn").style.display = "block";
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const img = reader.result;
-        const result = await Tesseract.recognize(img, 'eng');
-        parsedData = parseFromOCR(result.data.text);
-        // OCR 즉시 표시
-        document.getElementById('pace').textContent = parsedData.pace || "-";
-        document.getElementById('time').textContent = parsedData.time || "-";
-      };
-      reader.readAsDataURL(file);
-    });
-
     /* ---------- 카운트업 ---------- */
     const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
     function animateNumber(id,start,end,duration){
@@ -430,14 +413,14 @@
 
       // 폰트별 설정 맵 (크기/가중치/간격/위치)
       const fontSettings = {
-        "Anton":                      { base: 200, weight: 700, dateSize: "42px", dateGap: "10px" },
-        "Big Shoulders Inline Text":  { base: 190, weight: 800, dateSize: "40px", dateGap: "12px" },
-        "Concert One":                { base: 180, weight: 400, dateSize: "44px", dateGap: "14px" },
-        "Orbitron":                   { base: 180, weight: 700, dateSize: "38px", dateGap: "1px"  },
-        "Special Gothic Expanded One":{ base: 170, weight: 400, dateSize: "38px", dateGap: "1px"  },
-        "Graduate":                   { base: 185, weight: 400, dateSize: "40px", dateGap: "12px" },
-        "Gloria Hallelujah":          { base: 170, weight: 400, dateSize: "44px", dateGap: "18px" },
-        "Rock Salt":                  { base: 170, weight: 400, dateSize: "40px", dateGap: "10px", kmWordGap: "40px", translate: "25px,-25px" }
+        "Anton":                      { base: 200, weight: 700, dateSize: "42px", dateGap: "10px", dateWeight: 700 },
+        "Big Shoulders Inline Text":  { base: 190, weight: 800, dateSize: "40px", dateGap: "12px", dateWeight: 400 }, // 날짜만 400
+        "Concert One":                { base: 180, weight: 700, dateSize: "44px", dateGap: "14px" },
+        "Orbitron":                   { base: 180, weight: 700, dateSize: "30px", dateGap: "0px"  },
+        "Special Gothic Expanded One":{ base: 170, weight: 700, dateSize: "38px", dateGap: "0px"  },
+        "Graduate":                   { base: 185, weight: 700, dateSize: "40px", dateGap: "5px"  },
+        "Gloria Hallelujah":          { base: 170, weight: 700, dateSize: "44px", dateGap: "18px" },
+        "Rock Salt":                  { base: 170, weight: 700, dateSize: "40px", dateGap: "5px", kmWordGap: "40px", translate: "25px,-25px" }
       };
       const cfg = fontSettings[font] || { base: 200, weight: 700, dateSize: "42px", dateGap: "12px" };
 
@@ -452,9 +435,9 @@
       unit.style.fontSize   = Math.round(cfg.base * 0.4) + "px";
       unit.style.fontWeight = cfg.weight;
 
-      /* 날짜: Anton 선택 시에만 Anton, 그 외는 기본(system-ui) */
+      /* 날짜: Anton 선택 시에만 Anton, 그 외는 기본(system-ui). 굵기는 dateWeight 우선 */
       dateDisp.style.fontFamily = (font === "Anton") ? "Anton, sans-serif" : "";
-      dateDisp.style.fontWeight = cfg.weight;
+      dateDisp.style.fontWeight = (cfg.dateWeight != null ? cfg.dateWeight : cfg.weight);
       dateDisp.style.fontSize   = cfg.dateSize;
       dateDisp.style.marginBottom = cfg.dateGap;
 
