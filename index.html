@@ -6,8 +6,8 @@
   <title>RUNNING MILEAGE ANIMATION MAKER</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
 
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Anton:wght@400&family=Orbitron:wght@700&family=Special+Gothic+Expanded+One&family=Rubik+Dirt&family=Monoton&family=Gloria+Hallelujah&family=Rubik+Glitch&family=Rock+Salt&display=swap" rel="stylesheet">
+  <!-- Google Fonts (업데이트) -->
+  <link href="https://fonts.googleapis.com/css2?family=Anton:wght@400&family=Big+Shoulders+Inline+Text:wght@800&family=Road+Rage&family=Orbitron:wght@700&family=Special+Gothic+Expanded+One&family=Graduate&family=Gloria+Hallelujah&family=Rock+Salt&display=swap" rel="stylesheet">
 
   <style>
     :root{
@@ -93,7 +93,7 @@
       font-weight:900;
       font-size:42px;
       line-height:1.05;
-      margin:6px 0 var(--dateGap); /* 변수로 간격 제어 */
+      margin:6px 0 var(--dateGap);
       white-space:nowrap;
     }
 
@@ -122,7 +122,7 @@
       display:none; /* Type 2에서만 보임 */
       font-size:28px;
       line-height:1.05;
-      margin-top:var(--kmWordGap);  /* 변수로 간격 제어 */
+      margin-top:var(--kmWordGap);
       margin-bottom:16px;
       font-weight:600;
       /* 폰트는 기본 system-ui (선택 폰트 영향 X) */
@@ -221,17 +221,17 @@
         <input id="date-input" class="date-input" type="date"/>
       </div>
 
-      <!-- 폰트 -->
+      <!-- 폰트 (업데이트) -->
       <section class="section">
         <div class="control-title">Font</div>
         <div class="font-grid" id="font-grid">
           <button data-font="Anton" style="font-family:'Anton', sans-serif;">Anton</button>
+          <button data-font="Big Shoulders Inline Text" style="font-family:'Big Shoulders Inline Text', cursive;">Inline</button>
+          <button data-font="Road Rage" style="font-family:'Road Rage', cursive;">Road Rage</button>
           <button data-font="Orbitron" style="font-family:'Orbitron', sans-serif;">Orbitron</button>
           <button data-font="Special Gothic Expanded One" style="font-family:'Special Gothic Expanded One', sans-serif;">Gothic</button>
-          <button data-font="Rubik Dirt" style="font-family:'Rubik Dirt', cursive;">Dirt</button>
-          <button data-font="Monoton" style="font-family:'Monoton', cursive;">Monoton</button>
+          <button data-font="Graduate" style="font-family:'Graduate', serif;">Graduate</button>
           <button data-font="Gloria Hallelujah" style="font-family:'Gloria Hallelujah', cursive;">Gloria</button>
-          <button data-font="Rubik Glitch" style="font-family:'Rubik Glitch', cursive;">Glitch</button>
           <button data-font="Rock Salt" style="font-family:'Rock Salt', cursive;">Rock</button>
         </div>
       </section>
@@ -428,8 +428,9 @@
       const kmWord   = document.getElementById("km-word");
       const dateDisp = document.getElementById("date-display");
 
-      const smallSet  = new Set(["Orbitron","Rubik Dirt"]);
-      const scriptSet = new Set(["Gloria Hallelujah","Rubik Glitch","Rock Salt","Monoton","Special Gothic Expanded One"]);
+      /* 크기 보정 세트 (필요 시 조절) */
+      const smallSet  = new Set(["Orbitron","Big Shoulders Inline Text","Graduate"]);
+      const scriptSet = new Set(["Gloria Hallelujah","Rock Salt","Road Rage","Special Gothic Expanded One"]);
 
       let base = 200;
       if (smallSet.has(font)) base = 180;
@@ -460,27 +461,27 @@
       const gapType1 = (font === "Rock Salt") ? 28 : 12;
       document.documentElement.style.setProperty('--gapBelowKm', gapType1 + 'px');
 
-      /* 폰트별 날짜 크기/간격 + Kilometers 간격 */
+      /* 폰트별 날짜 크기/간격 + Kilometers 간격 (필요 시 값 조정) */
       const dateSizeByFont = {
         "Anton": "42px",
+        "Big Shoulders Inline Text": "40px",
+        "Road Rage": "40px",
         "Orbitron": "38px",
-        "Rubik Dirt": "40px",
+        "Special Gothic Expanded One": "38px",
+        "Graduate": "40px",
         "Gloria Hallelujah": "44px",
-        "Rubik Glitch": "40px",
-        "Rock Salt": "40px",
-        "Monoton": "38px",
-        "Special Gothic Expanded One": "38px"
+        "Rock Salt": "40px"
       };
 
       const dateGapByFont = {
         "Anton": "10px",
+        "Big Shoulders Inline Text": "12px",
+        "Road Rage": "14px",
         "Orbitron": "1px",
-        "Rubik Dirt": "14px",
+        "Special Gothic Expanded One": "1px",
+        "Graduate": "10px",
         "Gloria Hallelujah": "18px",
-        "Rubik Glitch": "14px",
-        "Rock Salt": "10px",
-        "Monoton": "1px",
-        "Special Gothic Expanded One": "1px"
+        "Rock Salt": "10px"
       };
 
       const kmWordGapByFont = {
@@ -490,7 +491,7 @@
       // 날짜 크기
       dateDisp.style.fontSize = dateSizeByFont[font] || "42px";
 
-      // 날짜↔숫자 간격: 변수 + 인라인로 동시에
+      // 날짜↔숫자 간격
       const dateGap = dateGapByFont[font] || "12px";
       document.documentElement.style.setProperty('--dateGap', dateGap);
       dateDisp.style.marginBottom = dateGap;
@@ -499,7 +500,7 @@
       const kmWordGap = kmWordGapByFont[font] || "16px";
       document.documentElement.style.setProperty('--kmWordGap', kmWordGap);
 
-      // Kilometers는 항상 기본 폰트 유지(설정하지 않음)
+      // Kilometers는 항상 기본 폰트 유지
       kmWord.style.fontFamily = "";
 
       // 폰트 버튼 active 표시
