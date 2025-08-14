@@ -95,7 +95,7 @@
       line-height:1.05;
       margin:6px 0 var(--dateGap); /* 변수로 간격 제어 */
       white-space:nowrap;
-      /* ▼ 추가: 날짜 이동을 위한 기본값 */
+      /* ▼ 날짜 이동 기본값 */
       transform: translate(0,0);
       transform-origin: left bottom;
     }
@@ -128,10 +128,9 @@
       margin-top:var(--kmWordGap);  /* 변수로 간격 제어 */
       margin-bottom:16px;
       font-weight:600;
-      /* 폰트는 기본 system-ui (선택 폰트 영향 X) */
     }
 
-    /* 하단 정보: 3열 중 1,2열 사용 */
+    /* 하단 정보 */
     .grid{
       display:grid;
       grid-template-columns:repeat(3,1fr);
@@ -405,6 +404,11 @@
       if(targetBtn) targetBtn.classList.add('is-active');
     }
 
+    /* CSS.escape 폴백 (구형 브라우저용) */
+    const safeCssEscape = (window.CSS && typeof CSS.escape === 'function')
+      ? CSS.escape
+      : (s)=> String(s).replace(/["\\]/g, '\\$&');
+
     /* ---------- 폰트 ---------- */
     function setFont(font){
       selectedFont = font;
@@ -423,7 +427,7 @@
           base: 190, weight: 800, dateSize: "40px", dateGap: "12px", dateWeight: 700
         },
         "Concert One": {
-          base: 180, weight: 700, dateSize: "38px", dateGap: "14px", dateWeight: 700, dateTranslate: "0px, 20px" 
+          base: 180, weight: 700, dateSize: "38px", dateGap: "14px", dateWeight: 700, dateTranslate: "0px, 20px"
         },
         "Orbitron": {
           base: 180, weight: 700, dateSize: "38px", dateGap: "0px", dateWeight: 700, dateTranslate: "0px, 30px"
@@ -441,7 +445,7 @@
           base: 170, weight: 700, dateSize: "40px", dateGap: "5px",
           kmWordGap: "40px",
           translate: "25px,-25px",     // Type1: KM 숫자 이동
-          dateTranslate: "8px,-10px"   // Type2: 날짜만 살짝 이동 (원하는 값으로 조절)
+          dateTranslate: "8px,-10px"   // Type2: 날짜 이동
         }
       };
       const cfg = fontSettings[font] || { base: 200, weight: 700, dateSize: "42px", dateGap: "12px" };
@@ -457,8 +461,7 @@
       unit.style.fontSize   = Math.round(cfg.base * 0.4) + "px";
       unit.style.fontWeight = cfg.weight;
 
-      /* 날짜: Anton 선택 시에만 Anton, 그 외는 기본(system-ui).
-         굵기는 dateWeight가 있으면 그걸, 없으면 폰트 weight 사용 */
+      /* 날짜: Anton만 Anton, 그 외는 기본(system-ui). 굵기는 dateWeight 우선 */
       dateDisp.style.fontFamily = (font === "Anton") ? "Anton, sans-serif" : "";
       dateDisp.style.fontWeight = (cfg.dateWeight != null ? cfg.dateWeight : cfg.weight);
       dateDisp.style.fontSize   = cfg.dateSize;
@@ -483,7 +486,7 @@
       /* Kilometers는 항상 기본(system-ui)을 유지 */
       kmWord.style.fontFamily = "";
 
-      const targetBtn = fontGridEl.querySelector(`button[data-font="${CSS.escape(font)}"]`);
+      const targetBtn = fontGridEl.querySelector(`button[data-font="${safeCssEscape(font)}"]`);
       updateActive(fontGridEl, targetBtn);
 
       fitKmRow();
