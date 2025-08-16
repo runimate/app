@@ -76,16 +76,16 @@
     /* ===== OUTPUT STAGE ===== */
     .stage-outer{ padding:10px 0 24px; }
 
-    /* ▶ 고정 해상도 캔버스 (논리 폭 1080px) */
+    /* ▶ 고정 해상도 캔버스 (논리 폭 720px) */
     .stage-canvas{
-      width:1080px;
+      width:720px;
       transform-origin: top left;
       will-change: transform;
       margin:0 auto; /* 가운데 정렬 */
     }
     .stage-inner{ padding:0 var(--pad); }
     .stage-inner.fixed{
-      max-width:1080px; width:1080px;
+      max-width:720px; width:720px;
       padding-left:40px; padding-right:40px;
     }
 
@@ -239,7 +239,7 @@
   <script>
     let parsedData = {};
     let recordType = 'daily';
-    let layoutType = 'type1';
+    let layoutType = 'type2';   // 테스트 편의상 기본 type2
     let selectedFont = 'Anton';
     let selectedDate = new Date();
 
@@ -283,7 +283,7 @@
       };
     }
 
-    // ---- Upload (상태 표시 복구) ----
+    // ---- Upload (상태 표시) ----
     document.getElementById("file-upload").addEventListener("change", async (e)=>{
       const file = e.target.files[0]; if(!file) return;
       const status = document.getElementById("upload-status");
@@ -321,12 +321,12 @@
       });
     }
 
-    // ---- Pixel-perfect scale ----
+    // ---- Pixel-perfect scale (기준폭 720) ----
     function scaleStageCanvas(){
       const canvas = document.getElementById('stage-canvas');
       if(!canvas) return;
       const vw = window.innerWidth;
-      const logicalWidth = 1080;
+      const logicalWidth = 720;
       const scale = Math.min(vw / logicalWidth, 1);
       canvas.style.transform = `scale(${scale})`;
     }
@@ -345,7 +345,7 @@
       measure.style.fontStyle  = kmCS.fontStyle;
       measure.style.fontWeight = kmCS.fontWeight;
 
-      const stagePaddingLeft = 40; // fixed mode padding과 일치
+      const stagePaddingLeft = 40; // fixed padding과 일치
       const avail = stage.clientWidth - stagePaddingLeft;
 
       const unitWidth = (layoutType === 'type1' && unitEl.style.display !== 'none') ? unitEl.scrollWidth : 0;
@@ -531,7 +531,7 @@
     // 초기화
     window.onload = ()=>{
       setRecordType('daily');
-      setLayout('type2');        // 테스트 편의상 type2로 시작해도 됨(원하면 type1)
+      setLayout('type2');        // 필요하면 'type1'로 변경
       setBackground('white');
       setFont('Anton');
       const t=new Date();
