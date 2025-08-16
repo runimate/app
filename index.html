@@ -15,18 +15,12 @@
       --maxw:480px;
       --gapBelowKm: 12px;
       --radius:14px;
-      --dateGap: 12px;     /* 날짜(윗줄) ↔ 숫자 간격 */
-      --kmWordGap: 16px;   /* 숫자 ↔ “Kilometers” 간격 (Type2) */
+      --dateGap: 12px;
+      --kmWordGap: 16px;
     }
-
-    html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
     *{box-sizing:border-box}
     html, body { background:#fff; color:#000; }
-    body{
-      margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
-      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; font-synthesis-weight:none;
-    }
-
+    body{ margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; }
     .bg-white{ --bg:#fff; --fg:#000; background:#fff; color:#000; }
     .bg-black{ --bg:#000; --fg:#fff; background:#000; color:#fff; }
 
@@ -34,15 +28,15 @@
     h1{ margin:6px 0 2px; font-size:18px; font-weight:800; }
     .subtitle{ font-size:12px; opacity:.8 }
 
-    .wrap, .stage-inner{ width:100%; max-width:var(--maxw); margin:0 auto; padding:0 var(--pad); }
+    .wrap{ width:100%; max-width:var(--maxw); margin:0 auto; padding:0 var(--pad); }
     .section{ margin:14px 0; }
 
     .upload-box{ border:1px solid #ddd; border-radius:10px; padding:16px; }
     .upload-label{
       display:block; background:#000; color:#fff; padding:14px 16px; font-weight:800;
-      border-radius:12px; text-align:center; margin-bottom:10px; cursor:pointer;
+      border-radius:12px; text-align:center; margin-bottom:10px;
     }
-    .status{ color:#17a34a; font-weight:700; font-size:13px; min-height:18px; }
+    .status{ color:#17a34a; font-weight:700; font-size:13px; }
 
     .row-head{ display:flex; justify-content:space-between; gap:10px; margin:10px 0 6px; }
     .row-head .label{ font-size:13px; font-weight:800; opacity:.9; }
@@ -53,49 +47,74 @@
 
     .pill-btn{
       width:100%; height:48px; border-radius:var(--radius);
-      border:3px solid var(--fg); background:transparent; color:var(--fg);
+      border:3px solid var(--fg);
+      background:transparent; color:var(--fg);
       font-size:16px; font-weight:800; cursor:pointer;
       transition:transform .04s ease, background .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease;
+      box-shadow:0 0 0 0 rgba(0,0,0,0);
     }
     .pill-btn:active { transform:scale(0.99); }
     .pill-btn.is-active{ background:var(--fg); color:var(--bg); }
 
     .control-title{ font-size:13px; font-weight:800; margin:14px 0 8px; }
 
-    /* ▶ 폰트 버튼: 4×2 고정 */
-    .font-grid{
-      display:grid; grid-template-columns:repeat(4,1fr); gap:12px;
-    }
+    .font-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
     .font-grid button{
-      height:52px; border-radius:var(--radius); border:3px solid var(--fg);
-      background:transparent; color:var(--fg); font-size:18px; font-weight:800; cursor:pointer;
+      height:48px; border-radius:var(--radius); border:3px solid var(--fg);
+      background:transparent; color:var(--fg); font-size:16px; font-weight:800; cursor:pointer;
       transition:transform .04s ease, background .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease;
     }
     .font-grid button:active{ transform:scale(0.99); }
     .font-grid button.is-active{ background:var(--fg); color:var(--bg); }
 
     .run-button{
-      width:100%; height:56px; border-radius:16px;
-      background:#000; color:#7fff00; border:3px solid #0070ff; margin-top:10px; font-size:20px; font-weight:900;
+      width:100%; height:52px; border-radius:16px;
+      background:#000; color:#7fff00; border:3px solid #0070ff; margin-top:10px; font-size:18px; font-weight:900;
       box-shadow:0 0 0 3px rgba(0,112,255,.25);
     }
 
+    /* ===== OUTPUT STAGE ===== */
     .stage-outer{ padding:10px 0 24px; }
 
+    /* ▶ 고정 해상도 캔버스 (논리 폭 1080px) */
+    .stage-canvas{
+      width:1080px;
+      transform-origin: top left;
+      will-change: transform;
+      margin:0 auto; /* 가운데 정렬 */
+    }
+    .stage-inner{ padding:0 var(--pad); }
+    .stage-inner.fixed{
+      max-width:1080px; width:1080px;
+      padding-left:40px; padding-right:40px;
+    }
+
     .date-display{
-      display:none; font-weight:900; font-size:42px; line-height:1.05;
-      margin:6px 0 var(--dateGap); white-space:nowrap;
-      transform:translate(0,0); transform-origin:left bottom;
+      display:none;
+      font-weight:900;
+      font-size:42px;
+      line-height:1.05;
+      margin:6px 0 var(--dateGap);
+      white-space:nowrap;
+      transform: translate(0,0);
+      transform-origin:left bottom;
     }
 
     .km-row-wrap{ display:flex; justify-content:flex-start; margin:6px auto var(--gapBelowKm); width:100%; }
     .km-row{ display:flex; align-items:baseline; gap:10px; transform-origin:left bottom; will-change:transform; }
-    #km{ font-family:'Anton', sans-serif; font-size:200px; line-height:1; white-space:nowrap; letter-spacing:.5px; }
+    #km{
+      font-family:'Anton', sans-serif;
+      font-size:200px; line-height:1; white-space:nowrap; letter-spacing:.5px;
+    }
     #km-unit{ font-size:80px; line-height:1; transform:translateY(-8px); opacity:0; transition:opacity 450ms ease; white-space:nowrap; }
+    #km-word{
+      display:none; font-size:28px; line-height:1.05;
+      margin-top:var(--kmWordGap); margin-bottom:16px; font-weight:600;
+    }
 
-    #km-word{ display:none; font-size:28px; line-height:1.05; margin-top:var(--kmWordGap); margin-bottom:16px; font-weight:600; }
-
-    .grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:0; color:inherit; text-align:left; align-items:start; }
+    .grid{
+      display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:0; color:inherit; text-align:left; align-items:start;
+    }
     .grid > div:nth-child(1){ grid-column:1 / 2; margin-left:5px; }
     .grid > div:nth-child(2){ grid-column:2 / 3; }
     .stat{ font-size:22px; font-weight:800; }
@@ -103,12 +122,7 @@
 
     body.focus header{ display:none; }
     body.focus .top-ui{ display:none; }
-    body.focus #exit-focus{
-      display:block; position:fixed; z-index:20;
-      top: env(safe-area-inset-top, 8px); right:10px;
-      width:40px; height:40px; border-radius:20px;
-      border:2px solid currentColor; background:transparent; color:inherit; font-weight:800;
-    }
+    body.focus #exit-focus{ display:block; position:fixed; z-index:20; top: env(safe-area-inset-top, 8px); right:10px; width:40px; height:40px; border-radius:20px; border:2px solid currentColor; background:transparent; color:inherit; font-weight:800; }
     #exit-focus{ display:none; }
 
     #km-measure{ position:absolute; visibility:hidden; left:-9999px; top:-9999px; white-space:nowrap; }
@@ -141,14 +155,14 @@
         <div class="status" id="upload-status"></div>
       </section>
 
-      <!-- ▶ Record Type (복구) -->
+      <!-- 기록 유형 -->
       <div class="row-head"><div class="label">Record Type</div></div>
       <div class="seg-row cols-2" id="mode-row">
         <button class="pill-btn" data-mode="daily">Daily</button>
         <button class="pill-btn" data-mode="monthly">Monthly</button>
       </div>
 
-      <!-- Layout / BG -->
+      <!-- 레이아웃 & BG -->
       <div class="two-col">
         <div>
           <div class="control-title title-left">Layout</div>
@@ -166,7 +180,7 @@
         </div>
       </div>
 
-      <!-- 날짜 선택 (Type2 전용) -->
+      <!-- 날짜 (Type2 전용) -->
       <div class="date-row" id="date-section">
         <div class="control-title title-left">Date</div>
         <input id="date-input" class="date-input" type="date"/>
@@ -187,35 +201,37 @@
         </div>
       </section>
 
-      <!-- RUN -->
       <section class="section">
         <button class="run-button" id="run-btn" onclick="onRun()">RUN</button>
       </section>
-
     </div>
   </div>
 
   <button id="exit-focus" title="Close" onclick="exitFocus()">✕</button>
 
-  <!-- 스테이지 -->
+  <!-- ====== OUTPUT (픽셀 고정 캔버스) ====== -->
   <section class="stage-outer">
-    <div class="stage-inner" id="stage">
-      <div id="km-measure">99.99</div>
-
-      <div id="date-display" class="date-display"></div>
-
-      <div class="km-row-wrap">
-        <div class="km-row" id="km-row">
-          <div id="km">0.00</div>
-          <div id="km-unit">km</div>
+    <div id="stage-canvas" class="stage-canvas">
+      <div class="stage-inner fixed" id="stage">
+        <div id="km-measure">99.99</div>
+        <div id="date-display" class="date-display"></div>
+        <div class="km-row-wrap">
+          <div class="km-row" id="km-row">
+            <div id="km">0.00</div>
+            <div id="km-unit">km</div>
+          </div>
         </div>
-      </div>
-
-      <div id="km-word">Kilometers</div>
-
-      <div class="grid">
-        <div><div class="stat" id="pace">-</div><div class="label">Avg. Pace</div></div>
-        <div><div class="stat" id="time">-</div><div class="label">Time</div></div>
+        <div id="km-word">Kilometers</div>
+        <div class="grid">
+          <div>
+            <div class="stat" id="pace">-</div>
+            <div class="label">Avg. Pace</div>
+          </div>
+          <div>
+            <div class="stat" id="time">-</div>
+            <div class="label">Time</div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -236,9 +252,12 @@
     const dateDisplay = document.getElementById('date-display');
 
     const MONTH_ABBR = ["JAN.","FEB.","MAR.","APR.","MAY.","JUN.","JUL.","AUG.","SEP.","OCT.","NOV.","DEC."];
-    function formatDate(d){ return `${String(d.getDate())} ${MONTH_ABRR[d.getMonth()]} ${d.getFullYear()}`; }
-    // 오타 수정
-    const MONTH_ABRR = MONTH_ABBR;
+    function formatDate(d){
+      const day = String(d.getDate());
+      const mon = MONTH_ABBR[d.getMonth()];
+      const yr  = d.getFullYear();
+      return `${day} ${mon} ${yr}`;
+    }
 
     function normalizeOCR(s){
       return s.replace(/[\u2018\u2019\u2032\u2035]/g,"'")
@@ -251,41 +270,41 @@
     function parseFromOCR(textRaw){
       const text = normalizeOCR(textRaw);
       const paceMatch = text.match(/\b(\d{1,2})\s*'\s*(\d{2})\s*"?\b/);
-      let timeMatch = text.match(/\b(\d{1,2}):(\d{2}):(\d{2})\b/);
+      let timeMatch   = text.match(/\b(\d{1,2}):(\d{2}):(\d{2})\b/);
       if(!timeMatch){
         const mmss = text.match(/\b(\d{1,2}):(\d{2})\b/);
         if(mmss) timeMatch = { 0:mmss[0] };
       }
       const distMatch = text.match(/\b(\d{1,2}\.\d{1,2})\b/);
       return {
-        km: distMatch ? distMatch[1] : null,
+        km:   distMatch ? distMatch[1] : null,
         pace: paceMatch ? `${paceMatch[1]}'${paceMatch[2]}"` : "-",
         time: timeMatch ? timeMatch[0] : "-"
       };
     }
 
+    // ---- Upload (상태 표시 복구) ----
     document.getElementById("file-upload").addEventListener("change", async (e)=>{
       const file = e.target.files[0]; if(!file) return;
-      const statusEl = document.getElementById("upload-status");
-      statusEl.textContent = "Reading...";
-      try{
-        const reader = new FileReader();
-        reader.onload = async () => {
+      const status = document.getElementById("upload-status");
+      status.textContent = "Uploading...";
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try{
           const img = reader.result;
-          statusEl.textContent = "OCR...";
           const result = await Tesseract.recognize(img, 'eng');
           parsedData = parseFromOCR(result.data.text);
           document.getElementById('pace').textContent = parsedData.pace || "-";
           document.getElementById('time').textContent = parsedData.time || "-";
-          statusEl.textContent = "Uploaded!";
-        };
-        reader.readAsDataURL(file);
-      }catch(err){
-        statusEl.textContent = "Upload failed";
-        console.error(err);
-      }
+          status.textContent = "Uploaded!";
+        }catch(err){
+          status.textContent = "Upload failed";
+        }
+      };
+      reader.readAsDataURL(file);
     });
 
+    // ---- Count-up ----
     const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
     function animateNumber(id,start,end,duration){
       return new Promise(resolve=>{
@@ -302,6 +321,17 @@
       });
     }
 
+    // ---- Pixel-perfect scale ----
+    function scaleStageCanvas(){
+      const canvas = document.getElementById('stage-canvas');
+      if(!canvas) return;
+      const vw = window.innerWidth;
+      const logicalWidth = 1080;
+      const scale = Math.min(vw / logicalWidth, 1);
+      canvas.style.transform = `scale(${scale})`;
+    }
+
+    // ---- Fit number row ----
     function fitKmRow(){
       const stage   = document.getElementById('stage');
       const row     = document.getElementById('km-row');
@@ -315,7 +345,7 @@
       measure.style.fontStyle  = kmCS.fontStyle;
       measure.style.fontWeight = kmCS.fontWeight;
 
-      const stagePaddingLeft = parseInt(getComputedStyle(document.querySelector('.stage-inner')).paddingLeft) || 0;
+      const stagePaddingLeft = 40; // fixed mode padding과 일치
       const avail = stage.clientWidth - stagePaddingLeft;
 
       const unitWidth = (layoutType === 'type1' && unitEl.style.display !== 'none') ? unitEl.scrollWidth : 0;
@@ -338,7 +368,7 @@
       const unit = document.getElementById("km-unit");
       if(layoutType==='type1'){ unit.style.opacity = 0; }
       fitKmRow();
-      await new Promise(r=>setTimeout(r, 300));
+      await new Promise(r=>setTimeout(r, 500));
       const endVal = parseFloat(parsedData.km || 0);
       await animateNumber("km", 0, isNaN(endVal)?0:endVal, 2200);
       if(layoutType==='type1'){ unit.style.opacity = 1; }
@@ -350,6 +380,7 @@
       if(targetBtn) targetBtn.classList.add('is-active');
     }
 
+    // ---- Font switching ----
     function setFont(font){
       selectedFont = font;
 
@@ -368,7 +399,7 @@
         "Gloria Hallelujah": { base: 170, weight: 700, dateSize: "44px", dateGap: "18px", dateWeight: 700 },
         "Rock Salt": { base: 170, weight: 700, dateSize: "40px", dateGap: "5px", kmWordGap: "40px", translate: "25px,-25px", dateTranslate: "8px,-10px" }
       };
-      const cfg = fontSettings[font] || { base: 200, weight: 700, dateSize: "42px", dateGap: "12px" };
+      const cfg = fontSettings[font] || { base: 200, weight: 700, dateSize: "42px", dateGap: "12px", dateWeight:700 };
 
       km.style.fontFamily = font + ", sans-serif";
       km.style.fontSize   = cfg.base + "px";
@@ -406,26 +437,25 @@
       const b = document.body;
       if(color==='black'){ b.classList.remove('bg-white'); b.classList.add('bg-black'); }
       else { b.classList.remove('bg-black'); b.classList.add('bg-white'); }
-      const targetBtn = bgRow.querySelector(`button[data-bg="${CSS.escape(color)}"]`);
+      const targetBtn = bgRow.querySelector(`button[data-bg="${color}"]`);
       updateActive(bgRow, targetBtn);
     }
 
     function setRecordType(mode){
       recordType = mode;
-      const btn = modeRow.querySelector(`button[data-mode="${CSS.escape(mode)}"]`);
+      const btn = modeRow.querySelector(`button[data-mode="${mode}"]`);
       updateActive(modeRow, btn);
     }
 
     function setDateFromInput(){
-      const val = dateInput.value;
-      if(!val) return;
+      const val = dateInput.value; if(!val) return;
       const [y,m,d] = val.split('-').map(Number);
       selectedDate = new Date(y, m-1, d);
       renderDateDisplay(); syncDateWidth();
     }
     function renderDateDisplay(){
       if (layoutType !== 'type2') return;
-      dateDisplay.textContent = `${String(selectedDate.getDate())} ${MONTH_ABBR[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`;
+      dateDisplay.textContent = formatDate(selectedDate);
     }
 
     function applyLayoutVisual(){
@@ -438,7 +468,6 @@
         dateSection.style.display = 'none';
         dateDisplay.style.display = 'none';
         dateDisplay.style.transform = 'translate(0,0)';
-        word.style.marginTop = '16px';
       }else{
         unit.style.display  = 'none';
         word.style.display  = 'block';
@@ -446,24 +475,26 @@
         dateDisplay.style.display = 'block';
 
         if(!dateInput.value){
-          const t=new Date();
-          dateInput.value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
-          selectedDate = t;
+          const today = new Date();
+          const yyyy = today.getFullYear();
+          const mm = String(today.getMonth()+1).padStart(2,'0');
+          const dd = String(today.getDate()).padStart(2,'0');
+          dateInput.value = `${yyyy}-${mm}-${dd}`;
+          selectedDate = today;
         }
         renderDateDisplay();
-        setFont(selectedFont);
+        setFont(selectedFont); // 날짜 translate 재적용
       }
       fitKmRow();
     }
 
     function setLayout(type){
       layoutType = type;
-      const btn = layoutRow.querySelector(`button[data-layout="${CSS.escape(type)}"]`);
+      const btn = layoutRow.querySelector(`button[data-layout="${type}"]`);
       updateActive(layoutRow, btn);
       applyLayoutVisual();
     }
 
-    /* 이벤트 */
     fontGridEl.addEventListener('click', (e)=>{
       const btn = e.target.closest('button[data-font]'); if(!btn) return;
       setFont(btn.dataset.font);
@@ -484,7 +515,7 @@
 
     function onRun(){
       document.body.classList.add('focus');
-      document.getElementById('stage').scrollIntoView({behavior:'smooth', block:'start'});
+      document.getElementById('stage-canvas').scrollIntoView({behavior:'smooth', block:'start'});
       runAnimation();
     }
     function exitFocus(){
@@ -494,18 +525,19 @@
       document.getElementById('km-unit').style.opacity = 0;
     }
 
-    window.addEventListener('resize', fitKmRow);
-    window.addEventListener('orientationchange', ()=> setTimeout(fitKmRow, 150));
+    window.addEventListener('resize', ()=>{ scaleStageCanvas(); fitKmRow(); });
+    window.addEventListener('orientationchange', ()=> { setTimeout(()=>{ scaleStageCanvas(); fitKmRow(); }, 50); });
 
+    // 초기화
     window.onload = ()=>{
       setRecordType('daily');
-      setLayout('type2');     /* 필요하면 'type1'로 변경 */
+      setLayout('type2');        // 테스트 편의상 type2로 시작해도 됨(원하면 type1)
       setBackground('white');
       setFont('Anton');
       const t=new Date();
-      dateInput.value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+      document.getElementById('date-input').value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
       selectedDate = t;
-      renderDateDisplay();
+      scaleStageCanvas();
       fitKmRow();
     };
   </script>
