@@ -84,9 +84,11 @@
       margin:0 auto; /* 가운데 정렬 */
     }
     .stage-inner{ padding:0 var(--pad); }
+
+    /* 고정 모드 내부 패딩: 24px(좌/우) */
     .stage-inner.fixed{
       max-width:720px; width:720px;
-      padding-left:40px; padding-right:40px;
+      padding-left:24px; padding-right:24px;
     }
 
     .date-display{
@@ -239,7 +241,7 @@
   <script>
     let parsedData = {};
     let recordType = 'daily';
-    let layoutType = 'type2';   // 테스트 편의상 기본 type2
+    let layoutType = 'type1';
     let selectedFont = 'Anton';
     let selectedDate = new Date();
 
@@ -283,7 +285,7 @@
       };
     }
 
-    // ---- Upload (상태 표시) ----
+    // ---- Upload ----
     document.getElementById("file-upload").addEventListener("change", async (e)=>{
       const file = e.target.files[0]; if(!file) return;
       const status = document.getElementById("upload-status");
@@ -321,7 +323,7 @@
       });
     }
 
-    // ---- Pixel-perfect scale (기준폭 720) ----
+    // ---- Pixel-perfect scale (논리폭 720 기준) ----
     function scaleStageCanvas(){
       const canvas = document.getElementById('stage-canvas');
       if(!canvas) return;
@@ -331,7 +333,7 @@
       canvas.style.transform = `scale(${scale})`;
     }
 
-    // ---- Fit number row ----
+    // ---- Fit number row (좌·우 패딩 반영 & safe 0.98) ----
     function fitKmRow(){
       const stage   = document.getElementById('stage');
       const row     = document.getElementById('km-row');
@@ -345,13 +347,19 @@
       measure.style.fontStyle  = kmCS.fontStyle;
       measure.style.fontWeight = kmCS.fontWeight;
 
-      const stagePaddingLeft = 40; // fixed padding과 일치
-      const avail = stage.clientWidth - stagePaddingLeft;
+      // 좌·우 패딩 모두 반영
+      const stCS = window.getComputedStyle(stage);
+      const padL = parseFloat(stCS.paddingLeft)  || 0;
+      const padR = parseFloat(stCS.paddingRight) || 0;
+      const avail = stage.clientWidth - (padL + padR);
 
       const unitWidth = (layoutType === 'type1' && unitEl.style.display !== 'none') ? unitEl.scrollWidth : 0;
+
+      // safe factor 상향(더 꽉 차게)
+      const safe  = 0.98;
       const need  = measure.scrollWidth + (layoutType==='type1' ? (10 + unitWidth) : 0);
-      const safe  = 0.9;
       const scale = need ? Math.min(1, (avail * safe) / need) : 1;
+
       row.style.transform = `scale(${scale})`;
 
       syncDateWidth();
@@ -531,7 +539,7 @@
     // 초기화
     window.onload = ()=>{
       setRecordType('daily');
-      setLayout('type2');        // 필요하면 'type1'로 변경
+      setLayout('type2');        // 필요시 'type1'로 변경
       setBackground('white');
       setFont('Anton');
       const t=new Date();
