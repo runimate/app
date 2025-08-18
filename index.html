@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>RUN MILEAGE ANIMATOR</title>
+  <title>RUNNING MILEAGE ANIMATION MAKER</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
 
   <!-- Google Fonts -->
@@ -18,9 +18,10 @@
       --dateGap: 12px;
       --kmWordGap: 16px;
 
-      /* ✅ Avg. Pace ↔ Time 가로 간격/당김 제어 */
-      --statGap: 60px;   /* 기본 간격 */
-      --statPull: 0px;  /* 두 번째 블록을 왼쪽으로 당김(음수 가능) */
+      /* ✅ 하단 통계(Avg. Pace / Time) 전용 컨트롤 (숫자 폰트와 완전 분리) */
+      --statSize: 34px;     /* 큰 숫자 크기 */
+      --labelSize: 18px;    /* 라벨 크기  */
+      --statGap: 32px;      /* 두 블록 사이 가로 간격 */
     }
     *{box-sizing:border-box}
     html, body { background:#fff; color:#000; }
@@ -118,26 +119,18 @@
       margin-top:var(--kmWordGap); margin-bottom:16px; font-weight:600;
     }
 
-    /* ✅ 하단 통계: Flex + 간격 변수 + 당김 변수 적용 */
+    /* ✅ 하단 통계: 2열 + 가로 간격 변수 적용(숫자 폰트와 독립) */
     .grid{
-      display:flex;
-      align-items:flex-start;
-      gap: var(--statGap);
-      margin-top:0;
-      color:inherit;
-      text-align:left;
+      display:grid;
+      grid-template-columns: auto auto;       /* 두 칸만 사용 */
+      column-gap: var(--statGap);             /* ← 가로 간격 */
+      row-gap: 8px;
+      margin-top:0; color:inherit; text-align:left; align-items:start;
     }
-    .grid > div{
-      display:flex;
-      flex-direction:column;
-    }
-    /* 왼쪽 블록의 여분 들여쓰기 제거 */
-    .grid > div:nth-child(1){ margin-left:0; }
-    /* 오른쪽(Time) 블록을 왼쪽으로 당김(음수 가능) */
-    .grid > div:nth-child(2){ margin-left: var(--statPull); }
-
-    .stat{ font-size:40px; font-weight:800; }
-    .label{ font-size:20px; opacity:.9 }
+    .grid > div:nth-child(1){ grid-column:1 / 2; margin-left:5px; }
+    .grid > div:nth-child(2){ grid-column:2 / 3; }
+    .stat{ font-size: var(--statSize); font-weight:800; }  /* ← 크기 고정 변수 */
+    .label{ font-size: var(--labelSize); opacity:.9 }      /* ← 크기 고정 변수 */
 
     body.focus header{ display:none; }
     body.focus .top-ui{ display:none; }
@@ -153,8 +146,9 @@
     .date-row .control-title{ margin:0; }
     .date-input{
       height:44px; border:3px solid var(--fg); border-radius:var(--radius);
-      background:transparent; color:var(--fg); font-weight:700; padding:0 12px; font-size:16px;
+      background:transparent; color:#000; font-weight:700; padding:0 12px; font-size:16px;
     }
+    body.bg-black .date-input{ color:#fff; }
   </style>
 </head>
 <body class="bg-white">
@@ -345,12 +339,12 @@
       const canvas = document.getElementById('stage-canvas');
       if(!canvas) return;
       const vw = window.innerWidth;
-      const logicalWidth = (vw < 430) ? 540 : 720; // 모바일 더 크게 보이도록
+      const logicalWidth = (vw < 430) ? 540 : 720; // 모바일에서 더 크게
       const scale = Math.min(vw / logicalWidth, 1);
       canvas.style.transform = `scale(${scale})`;
     }
 
-    // ---- Fit number row (좌·우 패딩 반영 & safe 0.98) ----
+    // ---- Fit number row ----
     function fitKmRow(){
       const stage   = document.getElementById('stage');
       const row     = document.getElementById('km-row');
@@ -376,7 +370,6 @@
       const scale = need ? Math.min(1, (avail * safe) / need) : 1;
 
       row.style.transform = `scale(${scale})`;
-
       syncDateWidth();
     }
 
@@ -403,7 +396,7 @@
       if(targetBtn) targetBtn.classList.add('is-active');
     }
 
-    // ---- Font switching ----
+    // ---- Font switching (하단 통계와 독립) ----
     function setFont(font){
       selectedFont = font;
 
@@ -416,11 +409,11 @@
         "Anton": { base: 200, weight: 700, dateSize: "60px", dateGap: "10px", dateWeight: 700 },
         "Big Shoulders Inline Text": { base: 190, weight: 800, dateSize: "40px", dateGap: "12px", dateWeight: 700 },
         "Concert One": { base: 180, weight: 700, dateSize: "38px", dateGap: "14px", dateWeight: 700, dateTranslate: "0px, 20px" },
-        "Orbitron": { base: 180, weight: 700, dateSize: "38px", dateGap: "20px", dateWeight: 700, dateTranslate: "0px, 40px" },
-        "Special Gothic Expanded One": { base: 170, weight: 700, dateSize: "38px", dateGap: "20px", dateWeight: 700, dateTranslate: "0px, 30px" },
-        "Graduate": { base: 200, weight: 700, dateSize: "40px", dateGap: "20px", dateWeight: 700, dateTranslate: "0px, 20px" },
+        "Orbitron": { base: 180, weight: 700, dateSize: "38px", dateGap: "0px", dateWeight: 700, dateTranslate: "0px, 30px" },
+        "Special Gothic Expanded One": { base: 170, weight: 700, dateSize: "38px", dateGap: "0px", dateWeight: 700, dateTranslate: "0px, 30px" },
+        "Graduate": { base: 200, weight: 700, dateSize: "40px", dateGap: "5px", dateWeight: 700, dateTranslate: "0px, 20px" },
         "Gloria Hallelujah": { base: 170, weight: 700, dateSize: "44px", dateGap: "18px", dateWeight: 700 },
-        "Rock Salt": { base: 170, weight: 700, dateSize: "40px", dateGap: "20px", kmWordGap: "40px", translate: "25px,-25px", dateTranslate: "8px,-10px" }
+        "Rock Salt": { base: 170, weight: 700, dateSize: "40px", dateGap: "5px", kmWordGap: "40px", translate: "25px,-25px", dateTranslate: "8px,-10px" }
       };
       const cfg = fontSettings[font] || { base: 200, weight: 700, dateSize: "42px", dateGap: "12px", dateWeight:700 };
 
@@ -518,6 +511,7 @@
       applyLayoutVisual();
     }
 
+    // === 이벤트 바인딩 ===
     fontGridEl.addEventListener('click', (e)=>{
       const btn = e.target.closest('button[data-font]'); if(!btn) return;
       setFont(btn.dataset.font);
@@ -551,13 +545,17 @@
     window.addEventListener('resize', ()=>{ scaleStageCanvas(); fitKmRow(); });
     window.addEventListener('orientationchange', ()=> { setTimeout(()=>{ scaleStageCanvas(); fitKmRow(); }, 50); });
 
-    /* ✅ 간격 컨트롤 함수들 */
-    function setStatGap(px){
-      document.documentElement.style.setProperty('--statGap', px + 'px');
+    /* ===========================
+       하단 통계 독립 컨트롤 API
+       =========================== */
+    function setStatsStyle({ size, labelSize, gap } = {}){
+      if (size) document.documentElement.style.setProperty('--statSize', size);
+      if (labelSize) document.documentElement.style.setProperty('--labelSize', labelSize);
+      if (gap) document.documentElement.style.setProperty('--statGap', gap);
     }
-    function setStatPull(px){
-      document.documentElement.style.setProperty('--statPull', px + 'px'); // 음수 가능
-    }
+    function setStatGap(px){ document.documentElement.style.setProperty('--statGap', px + 'px'); }
+    function setStatSize(px){ document.documentElement.style.setProperty('--statSize', px + 'px'); }
+    function setLabelSize(px){ document.documentElement.style.setProperty('--labelSize', px + 'px'); }
 
     // 초기화
     window.onload = ()=>{
@@ -565,15 +563,15 @@
       setLayout('type2');        // 필요시 'type1'로 변경
       setBackground('white');
       setFont('Anton');
+
+      // ✅ 원하면 여기서 한 번에 세팅: 크고 촘촘하게 예시
+      setStatsStyle({ size: '36px', labelSize: '18px', gap: '28px' });
+
       const t=new Date();
       document.getElementById('date-input').value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
       selectedDate = t;
       scaleStageCanvas();
       fitKmRow();
-
-      // 필요하면 초기 간격 고정값을 여기서 지정
-      // setStatGap(6);
-      // setStatPull(-24);
     };
   </script>
 </body>
