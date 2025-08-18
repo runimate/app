@@ -18,8 +18,9 @@
       --dateGap: 12px;
       --kmWordGap: 16px;
 
-      /* ✅ Avg. Pace ↔ Time 가로 간격 */
-      --statGap: 10px;
+      /* ✅ Avg. Pace ↔ Time 가로 간격/당김 제어 */
+      --statGap: 8px;   /* 기본 간격 */
+      --statPull: 0px;  /* 두 번째 블록을 왼쪽으로 당김(음수 가능) */
     }
     *{box-sizing:border-box}
     html, body { background:#fff; color:#000; }
@@ -117,16 +118,24 @@
       margin-top:var(--kmWordGap); margin-bottom:16px; font-weight:600;
     }
 
-    /* ✅ 하단 통계: 2열 + 가로 간격 변수 적용 */
+    /* ✅ 하단 통계: Flex + 간격 변수 + 당김 변수 적용 */
     .grid{
-      display:grid;
-      grid-template-columns: auto auto; /* 두 칸만 사용 */
-      column-gap: var(--statGap);       /* ← 여기서 간격 제어 */
-      row-gap: 8px;
-      margin-top:0; color:inherit; text-align:left; align-items:start;
+      display:flex;
+      align-items:flex-start;
+      gap: var(--statGap);
+      margin-top:0;
+      color:inherit;
+      text-align:left;
     }
-    .grid > div:nth-child(1){ grid-column:1 / 2; margin-left:5px; }
-    .grid > div:nth-child(2){ grid-column:2 / 3; }
+    .grid > div{
+      display:flex;
+      flex-direction:column;
+    }
+    /* 왼쪽 블록의 여분 들여쓰기 제거 */
+    .grid > div:nth-child(1){ margin-left:0; }
+    /* 오른쪽(Time) 블록을 왼쪽으로 당김(음수 가능) */
+    .grid > div:nth-child(2){ margin-left: var(--statPull); }
+
     .stat{ font-size:30px; font-weight:800; }
     .label{ font-size:18px; opacity:.9 }
 
@@ -336,10 +345,7 @@
       const canvas = document.getElementById('stage-canvas');
       if(!canvas) return;
       const vw = window.innerWidth;
-
-      // 아주 좁은 화면(대부분의 스마트폰)에서는 논리폭을 540으로 줄여 더 크게 보이게 함
-      const logicalWidth = (vw < 430) ? 540 : 720;
-
+      const logicalWidth = (vw < 430) ? 540 : 720; // 모바일 더 크게 보이도록
       const scale = Math.min(vw / logicalWidth, 1);
       canvas.style.transform = `scale(${scale})`;
     }
@@ -545,11 +551,12 @@
     window.addEventListener('resize', ()=>{ scaleStageCanvas(); fitKmRow(); });
     window.addEventListener('orientationchange', ()=> { setTimeout(()=>{ scaleStageCanvas(); fitKmRow(); }, 50); });
 
-    // ✅ 간격을 코드로 조절하고 싶을 때 사용 (예: setStatGap(64))
+    /* ✅ 간격 컨트롤 함수들 */
     function setStatGap(px){
       document.documentElement.style.setProperty('--statGap', px + 'px');
-      // 레이아웃 재계산은 필요 없지만, 호출해도 무방
-      // fitKmRow();
+    }
+    function setStatPull(px){
+      document.documentElement.style.setProperty('--statPull', px + 'px'); // 음수 가능
     }
 
     // 초기화
@@ -563,6 +570,10 @@
       selectedDate = t;
       scaleStageCanvas();
       fitKmRow();
+
+      // 필요하면 초기 간격 고정값을 여기서 지정
+      // setStatGap(6);
+      // setStatPull(-24);
     };
   </script>
 </body>
