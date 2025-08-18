@@ -76,16 +76,16 @@
     /* ===== OUTPUT STAGE ===== */
     .stage-outer{ padding:10px 0 24px; }
 
-    /* ▶ 고정 해상도 캔버스 (논리 폭 720px) */
+    /* ▶ 고정 해상도 캔버스(폭 720px) — 실제 화면에는 transform으로 맞춤 */
     .stage-canvas{
       width:720px;
       transform-origin: top left;
       will-change: transform;
-      margin:0 auto; /* 가운데 정렬 */
+      margin:0 auto;
     }
     .stage-inner{ padding:0 var(--pad); }
 
-    /* 고정 모드 내부 패딩: 24px(좌/우) */
+    /* 내부 좌우 패딩 24px (fitKmRow와 동일한 값으로 계산됨) */
     .stage-inner.fixed{
       max-width:720px; width:720px;
       padding-left:24px; padding-right:24px;
@@ -323,12 +323,15 @@
       });
     }
 
-    // ---- Pixel-perfect scale (논리폭 720 기준) ----
+    // ---- Pixel-perfect scale (논리폭 가변: 모바일 540, 그 외 720) ----
     function scaleStageCanvas(){
       const canvas = document.getElementById('stage-canvas');
       if(!canvas) return;
       const vw = window.innerWidth;
-      const logicalWidth = 720;
+
+      // 아주 좁은 화면(대부분의 스마트폰)에서는 논리폭을 540으로 줄여 더 크게 보이게 함
+      const logicalWidth = (vw < 430) ? 540 : 720;
+
       const scale = Math.min(vw / logicalWidth, 1);
       canvas.style.transform = `scale(${scale})`;
     }
@@ -347,7 +350,6 @@
       measure.style.fontStyle  = kmCS.fontStyle;
       measure.style.fontWeight = kmCS.fontWeight;
 
-      // 좌·우 패딩 모두 반영
       const stCS = window.getComputedStyle(stage);
       const padL = parseFloat(stCS.paddingLeft)  || 0;
       const padR = parseFloat(stCS.paddingRight) || 0;
@@ -355,7 +357,6 @@
 
       const unitWidth = (layoutType === 'type1' && unitEl.style.display !== 'none') ? unitEl.scrollWidth : 0;
 
-      // safe factor 상향(더 꽉 차게)
       const safe  = 0.98;
       const need  = measure.scrollWidth + (layoutType==='type1' ? (10 + unitWidth) : 0);
       const scale = need ? Math.min(1, (avail * safe) / need) : 1;
