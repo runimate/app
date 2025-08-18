@@ -17,6 +17,9 @@
       --radius:14px;
       --dateGap: 12px;
       --kmWordGap: 16px;
+
+      /* 새로 추가: Avg. Pace ↔ Time 가로 간격 */
+      --statsGap: 60px;
     }
     *{box-sizing:border-box}
     html, body { background:#fff; color:#000; }
@@ -114,8 +117,13 @@
       margin-top:var(--kmWordGap); margin-bottom:16px; font-weight:600;
     }
 
+    /* 하단 통계: 가로 간격을 변수로 제어 */
     .grid{
-      display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:0; color:inherit; text-align:left; align-items:start;
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      column-gap: var(--statsGap); /* ← Avg.Pace ↔ Time 간격 */
+      row-gap:8px;
+      margin-top:0; color:inherit; text-align:left; align-items:start;
     }
     .grid > div:nth-child(1){ grid-column:1 / 2; margin-left:5px; }
     .grid > div:nth-child(2){ grid-column:2 / 3; }
@@ -137,6 +145,20 @@
     .date-input{
       height:44px; border:3px solid var(--fg); border-radius:var(--radius);
       background:transparent; color:var(--fg); font-weight:700; padding:0 12px; font-size:16px;
+    }
+
+    /* Spacing 컨트롤 UI 스타일(가볍게) */
+    .spacing-row{
+      display:grid;
+      grid-template-columns: 1fr auto;
+      gap:10px;
+      align-items:center;
+    }
+    .spacing-row .value{
+      width:64px; text-align:right; font-weight:800;
+    }
+    .range{
+      width:100%;
     }
   </style>
 </head>
@@ -203,6 +225,16 @@
         </div>
       </section>
 
+      <!-- 새로 추가: Spacing 컨트롤 -->
+      <section class="section">
+        <div class="control-title">Spacing</div>
+        <div class="spacing-row">
+          <input id="stats-gap-range" class="range" type="range" min="0" max="200" step="2" value="60" />
+          <div class="value"><span id="stats-gap-val">60</span>px</div>
+        </div>
+        <div class="label" style="margin-top:6px; opacity:.8">Avg. Pace ↔ Time horizontal gap</div>
+      </section>
+
       <section class="section">
         <button class="run-button" id="run-btn" onclick="onRun()">RUN</button>
       </section>
@@ -252,6 +284,10 @@
     const dateSection = document.getElementById('date-section');
     const dateInput   = document.getElementById('date-input');
     const dateDisplay = document.getElementById('date-display');
+
+    // 새로 추가: Spacing 컨트롤 요소
+    const statsGapRange = document.getElementById('stats-gap-range');
+    const statsGapVal   = document.getElementById('stats-gap-val');
 
     const MONTH_ABBR = ["JAN.","FEB.","MAR.","APR.","MAY.","JUN.","JUL.","AUG.","SEP.","OCT.","NOV.","DEC."];
     function formatDate(d){
@@ -497,11 +533,12 @@
       fitKmRow();
     }
 
-    function setLayout(type){
-      layoutType = type;
-      const btn = layoutRow.querySelector(`button[data-layout="${type}"]`);
-      updateActive(layoutRow, btn);
-      applyLayoutVisual();
+    // 새로 추가: Stats gap 제어 함수
+    function setStatsGap(px){
+      const val = Math.max(0, Math.min(200, Number(px) || 0));
+      document.documentElement.style.setProperty('--statsGap', val + 'px');
+      statsGapVal.textContent = val;
+      // 숫자 줄바꿈/스케일 계산에는 영향 없음, 필요 시 재계산
     }
 
     fontGridEl.addEventListener('click', (e)=>{
@@ -521,6 +558,9 @@
       setLayout(btn.dataset.layout);
     });
     dateInput.addEventListener('change', setDateFromInput);
+
+    // 새로 추가: 슬라이더 이벤트
+    statsGapRange.addEventListener('input', (e)=> setStatsGap(e.target.value));
 
     function onRun(){
       document.body.classList.add('focus');
@@ -546,6 +586,7 @@
       const t=new Date();
       document.getElementById('date-input').value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
       selectedDate = t;
+      setStatsGap(60);           // 기본 가로 간격
       scaleStageCanvas();
       fitKmRow();
     };
