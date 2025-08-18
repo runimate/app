@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>RUNNING MILEAGE ANIMATION MAKER</title>
+  <title>RUN MILEAGE ANIMATOR BETA</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
 
   <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Anton:wght@400&family=Big+Shoulders+Inline+Text:wght@800&family=Concert+One&family=Orbitron:wght@700&family=Special+Gothic+Expanded+One&family=Graduate&family=Gloria+Hallelujah&family=Rock+Salt&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Anton:wght@400&family=Big+Shoulders+Inline+Text:wght@800&family=Alfa+Slab+One&family=Orbitron:wght@700&family=Special+Gothic+Expanded+One&family=Graduate&family=Gloria+Hallelujah&family=Rock+Salt&display=swap" rel="stylesheet">
 
   <style>
     :root{
@@ -18,10 +18,11 @@
       --dateGap: 12px;
       --kmWordGap: 16px;
 
-      /* ✅ 하단 통계(Avg. Pace / Time) 전용 컨트롤 (숫자 폰트와 완전 분리) */
-      --statSize: 40px;     /* 큰 숫자 크기 */
-      --labelSize: 20px;    /* 라벨 크기  */
-      --statGap: 0px;      /* 두 블록 사이 가로 간격 */
+      /* 하단 통계(Avg. Pace / Time) 전용 컨트롤 */
+      --statSize: 40px;
+      --labelSize: 20px;
+      --statGap: 10px;     /* 음수 가능: -40px 등 */
+      --statPull: 0px;     /* 두 번째 블록(Time)만 추가로 왼쪽으로 끌기 (음수 권장) */
     }
     *{box-sizing:border-box}
     html, body { background:#fff; color:#000; }
@@ -119,18 +120,21 @@
       margin-top:var(--kmWordGap); margin-bottom:16px; font-weight:600;
     }
 
-    /* ✅ 하단 통계: 2열 + 가로 간격 변수 적용(숫자 폰트와 독립) */
+    /* 하단 통계: 2열 + 강력 간격 컨트롤(음수 갭 + 개별 풀) */
     .grid{
       display:grid;
-      grid-template-columns: auto auto;       /* 두 칸만 사용 */
-      column-gap: var(--statGap);             /* ← 가로 간격 */
+      grid-template-columns: max-content max-content; /* 내용 크기 기준 */
+      column-gap: var(--statGap);     /* 음수 가능: 겹치듯 붙이기 */
       row-gap: 8px;
       margin-top:0; color:inherit; text-align:left; align-items:start;
     }
     .grid > div:nth-child(1){ grid-column:1 / 2; margin-left:5px; }
-    .grid > div:nth-child(2){ grid-column:2 / 3; }
-    .stat{ font-size: var(--statSize); font-weight:800; }  /* ← 크기 고정 변수 */
-    .label{ font-size: var(--labelSize); opacity:.9 }      /* ← 크기 고정 변수 */
+    .grid > div:nth-child(2){
+      grid-column:2 / 3;
+      transform: translateX(var(--statPull)); /* 두 번째 블록만 추가로 왼쪽 당김 */
+    }
+    .stat{ font-size: var(--statSize); font-weight:800; }
+    .label{ font-size: var(--labelSize); opacity:.9 }
 
     body.focus header{ display:none; }
     body.focus .top-ui{ display:none; }
@@ -205,7 +209,7 @@
         <div class="font-grid" id="font-grid">
           <button data-font="Anton" style="font-family:'Anton', sans-serif;">Anton</button>
           <button data-font="Big Shoulders Inline Text" style="font-family:'Big Shoulders Inline Text', cursive;">Inline</button>
-          <button data-font="Concert One" style="font-family:'Concert One', cursive;">Concert</button>
+          <button data-font="Alfa Slab One" style="font-family:'Alfa Slab One', cursive;">Alfa</button>
           <button data-font="Orbitron" style="font-family:'Orbitron', sans-serif;">Tron</button>
           <button data-font="Special Gothic Expanded One" style="font-family:'Special Gothic Expanded One', sans-serif;">Gothic</button>
           <button data-font="Graduate" style="font-family:'Graduate', serif;">School</button>
@@ -391,86 +395,86 @@
       fitKmRow();
     }
 
+    /* 그룹 버튼 active 토글 */
     function updateActive(groupEl, targetBtn){
       [...groupEl.querySelectorAll('button')].forEach(b=>b.classList.remove('is-active'));
       if(targetBtn) targetBtn.classList.add('is-active');
     }
 
-   // ---- Font switching (하단 통계와 독립) ----
-function setFont(font){
-  selectedFont = font;
+    // ---- Font switching (하단 통계와 독립) ----
+    function setFont(font){
+      selectedFont = font;
 
-  const km       = document.getElementById("km");
-  const unit     = document.getElementById("km-unit");
-  const kmWord   = document.getElementById("km-word");
-  const dateDisp = document.getElementById("date-display");
+      const km       = document.getElementById("km");
+      const unit     = document.getElementById("km-unit");
+      const kmWord   = document.getElementById("km-word");
+      const dateDisp = document.getElementById("date-display");
 
-  const fontSettings = {
-    "Anton": { base: 200, weight: 700, dateSize: "60px", dateGap: "10px", dateWeight: 700 },
-    "Big Shoulders Inline Text": { base: 190, weight: 800, dateSize: "40px", dateGap: "12px", dateWeight: 700 },
-    "Concert One": { base: 180, weight: 700, dateSize: "38px", dateGap: "14px", dateWeight: 700, dateTranslate: "0px, 20px" },
-    "Orbitron": { base: 180, weight: 700, dateSize: "38px", dateGap: "0px", dateWeight: 700, dateTranslate: "0px, 30px" },
-    "Special Gothic Expanded One": { base: 170, weight: 700, dateSize: "38px", dateGap: "0px", dateWeight: 700, dateTranslate: "0px, 30px" },
-    "Graduate": { base: 200, weight: 700, dateSize: "40px", dateGap: "5px", dateWeight: 700, dateTranslate: "0px, 20px" },
-    "Gloria Hallelujah": { base: 170, weight: 700, dateSize: "44px", dateGap: "18px", dateWeight: 700 },
-    "Rock Salt": { base: 170, weight: 700, dateSize: "40px", dateGap: "5px", kmWordGap: "40px", translate: "25px,-25px", dateTranslate: "8px,-10px" }
-  };
-  const cfg = fontSettings[font] || { base: 200, weight: 700, dateSize: "42px", dateGap: "12px", dateWeight:700 };
+      const fontSettings = {
+        "Anton": { base: 200, weight: 700, dateSize: "60px", dateGap: "10px", dateWeight: 700 },
+        "Big Shoulders Inline Text": { base: 190, weight: 800, dateSize: "40px", dateGap: "12px", dateWeight: 700 },
+        "Alfa Slab One": { base: 180, weight: 700, dateSize: "38px", dateGap: "14px", dateWeight: 700, dateTranslate: "0px, 20px" },
+        "Orbitron": { base: 180, weight: 700, dateSize: "38px", dateGap: "0px", dateWeight: 700, dateTranslate: "0px, 30px" },
+        "Special Gothic Expanded One": { base: 170, weight: 700, dateSize: "38px", dateGap: "0px", dateWeight: 700, dateTranslate: "0px, 30px" },
+        "Graduate": { base: 200, weight: 700, dateSize: "40px", dateGap: "5px", dateWeight: 700, dateTranslate: "0px, 20px" },
+        "Gloria Hallelujah": { base: 170, weight: 700, dateSize: "44px", dateGap: "18px", dateWeight: 700 },
+        "Rock Salt": { base: 170, weight: 700, dateSize: "40px", dateGap: "5px", kmWordGap: "40px", translate: "25px,-25px", dateTranslate: "8px,-10px" }
+      };
+      const cfg = fontSettings[font] || { base: 200, weight: 700, dateSize: "42px", dateGap: "12px", dateWeight:700 };
 
-  // 숫자(KM)
-  km.style.fontFamily = font + ", sans-serif";
-  km.style.fontSize   = cfg.base + "px";
-  km.style.fontWeight = cfg.weight;
-  km.style.transform  = cfg.translate ? `translate(${cfg.translate})` : "translate(0,0)";
+      /* 숫자 */
+      km.style.fontFamily = font + ", sans-serif";
+      km.style.fontSize   = cfg.base + "px";
+      km.style.fontWeight = cfg.weight;
+      km.style.transform  = cfg.translate ? `translate(${cfg.translate})` : "translate(0,0)";
 
-  // 단위
-  unit.style.fontFamily = km.style.fontFamily;
-  unit.style.fontSize   = Math.round(cfg.base * 0.4) + "px";
-  unit.style.fontWeight = cfg.weight;
+      /* 단위 */
+      unit.style.fontFamily = km.style.fontFamily;
+      unit.style.fontSize   = Math.round(cfg.base * 0.4) + "px";
+      unit.style.fontWeight = cfg.weight;
 
-  // ✅ 날짜 폰트 매핑: Anton + Tron + Gothic + School + Gloria는 선택 폰트로 출력
-  const dateFontFallback = {
-    "Anton": "sans-serif",
-    "Orbitron": "sans-serif",                      // Tron
-    "Special Gothic Expanded One": "sans-serif",   // Gothic
-    "Graduate": "serif",                           // School
-    "Gloria Hallelujah": "cursive"                 // Gloria
-  };
-  dateDisp.style.fontFamily = dateFontFallback[font] ? `${font}, ${dateFontFallback[font]}` : ""; // 그 외는 system-ui 유지
-  dateDisp.style.fontWeight = (cfg.dateWeight != null ? cfg.dateWeight : cfg.weight);
-  dateDisp.style.fontSize   = cfg.dateSize;
-  dateDisp.style.marginBottom = cfg.dateGap;
+      /* 날짜 폰트: Anton뿐 아니라 Tron/Gothic/School/Gloria도 선택 폰트로 출력 */
+      const dateFollowSet = new Set([
+        "Anton",
+        "Orbitron",                    // Tron
+        "Special Gothic Expanded One", // Gothic
+        "Graduate",                    // School
+        "Gloria Hallelujah"            // Gloria
+      ]);
+      dateDisp.style.fontFamily = dateFollowSet.has(font) ? (font + ", sans-serif") : "";
+      dateDisp.style.fontWeight = (cfg.dateWeight != null ? cfg.dateWeight : cfg.weight);
+      dateDisp.style.fontSize   = cfg.dateSize;
+      dateDisp.style.marginBottom = cfg.dateGap;
 
-  if (layoutType === 'type2') {
-    dateDisp.style.transform = cfg.dateTranslate ? `translate(${cfg.dateTranslate})` : 'translate(0,0)';
-  } else {
-    dateDisp.style.transform = 'translate(0,0)';
-  }
+      if (layoutType === 'type2') {
+        dateDisp.style.transform = cfg.dateTranslate ? `translate(${cfg.dateTranslate})` : 'translate(0,0)';
+      } else {
+        dateDisp.style.transform = 'translate(0,0)';
+      }
 
-  document.documentElement.style.setProperty('--dateGap',  cfg.dateGap);
-  document.documentElement.style.setProperty('--kmWordGap', cfg.kmWordGap || "16px");
-  document.documentElement.style.setProperty('--gapBelowKm', font === "Rock Salt" ? "28px" : "12px");
+      document.documentElement.style.setProperty('--dateGap',  cfg.dateGap);
+      document.documentElement.style.setProperty('--kmWordGap', cfg.kmWordGap || "16px");
+      document.documentElement.style.setProperty('--gapBelowKm', font === "Rock Salt" ? "28px" : "12px");
 
-  kmWord.style.fontFamily = "";
+      kmWord.style.fontFamily = "";
 
-  const targetBtn = fontGridEl.querySelector(`button[data-font="${CSS.escape(font)}"]`);
-  updateActive(fontGridEl, targetBtn);
+      const targetBtn = fontGridEl.querySelector(`button[data-font="${CSS.escape(font)}"]`);
+      updateActive(fontGridEl, targetBtn);
 
-  fitKmRow();
-}
+      fitKmRow();
     }
 
     function setBackground(color){
       const b = document.body;
       if(color==='black'){ b.classList.remove('bg-white'); b.classList.add('bg-black'); }
       else { b.classList.remove('bg-black'); b.classList.add('bg-white'); }
-      const targetBtn = bgRow.querySelector(`button[data-bg="${color}"]`);
+      const targetBtn = bgRow.querySelector(`button[data-bg="${CSS.escape(color)}"]`);
       updateActive(bgRow, targetBtn);
     }
 
     function setRecordType(mode){
       recordType = mode;
-      const btn = modeRow.querySelector(`button[data-mode="${mode}"]`);
+      const btn = modeRow.querySelector(`button[data-mode="${CSS.escape(mode)}"]`);
       updateActive(modeRow, btn);
     }
 
@@ -517,7 +521,7 @@ function setFont(font){
 
     function setLayout(type){
       layoutType = type;
-      const btn = layoutRow.querySelector(`button[data-layout="${type}"]`);
+      const btn = layoutRow.querySelector(`button[data-layout="${CSS.escape(type)}"]`);
       updateActive(layoutRow, btn);
       applyLayoutVisual();
     }
@@ -559,12 +563,14 @@ function setFont(font){
     /* ===========================
        하단 통계 독립 컨트롤 API
        =========================== */
-    function setStatsStyle({ size, labelSize, gap } = {}){
-      if (size) document.documentElement.style.setProperty('--statSize', size);
+    function setStatsStyle({ size, labelSize, gap, pull } = {}){
+      if (size)      document.documentElement.style.setProperty('--statSize', size);
       if (labelSize) document.documentElement.style.setProperty('--labelSize', labelSize);
-      if (gap) document.documentElement.style.setProperty('--statGap', gap);
+      if (gap != null)  document.documentElement.style.setProperty('--statGap', gap);
+      if (pull != null) document.documentElement.style.setProperty('--statPull', pull);
     }
-    function setStatGap(px){ document.documentElement.style.setProperty('--statGap', px + 'px'); }
+    function setStatGap(px){  document.documentElement.style.setProperty('--statGap', px + 'px'); }
+    function setStatPull(px){ document.documentElement.style.setProperty('--statPull', px + 'px'); } // 음수면 왼쪽으로 더 붙음
     function setStatSize(px){ document.documentElement.style.setProperty('--statSize', px + 'px'); }
     function setLabelSize(px){ document.documentElement.style.setProperty('--labelSize', px + 'px'); }
 
@@ -575,8 +581,13 @@ function setFont(font){
       setBackground('white');
       setFont('Anton');
 
-      // ✅ 원하면 여기서 한 번에 세팅: 크고 촘촘하게 예시
-      setStatsStyle({ size: '36px', labelSize: '18px', gap: '28px' });
+      // 하단 통계 시작값(원하면 조절)
+      setStatsStyle({
+        size: '36px',
+        labelSize: '18px',
+        gap: '16px',   // 기본 간격
+        pull: '-20px'  // 두 번째(Time) 블록을 왼쪽으로 당겨 더 붙임
+      });
 
       const t=new Date();
       document.getElementById('date-input').value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
