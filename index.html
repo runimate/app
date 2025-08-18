@@ -396,57 +396,68 @@
       if(targetBtn) targetBtn.classList.add('is-active');
     }
 
-    // ---- Font switching (하단 통계와 독립) ----
-    function setFont(font){
-      selectedFont = font;
+   // ---- Font switching (하단 통계와 독립) ----
+function setFont(font){
+  selectedFont = font;
 
-      const km       = document.getElementById("km");
-      const unit     = document.getElementById("km-unit");
-      const kmWord   = document.getElementById("km-word");
-      const dateDisp = document.getElementById("date-display");
+  const km       = document.getElementById("km");
+  const unit     = document.getElementById("km-unit");
+  const kmWord   = document.getElementById("km-word");
+  const dateDisp = document.getElementById("date-display");
 
-      const fontSettings = {
-        "Anton": { base: 200, weight: 700, dateSize: "60px", dateGap: "10px", dateWeight: 700 },
-        "Big Shoulders Inline Text": { base: 190, weight: 800, dateSize: "40px", dateGap: "12px", dateWeight: 700 },
-        "Concert One": { base: 180, weight: 700, dateSize: "38px", dateGap: "14px", dateWeight: 700, dateTranslate: "0px, 20px" },
-        "Orbitron": { base: 180, weight: 700, dateSize: "38px", dateGap: "0px", dateWeight: 700, dateTranslate: "0px, 30px" },
-        "Special Gothic Expanded One": { base: 140, weight: 700, dateSize: "38px", dateGap: "0px", dateWeight: 700, dateTranslate: "0px, 10px" },
-        "Graduate": { base: 200, weight: 700, dateSize: "40px", dateGap: "5px", dateWeight: 700, dateTranslate: "0px, 20px" },
-        "Gloria Hallelujah": { base: 170, weight: 700, dateSize: "44px", dateGap: "18px", dateWeight: 700 },
-        "Rock Salt": { base: 170, weight: 700, dateSize: "40px", dateGap: "5px", kmWordGap: "40px", translate: "25px,-25px", dateTranslate: "8px,-10px" }
-      };
-      const cfg = fontSettings[font] || { base: 200, weight: 700, dateSize: "42px", dateGap: "12px", dateWeight:700 };
+  const fontSettings = {
+    "Anton": { base: 200, weight: 700, dateSize: "60px", dateGap: "10px", dateWeight: 700 },
+    "Big Shoulders Inline Text": { base: 190, weight: 800, dateSize: "40px", dateGap: "12px", dateWeight: 700 },
+    "Concert One": { base: 180, weight: 700, dateSize: "38px", dateGap: "14px", dateWeight: 700, dateTranslate: "0px, 20px" },
+    "Orbitron": { base: 180, weight: 700, dateSize: "38px", dateGap: "0px", dateWeight: 700, dateTranslate: "0px, 30px" },
+    "Special Gothic Expanded One": { base: 170, weight: 700, dateSize: "38px", dateGap: "0px", dateWeight: 700, dateTranslate: "0px, 30px" },
+    "Graduate": { base: 200, weight: 700, dateSize: "40px", dateGap: "5px", dateWeight: 700, dateTranslate: "0px, 20px" },
+    "Gloria Hallelujah": { base: 170, weight: 700, dateSize: "44px", dateGap: "18px", dateWeight: 700 },
+    "Rock Salt": { base: 170, weight: 700, dateSize: "40px", dateGap: "5px", kmWordGap: "40px", translate: "25px,-25px", dateTranslate: "8px,-10px" }
+  };
+  const cfg = fontSettings[font] || { base: 200, weight: 700, dateSize: "42px", dateGap: "12px", dateWeight:700 };
 
-      km.style.fontFamily = font + ", sans-serif";
-      km.style.fontSize   = cfg.base + "px";
-      km.style.fontWeight = cfg.weight;
-      km.style.transform  = cfg.translate ? `translate(${cfg.translate})` : "translate(0,0)";
+  // 숫자(KM)
+  km.style.fontFamily = font + ", sans-serif";
+  km.style.fontSize   = cfg.base + "px";
+  km.style.fontWeight = cfg.weight;
+  km.style.transform  = cfg.translate ? `translate(${cfg.translate})` : "translate(0,0)";
 
-      unit.style.fontFamily = km.style.fontFamily;
-      unit.style.fontSize   = Math.round(cfg.base * 0.4) + "px";
-      unit.style.fontWeight = cfg.weight;
+  // 단위
+  unit.style.fontFamily = km.style.fontFamily;
+  unit.style.fontSize   = Math.round(cfg.base * 0.4) + "px";
+  unit.style.fontWeight = cfg.weight;
 
-      dateDisp.style.fontFamily = (font === "Anton") ? "Anton, sans-serif" : "";
-      dateDisp.style.fontWeight = (cfg.dateWeight != null ? cfg.dateWeight : cfg.weight);
-      dateDisp.style.fontSize   = cfg.dateSize;
-      dateDisp.style.marginBottom = cfg.dateGap;
+  // ✅ 날짜 폰트 매핑: Anton + Tron + Gothic + School + Gloria는 선택 폰트로 출력
+  const dateFontFallback = {
+    "Anton": "sans-serif",
+    "Orbitron": "sans-serif",                      // Tron
+    "Special Gothic Expanded One": "sans-serif",   // Gothic
+    "Graduate": "serif",                           // School
+    "Gloria Hallelujah": "cursive"                 // Gloria
+  };
+  dateDisp.style.fontFamily = dateFontFallback[font] ? `${font}, ${dateFontFallback[font]}` : ""; // 그 외는 system-ui 유지
+  dateDisp.style.fontWeight = (cfg.dateWeight != null ? cfg.dateWeight : cfg.weight);
+  dateDisp.style.fontSize   = cfg.dateSize;
+  dateDisp.style.marginBottom = cfg.dateGap;
 
-      if (layoutType === 'type2') {
-        dateDisp.style.transform = cfg.dateTranslate ? `translate(${cfg.dateTranslate})` : 'translate(0,0)';
-      } else {
-        dateDisp.style.transform = 'translate(0,0)';
-      }
+  if (layoutType === 'type2') {
+    dateDisp.style.transform = cfg.dateTranslate ? `translate(${cfg.dateTranslate})` : 'translate(0,0)';
+  } else {
+    dateDisp.style.transform = 'translate(0,0)';
+  }
 
-      document.documentElement.style.setProperty('--dateGap',  cfg.dateGap);
-      document.documentElement.style.setProperty('--kmWordGap', cfg.kmWordGap || "16px");
-      document.documentElement.style.setProperty('--gapBelowKm', font === "Rock Salt" ? "28px" : "12px");
+  document.documentElement.style.setProperty('--dateGap',  cfg.dateGap);
+  document.documentElement.style.setProperty('--kmWordGap', cfg.kmWordGap || "16px");
+  document.documentElement.style.setProperty('--gapBelowKm', font === "Rock Salt" ? "28px" : "12px");
 
-      kmWord.style.fontFamily = "";
+  kmWord.style.fontFamily = "";
 
-      const targetBtn = fontGridEl.querySelector(`button[data-font="${CSS.escape(font)}"]`);
-      updateActive(fontGridEl, targetBtn);
+  const targetBtn = fontGridEl.querySelector(`button[data-font="${CSS.escape(font)}"]`);
+  updateActive(fontGridEl, targetBtn);
 
-      fitKmRow();
+  fitKmRow();
+}
     }
 
     function setBackground(color){
