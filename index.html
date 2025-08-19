@@ -30,12 +30,12 @@
 
       /* Kilometers와 첫 컬럼(Avg. Pace) 정렬 + 5px 인덴트 */
       --gridFirstColIndent: 5px; /* Avg. Pace 첫 컬럼 들여쓰기 */
-      --kmWordIndent: 5px;       /* Kilometers는 그보다 5px 추가 이동 */
+      --kmWordIndent: 0px;       /* Kilometers는 그보다 5px 추가 이동 */
 
       /* ▼ Type1 전용 컨트롤 */
       --t1-kmScale: 1;
       --t1-kmWordSize: 50px;
-      --t1-kmWordGap: 5px;
+      --t1-kmWordGap: 0px;
       --t1-statSize: 40px;
       --t1-labelSize: 20px;
       --t1-statGap: 30px;
@@ -44,8 +44,8 @@
       /* ▼ Type2 전용 컨트롤 */
       --t2-kmScale: 1;
       --t2-kmWordSize: 50px;
-      --t2-kmWordGap: 5px;
-      --t2-statSize: 36px;
+      --t2-kmWordGap: 0px;
+      --t2-statSize: 30px;
       --t2-labelSize: 20px;
       --t2-statGap: 30px;
       --t2-statPull: 0px;
@@ -168,8 +168,8 @@
       font-size: var(--kmWordSize);
       line-height:1.05;
       margin-top:var(--kmWordGap);
-      margin-bottom:16px;
-      font-weight:600;
+      margin-bottom:26px;
+      font-weight:700;
       /* Avg. Pace 좌측 기준 + 5px 추가 이동 */
       margin-left: calc(var(--gridFirstColIndent) + var(--kmWordIndent));
     }
