@@ -28,6 +28,10 @@
 
       --kmScale: 1;
 
+      /* Kilometers와 첫 컬럼(Avg. Pace) 정렬 + 5px 인덴트 */
+      --gridFirstColIndent: 5px; /* Avg. Pace 첫 컬럼 들여쓰기 */
+      --kmWordIndent: 5px;       /* Kilometers는 그보다 5px 추가 이동 */
+
       /* ▼ Type1 전용 컨트롤 */
       --t1-kmScale: 1;
       --t1-kmWordSize: 28px;
@@ -166,6 +170,8 @@
       margin-top:var(--kmWordGap);
       margin-bottom:16px;
       font-weight:600;
+      /* ✅ Avg. Pace 좌측 기준 + 5px 추가 이동 */
+      margin-left: calc(var(--gridFirstColIndent) + var(--kmWordIndent));
     }
 
     /* 하단 통계: 2열 + 강력 간격 컨트롤(음수 갭 + 개별 풀) */
@@ -176,7 +182,8 @@
       row-gap: 8px;
       margin-top:0; color:inherit; text-align:left; align-items:start;
     }
-    .grid > div:nth-child(1){ grid-column:1 / 2; margin-left:5px; }
+    /* ✅ 첫 번째 컬럼(Avg. Pace) 좌측 들여쓰기 변수화 */
+    .grid > div:nth-child(1){ grid-column:1 / 2; margin-left:var(--gridFirstColIndent); }
     .grid > div:nth-child(2){
       grid-column:2 / 3;
       transform: translateX(var(--statPull));
@@ -393,8 +400,8 @@
       if(parsedData.paceMin==null || parsedData.paceSec==null){
         return (layoutType==='type1') ? '0:00 /km' : '0:00';
       }
-      const mm = zero2(parsedData.paceMin);
-      const ss = zero2(parsedData.paceSec);
+      const mm = String(parsedData.paceMin); // ← 분은 앞자리 0 제거
+      const ss = zero2(parsedData.paceSec);  // ← 초만 2자리 유지
       return (layoutType==='type1') ? `${mm}:${ss} /km` : `${mm}:${ss}`;
     }
 
