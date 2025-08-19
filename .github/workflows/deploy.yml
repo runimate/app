@@ -1,4 +1,4 @@
-name: Test Deploy to app (gh-pages)
+name: Deploy static site to app (gh-pages)
 
 on:
   push:
@@ -6,34 +6,28 @@ on:
   workflow_dispatch:
 
 jobs:
-  test-deploy:
+  deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout source (archive)
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # 빌드 대신 간단한 정적 파일 생성
-      - name: Create simple site
+      # 루트의 웹파일만 dist/로 복사 (.git, .github 등은 제외)
+      - name: Prepare dist
         run: |
           mkdir -p dist
-          cat > dist/index.html << 'EOF'
-          <!doctype html>
-          <html lang="en">
-          <head><meta charset="utf-8"><title>Deployed!</title></head>
-          <body>
-            <h1>It works 🎉</h1>
-            <p>Deployed from <b>archive</b> to <b>app</b>.</p>
-          </body>
-          </html>
-          EOF
+          rsync -av --delete \
+            --exclude ".git" \
+            --exclude ".github" \
+            --exclude "node_modules" \
+            --exclude "README.md" \
+            ./ dist/
 
       - name: Deploy to app repo gh-pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          token: ${{ secrets.GH_PAT }}   # 시크릿 이름 'GH_PAT' 확인!
+          token: ${{ secrets.GH_PAT }}
+          repository-name: runarchive-lab/app
           branch: gh-pages
           folder: dist
-          repository-name: runarchive-lab/app  # 본인 계정/레포명 확인
           clean: true
           single-commit: true
