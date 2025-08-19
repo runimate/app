@@ -401,6 +401,18 @@
       if(targetBtn) targetBtn.classList.add('is-active');
     }
 
+    /* ✅ 폰트별 'km-unit' 크기 비율 맵 (없으면 기본 0.4) */
+    const unitSizeByFont = {
+      "Anton": 0.40,
+      "Big Shoulders Inline Text": 0.38,
+      "Alfa Slab One": 0.45,
+      "Orbitron": 0.36,
+      "Special Gothic Expanded One": 0.34,
+      "Graduate": 0.38,
+      "Gloria Hallelujah": 0.44,
+      "Rock Salt": 0.52
+    };
+
     // ---- Font switching (하단 통계와 독립) ----
     function setFont(font){
       selectedFont = font;
@@ -428,14 +440,16 @@
       km.style.fontWeight = cfg.weight;
       km.style.transform  = cfg.translate ? `translate(${cfg.translate})` : "translate(0,0)";
 
-      /* 단위 */
+      /* 단위: 폰트별 비율 적용 */
+      const ratio = unitSizeByFont[font] ?? 0.4;
       unit.style.fontFamily = km.style.fontFamily;
-      unit.style.fontSize   = Math.round(cfg.base * 0.4) + "px";
+      unit.style.fontSize   = Math.round(cfg.base * ratio) + "px";
       unit.style.fontWeight = cfg.weight;
 
-      /* 날짜 폰트: Anton뿐 아니라 Tron/Gothic/School/Gloria도 선택 폰트로 출력 */
+      /* 날짜 폰트: 선택 폰트로 출력(Alfa 포함) */
       const dateFollowSet = new Set([
         "Anton",
+        "Alfa Slab One",
         "Orbitron",                    // Tron
         "Special Gothic Expanded One", // Gothic
         "Graduate",                    // School
@@ -586,7 +600,7 @@
         size: '40px',
         labelSize: '20px',
         gap: '16px',   // 기본 간격
-        pull: '60px'  // 두 번째(Time) 블록을 왼쪽으로 당겨 더 붙임
+        pull: '60px'   // 두 번째(Time) 블록을 왼쪽으로 당겨 더 붙임
       });
 
       const t=new Date();
