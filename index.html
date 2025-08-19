@@ -28,9 +28,13 @@
 
       --kmScale: 1;
 
-      /* Kilometers와 첫 컬럼(Avg. Pace) 정렬 + 5px 인덴트 */
+      /* Kilometers와 첫 컬럼(Avg. Pace) 정렬 + 인덴트 */
       --gridFirstColIndent: 5px; /* Avg. Pace 첫 컬럼 들여쓰기 */
-      --kmWordIndent: 0px;       /* Kilometers는 그보다 5px 추가 이동 */
+      --kmWordIndent: 0px;       /* Kilometers 좌우 보정 */
+
+      /* ▼ 추가: Kilometers 수직 위치/하단 간격 조절용 */
+      --kmWordLiftTop: 0px;        /* 음수면 위로 당김 */
+      --kmWordBottomGap: 26px;     /* Kilometers ↔ 하단 통계 간격 */
 
       /* ▼ Type1 전용 컨트롤 */
       --t1-kmScale: 1;
@@ -40,6 +44,9 @@
       --t1-labelSize: 20px;
       --t1-statGap: 30px;
       --t1-statPull: 40px;
+      /* 타입1 전용 Kilometers 수직/하단 간격 */
+      --t1-kmWordLiftTop: -6px;
+      --t1-kmWordBottomGap: 26px;
 
       /* ▼ Type2 전용 컨트롤 */
       --t2-kmScale: 1;
@@ -49,6 +56,9 @@
       --t2-labelSize: 20px;
       --t2-statGap: 30px;
       --t2-statPull: 0px;
+      /* 타입2 전용 Kilometers 수직/하단 간격 */
+      --t2-kmWordLiftTop: -6px;
+      --t2-kmWordBottomGap: 26px;
     }
     *{box-sizing:border-box}
     html, body { background:#fff; color:#000; }
@@ -65,6 +75,9 @@
       --labelSize: var(--t1-labelSize);
       --statGap: var(--t1-statGap);
       --statPull: var(--t1-statPull);
+      /* Kilometers 수직/하단 간격 매핑 */
+      --kmWordLiftTop: var(--t1-kmWordLiftTop);
+      --kmWordBottomGap: var(--t1-kmWordBottomGap);
     }
     body.type2{
       --kmScale: var(--t2-kmScale);
@@ -74,6 +87,9 @@
       --labelSize: var(--t2-labelSize);
       --statGap: var(--t2-statGap);
       --statPull: var(--t2-statPull);
+      /* Kilometers 수직/하단 간격 매핑 */
+      --kmWordLiftTop: var(--t2-kmWordLiftTop);
+      --kmWordBottomGap: var(--t2-kmWordBottomGap);
     }
 
     header{ padding:var(--pad); text-align:left; }
@@ -167,10 +183,12 @@
       display:none;
       font-size: var(--kmWordSize);
       line-height:1.05;
-      margin-top:var(--kmWordGap);
-      margin-bottom:26px;
+      /* 위쪽 간격 = 기본 gap + lift(음수면 위로) */
+      margin-top: calc(var(--kmWordGap) + var(--kmWordLiftTop));
+      /* 아래쪽 간격 = 통계와의 거리 */
+      margin-bottom: var(--kmWordBottomGap);
       font-weight:700;
-      /* Avg. Pace 좌측 기준 + 5px 추가 이동 */
+      /* Avg. Pace 좌측 기준 + 보정 */
       margin-left: calc(var(--gridFirstColIndent) + var(--kmWordIndent));
     }
 
