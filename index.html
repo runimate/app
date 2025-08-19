@@ -30,12 +30,12 @@
 
       /* Kilometers와 첫 컬럼(Avg. Pace) 정렬 + 5px 인덴트 */
       --gridFirstColIndent: 5px; /* Avg. Pace 첫 컬럼 들여쓰기 */
-      --kmWordIndent: 5px;       /* Kilometers는 그보다 5px 추가 이동 */
+      --kmWordIndent: 0px;       /* Kilometers는 그보다 5px 추가 이동 */
 
       /* ▼ Type1 전용 컨트롤 */
       --t1-kmScale: 1;
-      --t1-kmWordSize: 28px;
-      --t1-kmWordGap: 16px;
+      --t1-kmWordSize: 36px;
+      --t1-kmWordGap: 10px;
       --t1-statSize: 40px;
       --t1-labelSize: 20px;
       --t1-statGap: 24px;
@@ -43,11 +43,11 @@
 
       /* ▼ Type2 전용 컨트롤 */
       --t2-kmScale: 1;
-      --t2-kmWordSize: 28px;
-      --t2-kmWordGap: 16px;
-      --t2-statSize: 40px;
+      --t2-kmWordSize: 36px;
+      --t2-kmWordGap: 10px;
+      --t2-statSize: 36px;
       --t2-labelSize: 20px;
-      --t2-statGap: 16px;
+      --t2-statGap: 30px;
       --t2-statPull: 0px;
     }
     *{box-sizing:border-box}
@@ -562,7 +562,7 @@
         "Special Gothic Expanded One": { base: 160, weight: 700, dateSize: "50px", dateGap: "0px", dateWeight: 700, dateTranslate: "0px, 10px" },
         "Graduate": { base: 200, weight: 700, dateSize: "50px", dateGap: "20px", dateWeight: 700, dateTranslate: "0px, 20px" },
         "Gloria Hallelujah": { base: 190, weight: 700, dateSize: "44px", dateGap: "10px", dateWeight: 700 },
-        "Rock Salt": { base: 140, weight: 700, dateSize: "55px", dateGap: "40px", kmWordGap: "40px", translate: "25px,-25px", dateTranslate: "8px,0px" }
+        "Rock Salt": { base: 140, weight: 700, dateSize: "30px", dateGap: "40px", dateWeight: 600, kmWordGap: "40px", translate: "25px,-25px", dateTranslate: "8px,0px" }
       };
       const cfg = fontSettings[font] || { base: 200, weight: 700, dateSize: "42px", dateGap: "12px", dateWeight:700 };
 
