@@ -155,7 +155,7 @@
       font-family:'Anton', sans-serif;
       font-size:200px; line-height:1; white-space:nowrap; letter-spacing:.5px;
     }
-    /* ✅ 더 이상 Type1에서도 inline 단위 사용 안 함 (항상 숨김) */
+    /* Type1/Type2 공통: inline 단위 숨김, 아래 "Kilometers"만 사용 */
     #km-unit{ display:none; }
 
     /* ▼ “Kilometers” (타입별 변수로 제어) */
@@ -171,7 +171,7 @@
     /* 하단 통계: 2열 + 강력 간격 컨트롤(음수 갭 + 개별 풀) */
     .grid{
       display:grid;
-      grid-template-columns: max-content max-content; /* 내용 크기 기준 */
+      grid-template-columns: max-content max-content; /* 기본 2열 */
       column-gap: var(--statGap);
       row-gap: 8px;
       margin-top:0; color:inherit; text-align:left; align-items:start;
@@ -184,10 +184,13 @@
     .stat{ font-size: var(--statSize); font-weight:800; }
     .label{ font-size: var(--labelSize); opacity:.9 }
 
-    /* ✅ Type1에서 라벨이 위, 값이 아래로 오도록 시각 순서만 뒤집기 */
+    /* Type1: 한 칼럼으로 세로 배치 + 라벨 위/값 아래 */
+    body.type1 .grid{
+      grid-template-columns: 1fr; /* ← 세로로 쌓기 */
+    }
     body.type1 .grid > div{
       display:flex;
-      flex-direction: column-reverse; /* DOM은 stat->label이지만, 화면에선 label(위) -> stat(아래) */
+      flex-direction: column-reverse; /* 화면: label(위) -> stat(아래) */
       gap:6px;
     }
 
@@ -403,7 +406,24 @@
       canvas.style.transform = `scale(${scale})`;
     }
 
-    // ---- Fit number row (타입별 kmScale 적용) ----
+    /* ====== km 폰트별/타입별 스케일 맵 ====== */
+    const kmFontScale = {
+      "Anton": { type1: 1.00, type2: 1.00 },
+      "Big Shoulders Inline Text": { type1: 1.00, type2: 1.00 },
+      "Alfa Slab One": { type1: 0.98, type2: 1.00 },
+      "Orbitron": { type1: 0.95, type2: 0.98 },
+      "Special Gothic Expanded One": { type1: 0.95, type2: 0.98 },
+      "Graduate": { type1: 1.00, type2: 1.00 },
+      "Gloria Hallelujah": { type1: 1.00, type2: 1.00 },
+      "Rock Salt": { type1: 0.92, type2: 0.94 }
+    };
+    function setFontKmScale(font, type, scale){
+      if(!kmFontScale[font]) kmFontScale[font] = { type1:1, type2:1 };
+      kmFontScale[font][type] = Number(scale) || 1;
+      fitKmRow();
+    }
+
+    // ---- Fit number row (타입별 + 폰트별 kmScale 적용) ----
     function fitKmRow(){
       const stage   = document.getElementById('stage');
       const row     = document.getElementById('km-row');
@@ -423,13 +443,14 @@
 
       const safe  = 0.98;
       const need  = measure.scrollWidth;
-      const base  = need ? Math.min(1, (avail * safe) / need) : 1;
+      const baseFit  = need ? Math.min(1, (avail * safe) / need) : 1;
 
-      /* 타입별 스케일 배수 적용 */
+      // 타입별, 폰트별 배수
       const css = getComputedStyle(document.body);
       const typeScale = parseFloat(css.getPropertyValue('--kmScale')) || 1;
+      const fontScale = (kmFontScale[selectedFont] && kmFontScale[selectedFont][layoutType]) ? kmFontScale[selectedFont][layoutType] : 1;
 
-      row.style.transform = `scale(${base * typeScale})`;
+      row.style.transform = `scale(${baseFit * typeScale * fontScale})`;
       syncDateWidth();
     }
 
@@ -441,7 +462,6 @@
     }
 
     async function runAnimation(){
-      /* unit opacity 토글 제거 — 항상 숨김 */
       fitKmRow();
       await new Promise(r=>setTimeout(r, 500));
       const endVal = parseFloat(parsedData.km || 0);
@@ -454,9 +474,6 @@
       [...groupEl.querySelectorAll('button')].forEach(b=>b.classList.remove('is-active'));
       if(targetBtn) targetBtn.classList.add('is-active');
     }
-
-    /* 폰트별 'km-unit' 비율은 더 이상 사용하지 않지만, 필요 시 확장 가능 */
-    // const unitSizeByFont = {...}
 
     // ---- Font switching ----
     function setFont(font){
@@ -552,7 +569,10 @@
 
         // 요청된 초기 표기 형식
         document.getElementById('pace').textContent = "0:00 /km";
+        document.querySelector('#pace + .label').textContent = "Avg. Pace";
+
         document.getElementById('time').textContent = "0h 00m";
+        document.querySelector('#time + .label').textContent = "Time";
       }else{
         // Type2: 날짜 On, 아래 “Kilometers” 표시
         dateSection.style.display = 'grid';
@@ -574,7 +594,6 @@
       document.body.classList.remove('type1','type2');
       document.body.classList.add(layoutType);
 
-      // 폰트에 따른 트랜스레이트/갭 재적용
       setFont(selectedFont);
       fitKmRow();
     }
@@ -665,7 +684,7 @@
       setFont('Anton');
 
       // 초기 Type1 / Type2 각각의 스타일 예시값
-      setTypeStatsStyle('type1', { size:'40px', labelSize:'18px', gap:'28px', pull:'0px' });
+      setTypeStatsStyle('type1', { size:'40px', labelSize:'18px', gap:'24px', pull:'0px' });
       setTypeKmWordStyle('type1', { size:'28px', gap:'16px' });
       setTypeKmScale('type1', 1.00);
 
@@ -673,12 +692,16 @@
       setTypeKmWordStyle('type2', { size:'28px', gap:'16px' });
       setTypeKmScale('type2', 1.00);
 
-      // 기본 날짜
+      // (선택) 폰트별 스케일 미세조정 예시
+      // setFontKmScale('Alfa Slab One', 'type1', 0.96);
+      // setFontKmScale('Orbitron', 'type2', 1.02);
+
       const t=new Date();
       document.getElementById('date-input').value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
       selectedDate = t;
 
       scaleStageCanvas();
+      applyLayoutVisual(); // body.type1/type2 반영 및 초기 값 세팅
       fitKmRow();
     };
   </script>
