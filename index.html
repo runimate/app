@@ -30,7 +30,7 @@
 
       /* Kilometers와 첫 컬럼(Avg. Pace) 정렬 + 5px 인덴트 */
       --gridFirstColIndent: 5px; /* Avg. Pace 첫 컬럼 들여쓰기 */
-      --kmWordIndent: 0px;       /* Kilometers는 그보다 5px 추가 이동 */
+      --kmWordIndent: 5px;       /* Kilometers는 그보다 5px 추가 이동 */
 
       /* ▼ Type1 전용 컨트롤 */
       --t1-kmScale: 1;
@@ -199,6 +199,8 @@
       display:flex;
       flex-direction: column-reverse; /* 화면: label(위) -> stat(아래) */
       gap:6px;
+      /* ✅ Type1에서 Pace/Time 좌측 들여쓰기 동일 적용(미세 불일치 해결) */
+      margin-left: var(--gridFirstColIndent);
     }
     /* Type1에서 Time을 아래로 강제 */
     body.type1 .grid > div:nth-child(2){
@@ -400,8 +402,8 @@
       if(parsedData.paceMin==null || parsedData.paceSec==null){
         return (layoutType==='type1') ? '0:00 /km' : '0:00';
       }
-      const mm = String(parsedData.paceMin); // ← 분은 앞자리 0 제거
-      const ss = zero2(parsedData.paceSec);  // ← 초만 2자리 유지
+      const mm = String(parsedData.paceMin); // 분은 앞자리 0 제거
+      const ss = zero2(parsedData.paceSec);  // 초만 2자리 유지
       return (layoutType==='type1') ? `${mm}:${ss} /km` : `${mm}:${ss}`;
     }
 
@@ -410,14 +412,18 @@
       if(layoutType==='type2'){
         return parsedData.timeRaw ? parsedData.timeRaw : '00:00';
       }
-      // type1: "Hh MMm"
-      if(parsedData.timeH!=null){          // HH:MM:SS 있었던 경우
-        return `${parsedData.timeH}h ${zero2(parsedData.timeM)}m`;
+
+      // type1: h m s 포맷 (hour가 0이면 h 생략)
+      const H = parsedData.timeH ?? 0;
+      const M = parsedData.timeM ?? 0;
+      const S = parsedData.timeS ?? 0;
+
+      // MM:SS만 있었던 경우에도 m s 모두 표시
+      if (H > 0){
+        return `${H}h ${zero2(M)}m ${zero2(S)}s`;
       }
-      if(parsedData.timeM!=null){          // MM:SS만 있었던 경우
-        return `0h ${zero2(parsedData.timeM)}m`;
-      }
-      return '0h 00m';
+      // H가 0이거나 없으면 h 생략, 분은 앞자리 0 제거
+      return `${String(M)}m ${zero2(S)}s`;
     }
 
     function renderStats(){
@@ -572,7 +578,7 @@
       km.style.fontWeight = cfg.weight;
       km.style.transform  = cfg.translate ? `translate(${cfg.translate})` : "translate(0,0)";
 
-      /* 날짜 폰트: 선택 폰트로 출력(Alfa 포함) */
+      /* 날짜 폰트: 선택 폰트로 출력 */
       const dateFollowSet = new Set([
         "Anton",
         "Orbitron",
@@ -660,7 +666,7 @@
 
       setFont(selectedFont);
       fitKmRow();
-      renderStats(); // ← 타입 전환 시도 값 재포맷
+      renderStats(); // ← 타입 전환 시 값 재포맷
     }
 
     function setLayout(type){
@@ -756,7 +762,7 @@
 
       setTypeStatsStyle('type2', { size:'40px', labelSize:'20px', gap:'16px', pull:'50px' });
       setTypeKmWordStyle('type2', { size:'36px', gap:'16px' });
-      setTypeKmScale('type2', 1.00);
+      setTypeKmScale('type2', 1.00');
 
       const t=new Date();
       document.getElementById('date-input').value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
