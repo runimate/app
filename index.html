@@ -344,7 +344,7 @@
         <div class="km-row-wrap">
           <div class="km-row" id="km-row">
             <div id="km">0.00</div>
-            <div id="km-unit">km</div> <!-- 숨김 상태 유지 -->
+            <div id="km-unit">km</div>
           </div>
         </div>
         <div id="km-word">Kilometers</div>
@@ -436,13 +436,9 @@
     /* ---------- KM 표시 포맷 (상단 숫자만) ---------- */
     function formatKm(value){
       const v = Math.max(0, Number(value) || 0);
-
-      // 세 자리 규칙: x.xx (0~9.99), xx.x (10.0~99.9)
-      if (v < 10)      return v.toFixed(2);
-      if (v < 100)     return v.toFixed(1);
-
-      // 100km 이상: 폭 붕괴 방지를 위해 정수 표기(예: 100, 121 ...)
-      return String(Math.round(v));
+      if (v < 10)      return v.toFixed(2); // x.xx
+      if (v < 100)     return v.toFixed(1); // xx.x
+      return String(Math.round(v));         // 100+ : 정수
     }
     function renderKm(value){
       const kmEl = document.getElementById('km');
@@ -511,10 +507,7 @@
           const raw = Math.min((now - startTime)/duration,1);
           const eased = easeOutCubic(raw);
           const val = (start + (end-start)*eased);
-
-          // ★ 여기서 포맷 적용
           kmEl.textContent = formatKm(val);
-
           raw < 1 ? requestAnimationFrame(update) : resolve();
         }
         requestAnimationFrame(update);
@@ -546,6 +539,27 @@
       if(!kmFontScale[font]) kmFontScale[font] = { type1:1, type2:1 };
       kmFontScale[font][type] = Number(scale) || 1;
       fitKmRow();
+    }
+
+    /* ====== 폰트별/타입별 들여쓰기 맵 (공통) ======
+       grid:  하단 첫 컬럼(Avg. Pace) 좌측 들여쓰기 px
+       kmWord:"Kilometers" 좌우 보정 px (grid 들여쓰기에 더해짐)
+    */
+    const fontIndentMap = {
+      "Anton": { type1: { grid: 5,  kmWord: 0 },  type2: { grid: 5,  kmWord: 0 } },
+      "Big Shoulders Inline Text": { type1: { grid: 8,  kmWord: 3 },  type2: { grid: 8,  kmWord: 3 } },
+      "Alfa Slab One": { type1: { grid: 6,  kmWord: 2 },  type2: { grid: 6,  kmWord: 2 } },
+      "Orbitron": { type1: { grid: 8,  kmWord: 0 },  type2: { grid: 6,  kmWord: 0 } },
+      "Special Gothic Expanded One": { type1: { grid: 4,  kmWord: 0 },  type2: { grid: 4,  kmWord: 0 } },
+      "Graduate": { type1: { grid: 8,  kmWord: 1 },  type2: { grid: 5,  kmWord: 1 } },
+      "Gloria Hallelujah": { type1: { grid: 5,  kmWord: 2 },  type2: { grid: 5,  kmWord: 2 } },
+      "Rock Salt": { type1: { grid: 15, kmWord: 6 },  type2: { grid: 10, kmWord: 6 } }
+    };
+    function applyFontIndents(font, type){
+      const defaults = { grid: 5, kmWord: 0 };
+      const conf = (fontIndentMap[font] && fontIndentMap[font][type]) || defaults;
+      document.documentElement.style.setProperty('--gridFirstColIndent', `${conf.grid}px`);
+      document.documentElement.style.setProperty('--kmWordIndent', `${conf.kmWord}px`);
     }
 
     // ---- Fit number row (타입별 + 폰트별 kmScale 적용) ----
@@ -634,7 +648,8 @@
         "Orbitron",
         "Special Gothic Expanded One",
         "Graduate",
-        "Gloria Hallelujah"
+        "Gloria Hallelujah",
+        "Rock Salt"
       ]);
       dateDisp.style.fontFamily = dateFollowSet.has(font) ? (font + ", sans-serif") : "";
       dateDisp.style.fontWeight = (cfg.dateWeight != null ? cfg.dateWeight : cfg.weight);
@@ -655,6 +670,9 @@
 
       const targetBtn = fontGridEl.querySelector(`button[data-font="${CSS.escape(font)}"]`);
       updateActive(fontGridEl, targetBtn);
+
+      /* ★ 폰트별 들여쓰기 적용 */
+      applyFontIndents(selectedFont, layoutType);
 
       fitKmRow();
       renderStats();
@@ -720,6 +738,10 @@
       document.body.classList.add(layoutType);
 
       setFont(selectedFont);
+
+      /* ★ 타입 변경 시에도 폰트별 들여쓰기 적용 */
+      applyFontIndents(selectedFont, layoutType);
+
       fitKmRow();
       renderStats();
     }
@@ -813,7 +835,7 @@
 
       setTypeStatsStyle('type2', { size:'40px', labelSize:'20px', gap:'16px', pull:'50px' });
       setTypeKmWordStyle('type2', { size:'36px', gap:'16px' });
-      setTypeKmScale('type2', 1.00);
+      setTypeKmScale('type2', 1.00');
 
       const t=new Date();
       document.getElementById('date-input').value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
@@ -824,6 +846,10 @@
 
       // 초기 km 표시도 규칙 적용
       renderKm(0);
+
+      /* ★ 초기에도 폰트별 들여쓰기 1회 적용 */
+      applyFontIndents(selectedFont, layoutType);
+
       fitKmRow();
       renderStats();
     };
