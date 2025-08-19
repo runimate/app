@@ -479,14 +479,14 @@
 
     /* ====== km 폰트별/타입별 스케일 맵 ====== */
     const kmFontScale = {
-      "Anton": { type1: 1.00, type2: 1.00 },
-      "Big Shoulders Inline Text": { type1: 1.00, type2: 1.00 },
-      "Alfa Slab One": { type1: 0.95, type2: 0.95 },
-      "Orbitron": { type1: 0.95, type2: 0.98 },
-      "Special Gothic Expanded One": { type1: 0.95, type2: 0.98 },
-      "Graduate": { type1: 1.00, type2: 1.00 },
-      "Gloria Hallelujah": { type1: 1.00, type2: 1.00 },
-      "Rock Salt": { type1: 0.92, type2: 0.94 }
+      "Anton": { type1: 0.90, type2: 1.00 },
+      "Big Shoulders Inline Text": { type1: 0.95, type2: 1.00 },
+      "Alfa Slab One": { type1: 0.85, type2: 0.89 },
+      "Orbitron": { type1: 0.93, type2: 0.98 },
+      "Special Gothic Expanded One": { type1: 0.93, type2: 0.98 },
+      "Graduate": { type1: 0.85, type2: 0.90 },
+      "Gloria Hallelujah": { type1: 0.85, type2: 0.90 },
+      "Rock Salt": { type1: 0.85, type2: 0.94 }
     };
     function setFontKmScale(font, type, scale){
       if(!kmFontScale[font]) kmFontScale[font] = { type1:1, type2:1 };
@@ -751,11 +751,11 @@
 
       // 초기 Type1 / Type2 각각의 스타일 예시값
       setTypeStatsStyle('type1', { size:'40px', labelSize:'18px', gap:'24px', pull:'0px' });
-      setTypeKmWordStyle('type1', { size:'28px', gap:'16px' });
+      setTypeKmWordStyle('type1', { size:'36px', gap:'16px' });
       setTypeKmScale('type1', 1.00);
 
-      setTypeStatsStyle('type2', { size:'40px', labelSize:'20px', gap:'16px', pull:'0px' });
-      setTypeKmWordStyle('type2', { size:'28px', gap:'16px' });
+      setTypeStatsStyle('type2', { size:'40px', labelSize:'20px', gap:'16px', pull:'40px' });
+      setTypeKmWordStyle('type2', { size:'36px', gap:'16px' });
       setTypeKmScale('type2', 1.00);
 
       const t=new Date();
