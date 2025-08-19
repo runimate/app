@@ -433,7 +433,23 @@
       };
     }
 
-    /* ---------- 표시 포맷 ---------- */
+    /* ---------- KM 표시 포맷 (상단 숫자만) ---------- */
+    function formatKm(value){
+      const v = Math.max(0, Number(value) || 0);
+
+      // 세 자리 규칙: x.xx (0~9.99), xx.x (10.0~99.9)
+      if (v < 10)      return v.toFixed(2);
+      if (v < 100)     return v.toFixed(1);
+
+      // 100km 이상: 폭 붕괴 방지를 위해 정수 표기(예: 100, 121 ...)
+      return String(Math.round(v));
+    }
+    function renderKm(value){
+      const kmEl = document.getElementById('km');
+      kmEl.textContent = formatKm(value);
+    }
+
+    /* ---------- 하단 통계 포맷 ---------- */
     function formatPaceByType(){
       if(parsedData.paceMin==null || parsedData.paceSec==null){
         return (layoutType==='type1') ? '0:00 /km' : '0:00';
@@ -488,13 +504,17 @@
     const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
     function animateNumber(id,start,end,duration){
       return new Promise(resolve=>{
-        const el = document.getElementById(id);
+        const kmEl = document.getElementById(id);
         let startTime;
         function update(now){
           if(!startTime) startTime = now;
           const raw = Math.min((now - startTime)/duration,1);
           const eased = easeOutCubic(raw);
-          el.textContent = (start + (end-start)*eased).toFixed(2);
+          const val = (start + (end-start)*eased);
+
+          // ★ 여기서 포맷 적용
+          kmEl.textContent = formatKm(val);
+
           raw < 1 ? requestAnimationFrame(update) : resolve();
         }
         requestAnimationFrame(update);
@@ -541,7 +561,7 @@
       measure.style.fontStyle  = kmCS.fontStyle;
       measure.style.fontWeight = kmCS.fontWeight;
 
-      /* 실제 표시되는 숫자와 동기화해서 폭 측정 */
+      /* 실제 표시되는 숫자와 동기화해서 폭 측정 (포맷 반영) */
       measure.textContent = kmEl.textContent;
 
       const stCS = window.getComputedStyle(stage);
@@ -801,6 +821,9 @@
 
       scaleStageCanvas();
       applyLayoutVisual();
+
+      // 초기 km 표시도 규칙 적용
+      renderKm(0);
       fitKmRow();
       renderStats();
     };
