@@ -1,0 +1,39 @@
+name: Build and Deploy to app (gh-pages)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source (archive)
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+        # 산출물 폴더 예시:
+        # Vite/React(일반) -> dist
+        # CRA(Create React App) -> build
+        # Next.js(정적 export) -> out
+
+      - name: Deploy to app repo gh-pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+          branch: gh-pages
+          folder: dist              # 사용 스택에 맞춰 dist/build/out 중 하나로 변경
+          repository-name: runarchive-lab/app   # <-- 예: wallflower89/app
+          clean: true
+          single-commit: true
