@@ -193,6 +193,12 @@
       flex-direction: column-reverse; /* 화면: label(위) -> stat(아래) */
       gap:6px;
     }
+    /* Type1에서 Time을 아래로 강제 */
+    body.type1 .grid > div:nth-child(2){
+      grid-column: 1 / 2 !important;
+      transform: none !important;
+      margin-top: 12px;
+    }
 
     body.focus header{ display:none; }
     body.focus .top-ui{ display:none; }
@@ -312,7 +318,12 @@
   </section>
 
   <script>
-    let parsedData = {};
+    let parsedData = {
+      km: null,
+      paceMin: null, paceSec: null,   // pace 구성요소
+      timeH: null, timeM: null, timeS: null, // time 구성요소
+      timeRaw: null                   // 원문(타입2용)
+    };
     let recordType = 'daily';
     let layoutType = 'type1';
     let selectedFont = 'Anton';
@@ -334,6 +345,9 @@
       return `${day} ${mon} ${yr}`;
     }
 
+    /* ---------- OCR 파싱 ---------- */
+    function zero2(n){ return String(n).padStart(2,'0'); }
+
     function normalizeOCR(s){
       return s.replace(/[\u2018\u2019\u2032\u2035]/g,"'")
               .replace(/[\u201C\u201D\u2033]/g,'"')
@@ -342,20 +356,71 @@
               .replace(/[ ]{2,}/g,' ')
               .trim();
     }
+
     function parseFromOCR(textRaw){
       const text = normalizeOCR(textRaw);
+
+      // Pace: m'ss" 또는 m ' ss"
       const paceMatch = text.match(/\b(\d{1,2})\s*'\s*(\d{2})\s*"?\b/);
-      let timeMatch   = text.match(/\b(\d{1,2}):(\d{2}):(\d{2})\b/);
-      if(!timeMatch){
-        const mmss = text.match(/\b(\d{1,2}):(\d{2})\b/);
-        if(mmss) timeMatch = { 0:mmss[0] };
+
+      // Time: HH:MM:SS 우선, 없으면 MM:SS
+      let timeH=null,timeM=null,timeS=null,timeRaw=null;
+      let m = text.match(/\b(\d{1,2}):(\d{2}):(\d{2})\b/);
+      if(m){
+        timeH = parseInt(m[1],10); timeM = parseInt(m[2],10); timeS = parseInt(m[3],10);
+        timeRaw = `${zero2(timeH)}:${zero2(timeM)}:${zero2(timeS)}`;
+      }else{
+        m = text.match(/\b(\d{1,2}):(\d{2})\b/);
+        if(m){
+          timeM = parseInt(m[1],10); timeS = parseInt(m[2],10);
+          timeRaw = `${zero2(timeM)}:${zero2(timeS)}`;
+        }
       }
+
+      // Distance
       const distMatch = text.match(/\b(\d{1,2}\.\d{1,2})\b/);
+
       return {
         km:   distMatch ? distMatch[1] : null,
-        pace: paceMatch ? `${paceMatch[1]}'${paceMatch[2]}"` : "-",
-        time: timeMatch ? timeMatch[0] : "-"
+        paceMin: paceMatch ? parseInt(paceMatch[1],10) : null,
+        paceSec: paceMatch ? parseInt(paceMatch[2],10) : null,
+        timeH, timeM, timeS, timeRaw
       };
+    }
+
+    /* ---------- 표시 포맷 ---------- */
+    function formatPaceByType(){
+      if(parsedData.paceMin==null || parsedData.paceSec==null){
+        return (layoutType==='type1') ? '0:00 /km' : '0:00';
+      }
+      const mm = zero2(parsedData.paceMin);
+      const ss = zero2(parsedData.paceSec);
+      return (layoutType==='type1') ? `${mm}:${ss} /km` : `${mm}:${ss}`;
+    }
+
+    function formatTimeByType(){
+      // type2: OCR 원문 그대로 (00:00:00 or 00:00)
+      if(layoutType==='type2'){
+        return parsedData.timeRaw ? parsedData.timeRaw : '00:00';
+      }
+      // type1: "Hh MMm"
+      if(parsedData.timeH!=null){          // HH:MM:SS 있었던 경우
+        return `${parsedData.timeH}h ${zero2(parsedData.timeM)}m`;
+      }
+      if(parsedData.timeM!=null){          // MM:SS만 있었던 경우
+        return `0h ${zero2(parsedData.timeM)}m`;
+      }
+      return '0h 00m';
+    }
+
+    function renderStats(){
+      // 라벨 텍스트는 동일
+      document.querySelector('#pace + .label').textContent = 'Avg. Pace';
+      document.querySelector('#time + .label').textContent = 'Time';
+
+      // 값은 타입별 포맷으로
+      document.getElementById('pace').textContent = formatPaceByType();
+      document.getElementById('time').textContent = formatTimeByType();
     }
 
     // ---- Upload ----
@@ -369,8 +434,7 @@
           const img = reader.result;
           const result = await Tesseract.recognize(img, 'eng');
           parsedData = parseFromOCR(result.data.text);
-          document.getElementById('pace').textContent = parsedData.pace || "-";
-          document.getElementById('time').textContent = parsedData.time || "-";
+          renderStats();              // ← OCR 반영
           status.textContent = "Uploaded!";
         }catch(err){
           status.textContent = "Upload failed";
@@ -531,6 +595,7 @@
       updateActive(fontGridEl, targetBtn);
 
       fitKmRow();
+      renderStats(); // 폰트/타입 변경 시 포맷 유지
     }
 
     function setBackground(color){
@@ -566,13 +631,6 @@
         dateSection.style.display = 'none';
         dateDisplay.style.display = 'none';
         word.style.display = 'block';
-
-        // 요청된 초기 표기 형식
-        document.getElementById('pace').textContent = "0:00 /km";
-        document.querySelector('#pace + .label').textContent = "Avg. Pace";
-
-        document.getElementById('time').textContent = "0h 00m";
-        document.querySelector('#time + .label').textContent = "Time";
       }else{
         // Type2: 날짜 On, 아래 “Kilometers” 표시
         dateSection.style.display = 'grid';
@@ -596,6 +654,7 @@
 
       setFont(selectedFont);
       fitKmRow();
+      renderStats(); // ← 타입 전환 시도 값 재포맷
     }
 
     function setLayout(type){
@@ -653,8 +712,9 @@
         if (size)      root.setProperty('--t2-statSize', size);
         if (labelSize) root.setProperty('--t2-labelSize', labelSize);
         if (gap!=null) root.setProperty('--t2-statGap', gap);
-        if (pull!=null)root.setProperty('--t2-statPull', pull);
+        if (pull!=null) root.setProperty('--t2-statPull', pull);
       }
+      renderStats();
     }
     // “Kilometers” (사이즈/갭) - 타입별
     function setTypeKmWordStyle(type, { size, gap } = {}){
@@ -692,17 +752,14 @@
       setTypeKmWordStyle('type2', { size:'28px', gap:'16px' });
       setTypeKmScale('type2', 1.00);
 
-      // (선택) 폰트별 스케일 미세조정 예시
-      // setFontKmScale('Alfa Slab One', 'type1', 0.96);
-      // setFontKmScale('Orbitron', 'type2', 1.02);
-
       const t=new Date();
       document.getElementById('date-input').value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
       selectedDate = t;
 
       scaleStageCanvas();
-      applyLayoutVisual(); // body.type1/type2 반영 및 초기 값 세팅
+      applyLayoutVisual();
       fitKmRow();
+      renderStats(); // 초기 표시
     };
   </script>
 </body>
