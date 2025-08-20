@@ -188,7 +188,6 @@
     .run-button{
       width:100%; height:52px; border-radius:16px;
       background:#FF9000; color:#000; border:3px solid #CD6B00; margin-top:10px; font-size:18px; font-weight:900;
-      box-shadow:0 0 0 3px rgba(0,112,255,.25);
     }
 
     /* ===== OUTPUT STAGE ===== */
@@ -304,20 +303,6 @@
     }
     body.bg-black .date-input{ color:#fff; }
 
-    /* === Date Tuning UI === */
-    .tune-card{
-      border:1px solid #ddd; border-radius:12px; padding:12px; margin-top:8px;
-    }
-    .seg-row.cols-3{ grid-template-columns:repeat(3,1fr); }
-    .mini{ font-size:12px; opacity:.8; }
-    .grid-3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
-    .input{
-      height:40px; border:3px solid var(--fg); border-radius:10px; background:transparent; color:inherit; font-weight:800; padding:0 10px; font-size:14px;
-    }
-    .row{ display:flex; gap:8px; align-items:center; }
-    .btn{ height:40px; border-radius:10px; border:3px solid var(--fg); background:transparent; color:inherit; font-weight:800; padding:0 12px; cursor:pointer; }
-    .btn.is-active{ background:var(--fg); color:var(--bg); }
-
     /* 포커스 화면 중앙정렬 */
     body.focus .stage-outer{
       min-height:100vh;
@@ -332,7 +317,7 @@
 </head>
 <body class="bg-white type1 mode-daily">
   <header>
-    <h1>RUNIMATOR V.0.10.8 BETA</h1>
+    <h1>RUNIMATOR V.0.10.9 BETA</h1>
     <div class="subtitle">by JS @runarchive.js</div>
   </header>
 
@@ -393,36 +378,6 @@
         </div>
       </section>
 
-      <!-- Date Tuning -->
-      <section class="section tune-card">
-        <div class="row" style="justify-content:space-between;">
-          <div class="control-title">Date Tuning <span class="mini">(폰트/타입별 적용)</span></div>
-          <div class="seg-row cols-3" id="combo-row" style="width:280px;">
-            <button class="btn" data-combo="d2">D2</button>
-            <button class="btn" data-combo="m1">M1</button>
-            <button class="btn" data-combo="m2">M2</button>
-          </div>
-        </div>
-        <div class="grid-3" style="margin-top:8px;">
-          <div>
-            <div class="mini">Size (px)</div>
-            <input id="tune-size" class="input" type="number" step="1" placeholder="e.g. 60"/>
-          </div>
-          <div>
-            <div class="mini">Gap (px)</div>
-            <input id="tune-gap" class="input" type="number" step="1" placeholder="e.g. 10"/>
-          </div>
-          <div>
-            <div class="mini">Translate (x,y)</div>
-            <input id="tune-translate" class="input" type="text" placeholder="e.g. 0px, 20px"/>
-          </div>
-        </div>
-        <div class="row" style="margin-top:10px;">
-          <button id="tune-save" class="btn">Save</button>
-          <button id="tune-reset" class="btn">Reset</button>
-        </div>
-      </section>
-
       <section class="section">
         <button class="run-button" id="run-btn" onclick="onRun()">RUN</button>
       </section>
@@ -466,6 +421,18 @@
   </section>
 
   <script>
+    /* 폰트별 자동 스타일 매핑 (날짜/간격/위치 포함) */
+    const fontSettings = {
+      "Anton": { base: 200, weight: 700, dateSize: "60px", dateGap: "10px", dateWeight: 700 },
+      "Big Shoulders Inline Text": { base: 200, weight: 800, dateSize: "40px", dateGap: "20px", dateWeight: 800 },
+      "Alfa Slab One": { base: 180, weight: 700, dateSize: "45px", dateGap: "15px", dateWeight: 900, dateTranslate: "0px, 20px" },
+      "Orbitron": { base: 160, weight: 700, dateSize: "38px", dateGap: "10px", dateWeight: 700, dateTranslate: "10px, 20px" },
+      "Special Gothic Expanded One": { base: 160, weight: 700, dateSize: "36px", dateGap: "0px", dateWeight: 700, dateTranslate: "0px, 20px" },
+      "Graduate": { base: 200, weight: 700, dateSize: "42px", dateGap: "10px", dateWeight: 700, dateTranslate: "7px, 20px" },
+      "Gloria Hallelujah": { base: 190, weight: 700, dateSize: "44px", dateGap: "0px", dateWeight: 700, dateTranslate: "7px, 20px" },
+      "Rock Salt": { base: 140, weight: 700, dateSize: "36px", dateGap: "40px", dateWeight: 600, kmWordGap: "40px", translate: "25px,-25px", dateTranslate: "20px,0px" }
+    };
+
     let parsedData = {
       km: null,
       runs: null,
@@ -490,37 +457,7 @@
     const paceWrap    = document.getElementById('pace-wrap');
     const timeWrap    = document.getElementById('time-wrap');
 
-    const comboRow    = document.getElementById('combo-row');
-    const sizeInput   = document.getElementById('tune-size');
-    const gapInput    = document.getElementById('tune-gap');
-    const transInput  = document.getElementById('tune-translate');
-    const saveBtn     = document.getElementById('tune-save');
-    const resetBtn    = document.getElementById('tune-reset');
-
     const MONTH_ABBR = ["JAN.","FEB.","MAR.","APR.","MAY.","JUN.","JUL.","AUG.","SEP.","OCT.","NOV.","DEC."];
-
-    /* === 폰트별 기본값(미세 튜닝용) === */
-    const fontSettings = {
-      "Anton": { base: 200, weight: 700, dateSize: "60px", dateGap: "10px", dateWeight: 700 },
-      "Big Shoulders Inline Text": { base: 200, weight: 800, dateSize: "40px", dateGap: "20px", dateWeight: 800 },
-      "Alfa Slab One": { base: 180, weight: 700, dateSize: "45px", dateGap: "15px", dateWeight: 900, dateTranslate: "0px, 20px" },
-      "Orbitron": { base: 160, weight: 700, dateSize: "38px", dateGap: "10px", dateWeight: 700, dateTranslate: "10px, 20px" },
-      "Special Gothic Expanded One": { base: 160, weight: 700, dateSize: "36px", dateGap: "0px", dateWeight: 700, dateTranslate: "0px, 20px" },
-      "Graduate": { base: 200, weight: 700, dateSize: "42px", dateGap: "10px", dateWeight: 700, dateTranslate: "7px, 20px" },
-      "Gloria Hallelujah": { base: 190, weight: 700, dateSize: "44px", dateGap: "0px", dateWeight: 700, dateTranslate: "7px, 20px"  },
-      "Rock Salt": { base: 140, weight: 700, dateSize: "36px", dateGap: "40px", dateWeight: 600, kmWordGap: "40px", translate: "25px,-25px", dateTranslate: "20px,0px" }
-    };
-
-    /* 폰트/조합별 사용자 튜닝 저장소 { [font]: { d2:{}, m1:{}, m2:{} } } */
-    const dateTune = {};
-
-    function currentComboKey(){
-      if(recordType==='daily' && layoutType==='type2') return 'd2';
-      if(recordType==='monthly' && layoutType==='type1') return 'm1';
-      if(recordType==='monthly' && layoutType==='type2') return 'm2';
-      // 그 외 조합(D1 등)은 날짜 안 보임 -> D2 기준값 편집하도록 둠
-      return 'd2';
-    }
 
     function formatDateText(d){
       const day = String(d.getDate());
@@ -680,22 +617,6 @@
       document.getElementById('km').textContent = formatKm(value);
     }
 
-    /* ---------- 하단 통계 포맷 ---------- */
-    function formatPaceByType(){
-      if(parsedData.paceMin==null || parsedData.paceSec==null){
-        return (layoutType==='type1') ? '0:00 /km' : '0:00';
-      }
-      const mm = String(parsedData.paceMin);
-      const ss = zero2(parsedData.paceSec);
-      return (layoutType==='type1') ? `${mm}:${ss} /km` : `${mm}:${ss}`;
-    }
-    function formatTimeByType(){
-      if(layoutType==='type2') return parsedData.timeRaw ? parsedData.timeRaw : '00:00';
-      const H = parsedData.timeH ?? 0, M = parsedData.timeM ?? 0, S = parsedData.timeS ?? 0;
-      if (H > 0) return `${H}h ${zero2(M)}m ${zero2(S)}s`;
-      return `${String(M)}m ${zero2(S)}s`;
-    }
-
     /* ---- 칼럼 개수/배치 ---- */
     function updateGridCols(){
       const cols = (layoutType==='type1') ? 1 : (recordType==='monthly' ? 3 : 2);
@@ -732,6 +653,23 @@
         paceWrap.style.marginLeft = '0';
         timeWrap.style.marginLeft = '0';
       }
+    }
+
+    /* ---------- 하단 통계 포맷 ---------- */
+    function zero2txt(n){ return String(n).padStart(2,'0'); }
+    function formatPaceByType(){
+      if(parsedData.paceMin==null || parsedData.paceSec==null){
+        return (layoutType==='type1') ? '0:00 /km' : '0:00';
+      }
+      const mm = String(parsedData.paceMin);
+      const ss = zero2txt(parsedData.paceSec);
+      return (layoutType==='type1') ? `${mm}:${ss} /km` : `${mm}:${ss}`;
+    }
+    function formatTimeByType(){
+      if(layoutType==='type2') return parsedData.timeRaw ? parsedData.timeRaw : '00:00';
+      const H = parsedData.timeH ?? 0, M = parsedData.timeM ?? 0, S = parsedData.timeS ?? 0;
+      if (H > 0) return `${H}h ${zero2txt(M)}m ${zero2txt(S)}s`;
+      return `${String(M)}m ${zero2txt(S)}s`;
     }
 
     /* ★ M2 숫자 하단 정렬(픽셀맞춤) */
@@ -950,68 +888,6 @@
       if(targetBtn) targetBtn.classList.add('is-active');
     }
 
-    /* === 폰트 기본값을 CSS 변수에 주입 (튜닝값 없을 때) === */
-    function applyFontDefaultsFromSettings(font){
-      const fs = fontSettings[font] || {};
-      const root = document.documentElement.style;
-
-      // 날짜 기본치
-      const dz = fs.dateSize || '50px';
-      const dg = fs.dateGap  || '10px';
-      const dt = fs.dateTranslate || '0px, 0px';
-
-      // 폰트별 사용자가 이미 튜닝했으면 그대로 두고, 없으면 기본 복사
-      const hasTune = !!dateTune[font];
-      if(!hasTune){
-        root.setProperty('--d2-dateSize', dz);
-        root.setProperty('--d2-dateGap',  dg);
-        root.setProperty('--d2-dateTranslate', dt);
-        root.setProperty('--m1-dateSize', dz);
-        root.setProperty('--m1-dateGap',  dg);
-        root.setProperty('--m1-dateTranslate', dt);
-        root.setProperty('--m2-dateSize', dz);
-        root.setProperty('--m2-dateGap',  dg);
-        root.setProperty('--m2-dateTranslate', dt);
-      }
-
-      // km-word 간격(있을 때만)
-      if(fs.kmWordGap){
-        root.setProperty('--t1-kmWordGap', fs.kmWordGap);
-        root.setProperty('--t2-kmWordGap', fs.kmWordGap);
-      }
-    }
-
-    /* === 저장된 Date Tuning을 CSS 변수에 적용 === */
-    function applyDateTuneFor(font){
-      const tune = dateTune[font]; if(!tune) return;
-      const root = document.documentElement.style;
-      const apply = (key, baseVar) => {
-        const t = tune[key]; if(!t) return;
-        if(t.size)      root.setProperty(`--${baseVar}Size`, t.size);
-        if(t.gap)       root.setProperty(`--${baseVar}Gap`, t.gap);
-        if(t.translate) root.setProperty(`--${baseVar}Translate`, t.translate);
-      };
-      apply('d2','d2-date');
-      apply('m1','m1-date');
-      apply('m2','m2-date');
-    }
-
-    /* === Date Tuning UI <-> 현재 값 동기화 === */
-    function syncDateTuneInputs(){
-      const key = currentComboKey();
-      const cs = getComputedStyle(document.body);
-      const size = cs.getPropertyValue('--dateSize').trim().replace('px','');
-      const gap  = cs.getPropertyValue('--dateGap').trim().replace('px','');
-      const trans= cs.getPropertyValue('--dateTranslate').trim();
-
-      sizeInput.value = size || '';
-      gapInput.value  = gap  || '';
-      transInput.value= trans || '';
-
-      // 버튼 active
-      [...comboRow.querySelectorAll('.btn')].forEach(b=>b.classList.toggle('is-active', b.dataset.combo===key));
-    }
-
     // ---- Font switching ----
     function setFont(font){
       selectedFont = font;
@@ -1020,31 +896,44 @@
       const dateDisp = document.getElementById("date-display");
       const fs = fontSettings[font] || {};
 
-      // KM 숫자 폰트/크기/두께
+      // 메인 숫자
       km.style.fontFamily = font + ", sans-serif";
-      const fallbackBase = {"Anton":200,"Big Shoulders Inline Text":200,"Alfa Slab One":180,"Orbitron":160,"Special Gothic Expanded One":160,"Graduate":200,"Gloria Hallelujah":190,"Rock Salt":140}[font] || 200;
-      km.style.fontSize   = ((fs.base!=null ? fs.base : fallbackBase)) + "px";
-      km.style.fontWeight = (fs.weight!=null ? fs.weight : 700);
+      km.style.fontSize   = ((fs.base ?? 200)) + "px";
+      km.style.fontWeight = (fs.weight ?? 700);
       km.style.transform  = fs.translate ? `translate(${fs.translate})` : "translate(0,0)";
 
-      // 날짜 텍스트 가독성
+      // 날짜 텍스트
       dateDisp.style.fontFamily = font + ", sans-serif";
-      dateDisp.style.fontWeight = (fs.dateWeight!=null ? fs.dateWeight : 800);
+      dateDisp.style.fontWeight = (fs.dateWeight ?? 700);
 
-      // 버튼 active
+      // 날짜 크기·간격·위치 → CSS 변수에 반영 (D2/M1/M2 동일 정책)
+      const root = document.documentElement.style;
+      const dSize = fs.dateSize || "50px";
+      const dGap  = fs.dateGap  || "10px";
+      const dTrans= fs.dateTranslate || "0px,0px";
+
+      root.setProperty("--d2-dateSize", dSize);
+      root.setProperty("--d2-dateGap", dGap);
+      root.setProperty("--d2-dateTranslate", dTrans);
+
+      root.setProperty("--m1-dateSize", dSize);
+      root.setProperty("--m1-dateGap", dGap);
+      root.setProperty("--m1-dateTranslate", dTrans);
+
+      root.setProperty("--m2-dateSize", dSize);
+      root.setProperty("--m2-dateGap", dGap);
+      root.setProperty("--m2-dateTranslate", dTrans);
+
+      // 폰트별 들여쓰기/간격 적용
+      if (fs.kmWordGap) document.documentElement.style.setProperty('--kmWordGap', fs.kmWordGap);
+
       const targetBtn = fontGridEl.querySelector(`button[data-font="${CSS.escape(font)}"]`);
       updateActive(fontGridEl, targetBtn);
 
-      // 폰트별 인덴트
       applyFontIndents(selectedFont, layoutType);
-
-      // 폰트 기본값 주입 + 사용자 튜닝 적용
-      applyFontDefaultsFromSettings(selectedFont);
-      applyDateTuneFor(selectedFont);
-      renderDateDisplay();
       fitKmRow();
       renderStats();
-      syncDateTuneInputs();
+      renderDateDisplay();
     }
 
     // 테마 적용
@@ -1067,7 +956,6 @@
       updateGridCols();
       fitKmRow();
       applyLayoutVisual();
-      syncDateTuneInputs();
     }
 
     function setDateFromInput(){
@@ -1117,7 +1005,6 @@
       layoutStatsGrid();
       fitKmRow();
       alignStatsBaseline();
-      syncDateTuneInputs();
     }
 
     function setLayout(type){
@@ -1126,7 +1013,7 @@
       applyLayoutVisual();
     }
 
-    // 날짜 스타일 조정 API (CSS 변수에 직접)
+    // 날짜 스타일 조정 API (UI 제거, 내부 변수만 조정용)
     function setDateStyle(which, { size, gap, translate } = {}){
       const root = document.documentElement.style;
       if(which==='d2'){ if(size) root.setProperty('--d2-dateSize', size); if(gap) root.setProperty('--d2-dateGap', gap); if(translate) root.setProperty('--d2-dateTranslate', translate); }
@@ -1134,45 +1021,6 @@
       else if(which==='m2'){ if(size) root.setProperty('--m2-dateSize', size); if(gap) root.setProperty('--m2-dateGap', gap); if(translate) root.setProperty('--m2-dateTranslate', translate); }
       renderDateDisplay();
     }
-
-    // === Date Tuning UI 동작 ===
-    function activeComboFromUI(){
-      const btn = comboRow.querySelector('.btn.is-active');
-      return btn ? btn.dataset.combo : currentComboKey();
-    }
-    comboRow.addEventListener('click', (e)=>{
-      const btn = e.target.closest('.btn'); if(!btn) return;
-      [...comboRow.querySelectorAll('.btn')].forEach(b=>b.classList.remove('is-active'));
-      btn.classList.add('is-active');
-      syncDateTuneInputs();
-    });
-
-    saveBtn.addEventListener('click', ()=>{
-      const combo = activeComboFromUI();
-      const size = sizeInput.value ? `${parseInt(sizeInput.value,10)}px` : null;
-      const gap  = gapInput.value  ? `${parseInt(gapInput.value,10)}px`  : null;
-      const tr   = transInput.value || null;
-
-      dateTune[selectedFont] = dateTune[selectedFont] || { d2:{}, m1:{}, m2:{} };
-      if(size) dateTune[selectedFont][combo].size = size;
-      if(gap)  dateTune[selectedFont][combo].gap  = gap;
-      if(tr)   dateTune[selectedFont][combo].translate = tr;
-
-      // 즉시 적용
-      setDateStyle(combo, { size, gap, translate: tr });
-      renderDateDisplay();
-      syncDateTuneInputs();
-    });
-
-    resetBtn.addEventListener('click', ()=>{
-      const combo = activeComboFromUI();
-      if(dateTune[selectedFont]) delete dateTune[selectedFont][combo];
-      // 폰트 기본으로 되돌림
-      applyFontDefaultsFromSettings(selectedFont);
-      applyDateTuneFor(selectedFont);
-      renderDateDisplay();
-      syncDateTuneInputs();
-    });
 
     // 이벤트 바인딩
     fontGridEl.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-font]'); if(btn) setFont(btn.dataset.font); });
@@ -1268,9 +1116,6 @@
       document.getElementById('date-input').value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
       selectedDate = t;
 
-      // Date Tuning 초기 버튼 상태(D2 기본)
-      updateActive(comboRow, comboRow.querySelector('[data-combo="d2"]'));
-
       scaleStageCanvas();
       applyLayoutVisual();
 
@@ -1279,7 +1124,6 @@
 
       fitKmRow();
       renderStats();
-      syncDateTuneInputs();
     };
   </script>
 </body>
