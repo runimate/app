@@ -1,105 +1,1016 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko" class="bg-white">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>RUN MILEAGE ANIMATOR</title>
+  <title>RUNIMATOR BETA</title>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Anton:wght@400&family=Big+Shoulders+Inline+Text:wght@800&family=Alfa+Slab+One&family=Orbitron:wght@700&family=Special+Gothic+Expanded+One&family=Graduate&family=Gloria+Hallelujah&family=Rock+Salt&display=swap" rel="stylesheet">
+
   <style>
-    :root {
-      --pad: 16px;
-      --maxw: 480px;
+    :root{
+      --pad:16px;
+      --maxw:480px;
+      --gapBelowKm: 12px;
+      --radius:14px;
+
+      /* 공통 기본값 (실제 적용값은 body.type1/type2 + mode에서 매핑됨) */
+      --kmWordSize: 28px;
+      --kmWordGap: 0px;
+
+      --statSize: 40px;
+      --labelSize: 20px;
+      --statGap: 49px;
+      --statPull: 0px;   /* 2열에서 두 번째 칸 당김 */
+      --statPull2: 0px;  /* 3열에서 세 번째 칸 당김 */
+
+      --kmScale: 1;
+      --modeKmScale: 1;  /* 모드(daily/monthly) 배수 */
+
+      /* 정렬/인덴트 */
+      --gridFirstColIndent: 5px;
+      --kmWordIndent: 0px;
+
+      /* 수직 간격 */
+      --kmWordLiftTop: 0px;
+      --kmWordBottomGap: 26px;
+
+      /* ▼ Type1 */
+      --t1-kmScale: 1;
+      --t1-kmWordSize: 50px;
+      --t1-kmWordGap: 0px;
+      --t1-statSize: 40px;
+      --t1-labelSize: 20px;
+      --t1-statGap: 30px;
+      --t1-statPull: 0px;
+      --t1-statPull2: 0px;
+      --t1-kmWordLiftTop: -15px;
+      --t1-kmWordBottomGap: 26px;
+
+      /* ▼ Type2 */
+      --t2-kmScale: 1;
+      --t2-kmWordSize: 50px;
+      --t2-kmWordGap: 0px;
+      --t2-statSize: 30px;
+      --t2-labelSize: 20px;
+      --t2-statGap: 30px;
+      --t2-statPull: 0px;
+      --t2-statPull2: 0px;
+      --t2-kmWordLiftTop: -15px;
+      --t2-kmWordBottomGap: 26px;
+
+      /* ▼ 모드 매핑 베이스 */
+      --m-statGap: var(--statGap);
+      --m-kmWordBottomGap: var(--kmWordBottomGap);
+      --m-kmScale: 1;
+
+      --d-statGap: var(--statGap);
+      --d-kmWordBottomGap: var(--kmWordBottomGap);
+      --d-kmScale: 1;
+
+      /* =========================
+         날짜(D2/M1/M2) 스타일 컨트롤 변수
+         ========================= */
+      /* D2 (Daily Type 2) */
+      --d2-dateSize: 60px;
+      --d2-dateGap: 10px;
+      --d2-dateTranslate: 0px, 0px;
+
+      /* M1 (Monthly Type 1) */
+      --m1-dateSize: 50px;
+      --m1-dateGap: 10px;
+      --m1-dateTranslate: 0px, 0px;
+
+      /* M2 (Monthly Type 2) */
+      --m2-dateSize: 50px;
+      --m2-dateGap: 10px;
+      --m2-dateTranslate: 0px, 0px;
+
+      /* 현재 활성 조합이 매핑되는 실사용 변수 */
+      --dateSize: 42px;
+      --dateGap: 12px;
+      --dateTranslate: 0px, 0px;
     }
 
-    body {
-      font-family: 'Arial', sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      background: #fff;
-      padding: 20px;
+    *{box-sizing:border-box}
+    html, body { background:#fff; color:#000; min-height:100%; }
+    body{ margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; }
+
+    /* 전체 테마 */
+    html.bg-white{ background:#fff; color:#000; }
+    html.bg-black{ background:#000; color:#fff; }
+    .bg-white{ --bg:#fff; --fg:#000; background:#fff; color:#000; }
+    .bg-black{ --bg:#000; --fg:#fff; background:#000; color:#fff; }
+
+    /* 활성 타입 매핑 */
+    body.type1{
+      --kmScale: var(--t1-kmScale);
+      --kmWordSize: var(--t1-kmWordSize);
+      --kmWordGap: var(--t1-kmWordGap);
+      --statSize: var(--t1-statSize);
+      --labelSize: var(--t1-labelSize);
+      --statGap: var(--t1-statGap);
+      --statPull: var(--t1-statPull);
+      --statPull2: var(--t1-statPull2);
+      --kmWordLiftTop: var(--t1-kmWordLiftTop);
+      --kmWordBottomGap: var(--t1-kmWordBottomGap);
+    }
+    body.type2{
+      --kmScale: var(--t2-kmScale);
+      --kmWordSize: var(--t2-kmWordSize);
+      --kmWordGap: var(--t2-kmWordGap);
+      --statSize: var(--t2-statSize);
+      --labelSize: var(--t2-labelSize);
+      --statGap: var(--t2-statGap);
+      --statPull: var(--t2-statPull);
+      --statPull2: var(--t2-statPull2);
+      --kmWordLiftTop: var(--t2-kmWordLiftTop);
+      --kmWordBottomGap: var(--t2-kmWordBottomGap);
     }
 
-    .container {
-      max-width: var(--maxw);
-      width: 100%;
-      text-align: center;
+    /* 모드 매핑 */
+    body.mode-daily{
+      --modeKmScale: var(--d-kmScale);
+      --kmWordBottomGap: var(--d-kmWordBottomGap);
+      --statGap: var(--d-statGap);
+    }
+    body.mode-monthly{
+      --modeKmScale: var(--m-kmScale);
+      --kmWordBottomGap: var(--m-kmWordBottomGap);
+      --statGap: var(--m-statGap);
     }
 
-    /* 날짜 공통 */
-    #date {
-      font-weight: bold;
-      display: block;
+    /* 날짜 스타일 조합 매핑 */
+    /* D2 = daily + type2 */
+    body.mode-daily.type2{
+      --dateSize: var(--d2-dateSize);
+      --dateGap: var(--d2-dateGap);
+      --dateTranslate: var(--d2-dateTranslate);
+    }
+    /* M1 = monthly + type1 */
+    body.mode-monthly.type1{
+      --dateSize: var(--m1-dateSize);
+      --dateGap: var(--m1-dateGap);
+      --dateTranslate: var(--m1-dateTranslate);
+    }
+    /* M2 = monthly + type2 */
+    body.mode-monthly.type2{
+      --dateSize: var(--m2-dateSize);
+      --dateGap: var(--m2-dateGap);
+      --dateTranslate: var(--m2-dateTranslate);
     }
 
-    /* 타입별 날짜 스타일 */
-    .date-d2 {
-      font-size: 14px;
-      margin-bottom: 6px;
-      letter-spacing: 1px;
+    header{ padding:var(--pad); text-align:left; }
+    h1{ margin:6px 0 2px; font-size:18px; font-weight:800; }
+    .subtitle{ font-size:12px; opacity:.8 }
+
+    .wrap{ width:100%; max-width:var(--maxw); margin:0 auto; padding:0 var(--pad); }
+    .section{ margin:14px 0; }
+
+    .upload-box{ border:1px solid #ddd; border-radius:10px; padding:16px; }
+    .upload-label{
+      display:block; background:#000; color:#fff; padding:14px 16px; font-weight:800;
+      border-radius:12px; text-align:center; margin-bottom:10px;
     }
-    .date-m1, .date-m2 {
-      font-size: 18px;
-      margin-bottom: 10px;
-      letter-spacing: 1.5px;
+    .status{ color:#17a34a; font-weight:700; font-size:13px; }
+
+    .row-head{ display:flex; justify-content:space-between; gap:10px; margin:10px 0 6px; }
+    .row-head .label{ font-size:13px; font-weight:800; opacity:.9; }
+
+    .seg-row, .bg-row{ display:grid; gap:10px; }
+    .seg-row.cols-2{ grid-template-columns:repeat(2,1fr); }
+    .bg-row{ grid-template-columns:repeat(2,1fr); }
+
+    .pill-btn{
+      width:100%; height:48px; border-radius:var(--radius);
+      border:3px solid var(--fg);
+      background:transparent; color:var(--fg);
+      font-size:16px; font-weight:800; cursor:pointer;
+      transition:transform .04s ease, background .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease;
+      box-shadow:0 0 0 0 rgba(0,0,0,0);
+    }
+    .pill-btn:active { transform:scale(0.99); }
+    .pill-btn.is-active{ background:var(--fg); color:var(--bg); }
+
+    .control-title{ font-size:13px; font-weight:800; margin:14px 0 8px; }
+
+    .font-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+    .font-grid button{
+      height:48px; border-radius:var(--radius); border:3px solid var(--fg);
+      background:transparent; color:var(--fg); font-size:16px; font-weight:800; cursor:pointer;
+      transition:transform .04s ease, background .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+    .font-grid button:active{ transform:scale(0.99); }
+    .font-grid button.is-active{ background:var(--fg); color:var(--bg); }
+
+    .run-button{
+      width:100%; height:52px; border-radius:16px;
+      background:#000; color:#7fff00; border:3px solid #0070ff; margin-top:10px; font-size:18px; font-weight:900;
+      box-shadow:0 0 0 3px rgba(0,112,255,.25);
     }
 
-    /* 그리드 공통 */
-    .grid {
-      display: grid;
-      gap: 6px;
+    /* ===== OUTPUT STAGE ===== */
+    .stage-outer{ padding:10px 0 24px; }
+
+    .stage-canvas{
+      width:720px;
+      transform-origin: top left;
+      will-change: transform;
+      margin:0 auto;
+    }
+    .stage-inner{ padding:0 var(--pad); }
+
+    .stage-inner.fixed{
+      max-width:720px; width:720px;
+      padding-left:24px; padding-right:24px;
     }
 
-    /* D2 좌측정렬 강제 */
-    body.type2 .grid > div {
-      justify-content: flex-start !important;
-      text-align: left !important;
+    .date-display{
+      display:none;
+      font-weight:900;
+      font-size: var(--dateSize);
+      line-height:1.05;
+      margin:6px 0 var(--dateGap);
+      white-space:nowrap;
+      transform: translate(var(--dateTranslate));
+      transform-origin:left bottom;
+      text-align:left;
     }
-    body.type2 .grid > div:nth-child(1) {
-      margin-left: 0 !important;
-      padding-left: 0 !important;
+
+    .km-row-wrap{ display:flex; justify-content:flex-start; margin:6px auto var(--gapBelowKm); width:100%; }
+    .km-row{ display:flex; align-items:baseline; gap:10px; transform-origin:left bottom; will-change:transform; }
+    #km{
+      font-family:'Anton', sans-serif;
+      font-size:200px; line-height:1; white-space:nowrap; letter-spacing:.5px;
     }
+    #km-unit{ display:none; }
+
+    #km-word{
+      display:none;
+      font-size: var(--kmWordSize);
+      line-height:1.05;
+      margin-top: calc(var(--kmWordGap) + var(--kmWordLiftTop));
+      margin-bottom: var(--kmWordBottomGap);
+      font-weight:700;
+      margin-left: calc(var(--gridFirstColIndent) + var(--kmWordIndent));
+    }
+
+    /* 하단 통계 (좌측 정렬 강제) */
+    .grid{
+      --cols: 2; /* type2 기본 2열 */
+      display:grid;
+      grid-template-columns: repeat(var(--cols), max-content);
+      column-gap: var(--statGap);
+      row-gap: 8px;
+      margin-top:0; color:inherit; text-align:left; align-items:start;
+      justify-content:start;   /* 좌측 정렬 */
+      justify-items:start;     /* 좌측 정렬 */
+    }
+    /* 1열(첫 칸) 들여쓰기 */
+    .grid > div:nth-child(1){ grid-column:1 / 2; margin-left:var(--gridFirstColIndent); }
+    .grid > div:nth-child(2){ grid-column:2 / 3; transform: translateX(var(--statPull)); }
+    .grid > div:nth-child(3){ grid-column:3 / 4; transform: translateX(var(--statPull2)); }
+
+    .stat{ font-size: var(--statSize); font-weight:800; }
+    .label{ font-size: var(--labelSize); opacity:.9 }
+
+    /* =========================
+       Type 1 (세로 스택) — 라벨이 숫자 '위'
+       ========================= */
+    body.type1 .grid{
+      --cols: 1;
+      grid-template-columns: 1fr;
+    }
+    body.type1 .grid > div{
+      display:flex;
+      flex-direction: column;     /* label 위, stat 아래 */
+      gap:6px;
+      margin-left: var(--gridFirstColIndent);
+      transform:none !important;
+      grid-column: 1 / 2 !important; /* 가로 열 배치 무효화 */
+    }
+    body.type1 .grid > div + div{ margin-top:12px; }
+
+    /* =========================
+       Type 2 (가로 열) — 라벨이 숫자 '아래'
+       ========================= */
+    body.type2 .grid > div{
+      display:flex;
+      flex-direction: column-reverse; /* stat 위, label 아래 */
+      gap:6px;
+      margin-left:0;
+    }
+    body.type2 .grid > div .stat { order:0; }
+    body.type2 .grid > div .label{ order:1; }
+
+    /* ★ Type2에서 첫 칸 완전 좌측 정렬(들여쓰기 제거 + 강한 우선순위) */
+    body.type2 #stats-grid > div:nth-child(1){ margin-left:0 !important; padding-left:0 !important; }
+
+    body.focus header{ display:none; }
+    body.focus .top-ui{ display:none; }
+    body.focus #exit-focus{ display:block; position:fixed; z-index:20; top: env(safe-area-inset-top, 8px); right:10px; width:40px; height:40px; border-radius:20px; border:2px solid currentColor; background:transparent; color:inherit; font-weight:800; }
+    #exit-focus{ display:none; }
+
+    #km-measure{ position:absolute; visibility:hidden; left:-9999px; top:-9999px; white-space:nowrap; }
+
+    .two-col { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px; }
+    .control-title.title-left { text-align:left; margin:14px 0 8px; }
+
+    .date-row{ display:none; grid-template-columns:1fr; gap:8px; margin-top:12px; }
+    .date-row .control-title{ margin:0; }
+    .date-input{
+      height:44px; border:3px solid var(--fg); border-radius:var(--radius);
+      background:transparent; color:#000; font-weight:700; padding:0 12px; font-size:16px;
+    }
+    body.bg-black .date-input{ color:#fff; }
+
+    /* 포커스 화면 중앙정렬 */
+    body.focus .stage-outer{
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:flex-start;
+      padding-top:0;
+      padding-bottom:0;
+    }
+    body.focus .stage-canvas{ margin-left:0; margin-right:0; }
   </style>
 </head>
-<body class="type2"> <!-- type1, type2, monthly 로 바꿔 테스트 -->
-  <div class="container">
-    <span id="date"></span>
+<body class="bg-white type1 mode-daily">
+  <header>
+    <h1>RUNIMATOR V.0.10.4 BETA</h1>
+    <div class="subtitle">by JS @runarchive.js</div>
+  </header>
 
-    <div class="grid">
-      <div><span id="runs-label">Runs</span> <span id="runs">0</span></div>
-      <div><span id="pace-label">Avg. Pace</span> <span id="pace">0'00"</span></div>
-      <div><span id="time-label">Time</span> <span id="time">00:00</span></div>
+  <!-- 설정 UI -->
+  <div class="top-ui">
+    <div class="wrap">
+
+      <!-- 업로드 -->
+      <section class="section upload-box">
+        <label for="file-upload" class="upload-label">Upload your NRC record image</label>
+        <input type="file" id="file-upload" accept="image/*" style="display:none;" />
+        <div class="status" id="upload-status"></div>
+      </section>
+
+      <!-- 기록 유형 -->
+      <div class="row-head"><div class="label">Record Type</div></div>
+      <div class="seg-row cols-2" id="mode-row">
+        <button class="pill-btn" data-mode="daily">Daily</button>
+        <button class="pill-btn" data-mode="monthly">Monthly</button>
+      </div>
+
+      <!-- 레이아웃 & BG -->
+      <div class="two-col">
+        <div>
+          <div class="control-title title-left">Layout</div>
+          <div class="seg-row cols-2" id="layout-row">
+            <button class="pill-btn" data-layout="type1">Type 1</button>
+            <button class="pill-btn" data-layout="type2">Type 2</button>
+          </div>
+        </div>
+        <div>
+          <div class="control-title title-left">BG Color</div>
+          <div class="bg-row" id="bg-row">
+            <button class="pill-btn" data-bg="white">White</button>
+            <button class="pill-btn" data-bg="black">Black</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 날짜 (Type2/M1 전용 노출) -->
+      <div class="date-row" id="date-section">
+        <div class="control-title title-left">Date</div>
+        <input id="date-input" class="date-input" type="date"/>
+      </div>
+
+      <!-- 폰트 -->
+      <section class="section">
+        <div class="control-title">Font</div>
+        <div class="font-grid" id="font-grid">
+          <button data-font="Anton" style="font-family:'Anton', sans-serif;">Anton</button>
+          <button data-font="Big Shoulders Inline Text" style="font-family:'Big Shoulders Inline Text', cursive;">Inline</button>
+          <button data-font="Alfa Slab One" style="font-family:'Alfa Slab One', cursive;">Alfa</button>
+          <button data-font="Orbitron" style="font-family:'Orbitron', sans-serif;">Tron</button>
+          <button data-font="Special Gothic Expanded One" style="font-family:'Special Gothic Expanded One', sans-serif;">Gothic</button>
+          <button data-font="Graduate" style="font-family:'Graduate', serif;">School</button>
+          <button data-font="Gloria Hallelujah" style="font-family:'Gloria Hallelujah', cursive;">Gloria</button>
+          <button data-font="Rock Salt" style="font-family:'Rock Salt', cursive;">Rock</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <button class="run-button" id="run-btn" onclick="onRun()">RUN</button>
+      </section>
     </div>
   </div>
 
+  <button id="exit-focus" title="Close" onclick="exitFocus()">✕</button>
+
+  <!-- ====== OUTPUT (픽셀 고정 캔버스) ====== -->
+  <section class="stage-outer">
+    <div id="stage-canvas" class="stage-canvas">
+      <div class="stage-inner fixed" id="stage">
+        <div id="km-measure">99.99</div>
+        <div id="date-display" class="date-display"></div>
+        <div class="km-row-wrap">
+          <div class="km-row" id="km-row">
+            <div id="km">0.00</div>
+            <div id="km-unit">km</div>
+          </div>
+        </div>
+        <div id="km-word">Kilometers</div>
+
+        <!-- 하단 통계 -->
+        <div class="grid" id="stats-grid">
+          <!-- Runs는 Monthly에서만 노출 -->
+          <div id="runs-wrap" style="display:none;">
+            <div class="label">Runs</div>
+            <div class="stat" id="runs">-</div>
+          </div>
+          <div id="pace-wrap">
+            <div class="label" id="pace-label">Avg. Pace</div>
+            <div class="stat" id="pace">-</div>
+          </div>
+          <div id="time-wrap">
+            <div class="label" id="time-label">Time</div>
+            <div class="stat" id="time">-</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <script>
-    // 현재 모드 (daily1, daily2, monthly)
-    let recordType = 'daily2'; 
+    let parsedData = {
+      km: null,
+      runs: null,
+      paceMin: null, paceSec: null,
+      timeH: null, timeM: null, timeS: null,
+      timeRaw: null
+    };
+    let recordType = 'daily';   // 'daily' | 'monthly'
+    let layoutType = 'type1';   // 'type1' | 'type2'
+    let selectedFont = 'Anton';
+    let selectedDate = new Date();
 
-    function renderDate(){
-      const now = new Date();
+    const fontGridEl  = document.getElementById('font-grid');
+    const bgRow       = document.getElementById('bg-row');
+    const modeRow     = document.getElementById('mode-row');
+    const layoutRow   = document.getElementById('layout-row');
+    const dateSection = document.getElementById('date-section');
+    const dateInput   = document.getElementById('date-input');
+    const dateDisplay = document.getElementById('date-display');
+    const statsGrid   = document.getElementById('stats-grid');
+    const runsWrap    = document.getElementById('runs-wrap');
 
-      const day   = String(now.getDate()).padStart(2,'0');
-      const monthShort = now.toLocaleString('en-US',{month:'short'}).toUpperCase();
-      const monthLong  = now.toLocaleString('en-US',{month:'long'});
-      const year  = now.getFullYear();
+    const MONTH_ABBR = ["JAN.","FEB.","MAR.","APR.","MAY.","JUN.","JUL.","AUG.","SEP.","OCT.","NOV.","DEC."];
 
-      const dateEl = document.getElementById('date');
+    function formatDateText(d){
+      const day = String(d.getDate());
+      const yr  = d.getFullYear();
 
-      // 타입별 날짜 표기
-      if(recordType === 'daily1'){
-        dateEl.textContent = '';
-        dateEl.className = '';
-      } else if(recordType === 'daily2'){
-        dateEl.textContent = `${day} ${monthShort}. ${year}`;
-        dateEl.className = 'date-d2';
-      } else if(recordType === 'monthly'){
-        dateEl.textContent = `${monthLong} ${year}`;
-        // 월간 타입1,2 모두 적용
-        dateEl.className = (document.body.classList.contains('type1')) ? 'date-m1' : 'date-m2';
+      // D2: 20 AUG. 2025
+      if (recordType === 'daily' && layoutType === 'type2') {
+        const monShort = MONTH_ABBR[d.getMonth()];
+        return `${day} ${monShort} ${yr}`;
+      }
+
+      // M1/M2: August 2025 (풀네임)
+      if (recordType === 'monthly') {
+        const monLong = d.toLocaleString('en-US', { month: 'long' });
+        return `${monLong} ${yr}`;
+      }
+
+      // D1: 날짜 숨김
+      return ``;
+    }
+
+    /* ---------- OCR 파싱 ---------- */
+    function zero2(n){ return String(n).padStart(2,'0'); }
+
+    function normalizeOCR(s){
+      return s.replace(/[\u2018\u2019\u2032\u2035]/g,"'")
+              .replace(/[\u201C\u201D\u2033]/g,'"')
+              .replace(/[·•]/g,'.')
+              .replace(/\u200B|\u00A0/g,' ')
+              .replace(/[ ]{2,}/g,' ')
+              .trim();
+    }
+
+    function parseFromOCR(textRaw){
+      const text = normalizeOCR(textRaw);
+
+      // Pace: m'ss"
+      const paceMatch = text.match(/\b(\d{1,2})\s*'\s*(\d{2})\s*"?\b/);
+
+      // Time: HH:MM:SS 우선, 없으면 MM:SS
+      let timeH=null,timeM=null,timeS=null,timeRaw=null;
+      let m = text.match(/\b(\d{1,2}):(\d{2}):(\d{2})\b/);
+      if(m){
+        timeH = parseInt(m[1],10); timeM = parseInt(m[2],10); timeS = parseInt(m[3],10);
+        timeRaw = `${zero2(timeH)}:${zero2(timeM)}:${zero2(timeS)}`;
+      }else{
+        m = text.match(/\b(\d{1,2}):(\d{2})\b/);
+        if(m){
+          timeM = parseInt(m[1],10); timeS = parseInt(m[2],10);
+          timeRaw = `${zero2(timeM)}:${zero2(timeS)}`;
+        }
+      }
+
+      // Distance
+      const distMatch = text.match(/\b(\d{1,3}\.\d)\d*\b/) || text.match(/\b(\d{1,2}\.\d{1,2})\b/);
+
+      // Runs
+      const runsMatch = text.match(/\b(\d{1,3})\s*Runs?\b/i);
+
+      return {
+        km:   distMatch ? distMatch[1] : null,
+        runs: runsMatch ? parseInt(runsMatch[1],10) : null,
+        paceMin: paceMatch ? parseInt(paceMatch[1],10) : null,
+        paceSec: paceMatch ? parseInt(paceMatch[2],10) : null,
+        timeH, timeM, timeS, timeRaw
+      };
+    }
+
+    /* ---------- KM 표시 포맷 ---------- */
+    function formatKm(value){
+      const v = Math.max(0, Number(value) || 0);
+      if (recordType === 'monthly') {
+        return v.toFixed(1); // x.x / xx.x / xxx.x
+      }
+      if (v < 10)  return v.toFixed(2);
+      if (v < 100) return v.toFixed(1);
+      return String(Math.round(v));
+    }
+    function renderKm(value){
+      const kmEl = document.getElementById('km');
+      kmEl.textContent = formatKm(value);
+    }
+
+    /* ---------- 하단 통계 포맷 ---------- */
+    function formatPaceByType(){
+      if(parsedData.paceMin==null || parsedData.paceSec==null){
+        return (layoutType==='type1') ? '0:00 /km' : '0:00';
+      }
+      const mm = String(parsedData.paceMin);
+      const ss = zero2(parsedData.paceSec);
+      return (layoutType==='type1') ? `${mm}:${ss} /km` : `${mm}:${ss}`;
+    }
+
+    function formatTimeByType(){
+      if(layoutType==='type2'){
+        return parsedData.timeRaw ? parsedData.timeRaw : '00:00';
+      }
+      const H = parsedData.timeH ?? 0;
+      const M = parsedData.timeM ?? 0;
+      const S = parsedData.timeS ?? 0;
+      if (H > 0){
+        return `${H}h ${zero2(M)}m ${zero2(S)}s`;
+      }
+      return `${String(M)}m ${zero2(S)}s`;
+    }
+
+    function updateGridCols(){
+      if (layoutType === 'type1') {
+        statsGrid.style.setProperty('--cols', 1);
+      } else {
+        const cols = (recordType==='monthly') ? 3 : 2;
+        statsGrid.style.setProperty('--cols', cols);
       }
     }
 
-    renderDate();
+    function renderStats(){
+      document.getElementById('pace-label').textContent = 'Avg. Pace';
+      document.getElementById('time-label').textContent = 'Time';
+
+      runsWrap.style.display = (recordType === 'monthly') ? 'block' : 'none';
+
+      if (recordType === 'monthly') {
+        const runsVal = (parsedData.runs == null || isNaN(parsedData.runs)) ? 0 : parsedData.runs; /* null이면 0 */
+        document.getElementById('runs').textContent = String(runsVal);
+      }
+      document.getElementById('pace').textContent = formatPaceByType();
+      document.getElementById('time').textContent = formatTimeByType();
+
+      updateGridCols();
+    }
+
+    // ---- Upload ----
+    document.getElementById("file-upload").addEventListener("change", async (e)=>{
+      const file = e.target.files[0]; if(!file) return;
+      const status = document.getElementById("upload-status");
+      status.textContent = "Uploading...";
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try{
+          const img = reader.result;
+          const result = await Tesseract.recognize(img, 'eng');
+          parsedData = parseFromOCR(result.data.text);
+
+          /* OCR 직후 Runs/Pace/Time 즉시 반영 */
+          renderStats();
+
+          status.textContent = "Uploaded!";
+        }catch(err){
+          status.textContent = "Upload failed";
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // ---- Count-up ----
+    const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+    function animateNumber(id,start,end,duration){
+      return new Promise(resolve=>{
+        const kmEl = document.getElementById(id);
+        let startTime;
+        function update(now){
+          if(!startTime) startTime = now;
+          const raw = Math.min((now - startTime)/duration,1);
+          const eased = easeOutCubic(raw);
+          const val = (start + (end-start)*eased);
+          kmEl.textContent = formatKm(val);
+          raw < 1 ? requestAnimationFrame(update) : resolve();
+        }
+        requestAnimationFrame(update);
+      });
+    }
+
+    // ---- Pixel-perfect scale ----
+    function scaleStageCanvas(){
+      const canvas = document.getElementById('stage-canvas');
+      if(!canvas) return;
+      const vw = window.innerWidth;
+      const logicalWidth = (vw < 430) ? 540 : 720;
+      const scale = Math.min(vw / logicalWidth, 1);
+      canvas.style.transform = `scale(${scale})`;
+    }
+
+    /* ====== km 폰트별/타입별 스케일 맵 ====== */
+    const kmFontScale = {
+      "Anton": { type1: 0.90, type2: 1.00 },
+      "Big Shoulders Inline Text": { type1: 0.95, type2: 1.10 },
+      "Alfa Slab One": { type1: 0.85, type2: 0.89 },
+      "Orbitron": { type1: 0.93, type2: 0.98 },
+      "Special Gothic Expanded One": { type1: 0.80, type2: 0.85 },
+      "Graduate": { type1: 0.85, type2: 0.90 },
+      "Gloria Hallelujah": { type1: 0.85, type2: 0.90 },
+      "Rock Salt": { type1: 0.85, type2: 0.94 }
+    };
+    function setFontKmScale(font, type, scale){
+      if(!kmFontScale[font]) kmFontScale[font] = { type1:1, type2:1 };
+      kmFontScale[font][type] = Number(scale) || 1;
+      fitKmRow();
+    }
+
+    /* ====== 폰트별/타입별 들여쓰기 맵 ====== */
+    const fontIndentMap = {
+      "Anton": { type1: { grid: 5,  kmWord: 0 },  type2: { grid: 5,  kmWord: 0 } },
+      "Big Shoulders Inline Text": { type1: { grid: 8,  kmWord: 3 },  type2: { grid: 8,  kmWord: 3 } },
+      "Alfa Slab One": { type1: { grid: 6,  kmWord: 2 },  type2: { grid: 6,  kmWord: 2 } },
+      "Orbitron": { type1: { grid: 8,  kmWord: 0 },  type2: { grid: 6,  kmWord: 0 } },
+      "Special Gothic Expanded One": { type1: { grid: 4,  kmWord: 0 },  type2: { grid: 4,  kmWord: 0 } },
+      "Graduate": { type1: { grid: 8,  kmWord: 1 },  type2: { grid: 8,  kmWord: 1 } },
+      "Gloria Hallelujah": { type1: { grid: 5,  kmWord: 2 },  type2: { grid: 5,  kmWord: 2 } },
+      "Rock Salt": { type1: { grid: 25, kmWord: 0 },  type2: { grid: 25, kmWord: 0 } }
+    };
+    function applyFontIndents(font, type){
+      const defaults = { grid: 5, kmWord: 0 };
+      const conf = (fontIndentMap[font] && fontIndentMap[font][type]) || defaults;
+      document.documentElement.style.setProperty('--gridFirstColIndent', `${conf.grid}px`);
+      document.documentElement.style.setProperty('--kmWordIndent', `${conf.kmWord}px`);
+    }
+
+    // ---- Fit number row ----
+    function fitKmRow(){
+      const stage   = document.getElementById('stage');
+      const row     = document.getElementById('km-row');
+      const measure = document.getElementById('km-measure');
+      const kmEl    = document.getElementById('km');
+
+      const kmCS = window.getComputedStyle(kmEl);
+      measure.style.fontFamily = kmCS.fontFamily;
+      measure.style.fontSize   = kmCS.fontSize;
+      measure.style.fontStyle  = kmCS.fontStyle;
+      measure.style.fontWeight = kmCS.fontWeight;
+
+      measure.textContent = kmEl.textContent;
+
+      const stCS = window.getComputedStyle(stage);
+      const padL = parseFloat(stCS.paddingLeft)  || 0;
+      const padR = parseFloat(stCS.paddingRight) || 0;
+      const avail = stage.clientWidth - (padL + padR);
+
+      const safe  = 0.98;
+      const need  = measure.scrollWidth;
+      const baseFit  = need ? Math.min(1, (avail * safe) / need) : 1;
+
+      const css = getComputedStyle(document.body);
+      const typeScale = parseFloat(css.getPropertyValue('--kmScale')) || 1;
+      const modeScale = parseFloat(css.getPropertyValue('--modeKmScale')) || 1;
+      const fontScale = (kmFontScale[selectedFont] && kmFontScale[selectedFont][layoutType]) ? kmFontScale[selectedFont][layoutType] : 1;
+
+      row.style.transform = `scale(${baseFit * typeScale * fontScale * modeScale})`;
+      syncDateWidth();
+    }
+
+    function syncDateWidth(){
+      if (layoutType !== 'type2') return;
+      const row = document.getElementById('km-row');
+      const width = row.getBoundingClientRect().width;
+      dateDisplay.style.width = width + 'px';
+    }
+
+    async function runAnimation(){
+      fitKmRow();
+      await new Promise(r=>setTimeout(r, 500));
+      const endVal = parseFloat(parsedData.km || 0);
+      await animateNumber("km", 0, isNaN(endVal)?0:endVal, 2200);
+      fitKmRow();
+    }
+
+    /* 그룹 버튼 active 토글 */
+    function updateActive(groupEl, targetBtn){
+      [...groupEl.querySelectorAll('button')].forEach(b=>b.classList.remove('is-active'));
+      if(targetBtn) targetBtn.classList.add('is-active');
+    }
+
+    // ---- Font switching ----
+    function setFont(font){
+      selectedFont = font;
+
+      const km       = document.getElementById("km");
+      const kmWord   = document.getElementById("km-word");
+      const dateDisp = document.getElementById("date-display");
+
+      km.style.fontFamily = font + ", sans-serif";
+
+      const strongFonts = new Set([
+        "Anton","Orbitron","Special Gothic Expanded One","Graduate","Gloria Hallelujah"
+      ]);
+      dateDisp.style.fontFamily = strongFonts.has(font) ? (font + ", sans-serif") : "";
+      dateDisp.style.fontWeight = 800;
+
+      const fontBase = {
+        "Anton": 200, "Big Shoulders Inline Text": 200, "Alfa Slab One": 180,
+        "Orbitron": 160, "Special Gothic Expanded One": 160, "Graduate": 200,
+        "Gloria Hallelujah": 190, "Rock Salt": 140
+      };
+      km.style.fontSize   = (fontBase[font] ?? 200) + "px";
+      km.style.fontWeight = 700;
+      km.style.transform  = "translate(0,0)";
+
+      const targetBtn = fontGridEl.querySelector(`button[data-font="${CSS.escape(font)}"]`);
+      updateActive(fontGridEl, targetBtn);
+
+      applyFontIndents(selectedFont, layoutType);
+
+      fitKmRow();
+      renderStats();
+      renderDateDisplay(); // 폰트 바뀌어도 즉시 반영
+    }
+
+    // 테마 적용
+    function setBackground(color){
+      const htmlEl = document.documentElement;
+      const bodyEl = document.body;
+
+      if(color==='black'){
+        htmlEl.classList.remove('bg-white'); htmlEl.classList.add('bg-black');
+        bodyEl.classList.remove('bg-white'); bodyEl.classList.add('bg-black');
+      }else{
+        htmlEl.classList.remove('bg-black'); htmlEl.classList.add('bg-white');
+        bodyEl.classList.remove('bg-black'); bodyEl.classList.add('bg-white');
+      }
+      const targetBtn = bgRow.querySelector(`button[data-bg="${CSS.escape(color)}"]`);
+      updateActive(bgRow, targetBtn);
+    }
+
+    function setRecordType(mode){
+      recordType = mode; // 'daily' | 'monthly'
+      document.body.classList.toggle('mode-daily', mode==='daily');
+      document.body.classList.toggle('mode-monthly', mode==='monthly');
+
+      const btn = modeRow.querySelector(`button[data-mode="${CSS.escape(mode)}"]`);
+      updateActive(modeRow, btn);
+
+      runsWrap.style.display = (mode==='monthly') ? 'block' : 'none';
+
+      // KM 초기 포맷도 모드 규칙 반영
+      renderKm(document.getElementById('km').textContent.replace(/[^\d.]/g,'') || 0);
+      renderStats();
+      updateGridCols();
+      fitKmRow();
+      applyLayoutVisual(); // 날짜 표시/숨김 재평가
+    }
+
+    function setDateFromInput(){
+      const val = dateInput.value; if(!val) return;
+      const [y,m,d] = val.split('-').map(Number);
+      selectedDate = new Date(y, m-1, d);
+      renderDateDisplay(); syncDateWidth();
+    }
+
+    function renderDateDisplay(){
+      // D1: 숨김 / D2: 일+월(약어)+년 / M1,M2: 월(풀네임)+년
+      const txt = formatDateText(selectedDate);
+      dateDisplay.textContent = txt;
+      // 표시 여부는 applyLayoutVisual에서 결정
+    }
+
+    function applyLayoutVisual(){
+      const word = document.getElementById('km-word');
+
+      // 날짜 입력 UI: type2에서는 항상 보임, type1에서는 monthly에서만 보임
+      if(layoutType==='type1'){
+        dateSection.style.display = (recordType==='monthly') ? 'grid' : 'none';
+      }else{
+        dateSection.style.display = 'grid';
+      }
+
+      // 실제 출력되는 날짜 표시 영역
+      if (layoutType==='type2' || (layoutType==='type1' && recordType==='monthly')) {
+        dateDisplay.style.display = 'block';
+      } else {
+        dateDisplay.style.display = 'none'; // D1은 숨김
+      }
+
+      // "Kilometers" 워딩은 두 타입 모두 사용
+      word.style.display = 'block';
+
+      // 날짜 기본값 주입
+      if(!dateInput.value){
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth()+1).padStart(2,'0');
+        const dd = String(today.getDate()).padStart(2,'0');
+        dateInput.value = `${yyyy}-${mm}-${dd}`;
+        selectedDate = today;
+      }
+      renderDateDisplay();
+
+      document.body.classList.remove('type1','type2');
+      document.body.classList.add(layoutType);
+
+      setFont(selectedFont);
+      applyFontIndents(selectedFont, layoutType);
+
+      renderStats();
+      updateGridCols();
+      fitKmRow();
+    }
+
+    function setLayout(type){
+      layoutType = type; // 'type1' | 'type2'
+      const btn = layoutRow.querySelector(`button[data-layout="${CSS.escape(type)}"]`);
+      updateActive(layoutRow, btn);
+      applyLayoutVisual();
+    }
+
+    // === 날짜 스타일 조정용 공개 API ===
+    // setDateStyle('d2'|'m1'|'m2', { size:'60px', gap:'10px', translate:'0px,0px' })
+    function setDateStyle(which, { size, gap, translate } = {}){
+      const root = document.documentElement.style;
+      if(which==='d2'){
+        if(size) root.setProperty('--d2-dateSize', size);
+        if(gap) root.setProperty('--d2-dateGap', gap);
+        if(translate) root.setProperty('--d2-dateTranslate', translate);
+      }else if(which==='m1'){
+        if(size) root.setProperty('--m1-dateSize', size);
+        if(gap) root.setProperty('--m1-dateGap', gap);
+        if(translate) root.setProperty('--m1-dateTranslate', translate);
+      }else if(which==='m2'){
+        if(size) root.setProperty('--m2-dateSize', size);
+        if(gap) root.setProperty('--m2-dateGap', gap);
+        if(translate) root.setProperty('--m2-dateTranslate', translate);
+      }
+      // 현재 조합에 반영
+      document.body.offsetHeight; // layout flush
+      renderDateDisplay();
+    }
+
+    // === 이벤트 바인딩 ===
+    fontGridEl.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button[data-font]'); if(!btn) return;
+      setFont(btn.dataset.font);
+    });
+    bgRow.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button[data-bg]'); if(!btn) return;
+      setBackground(btn.dataset.bg);
+    });
+    modeRow.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button[data-mode]'); if(!btn) return;
+      setRecordType(btn.dataset.mode);
+    });
+    layoutRow.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button[data-layout]'); if(!btn) return;
+      setLayout(btn.dataset.layout);
+    });
+    dateInput.addEventListener('change', setDateFromInput);
+
+    function onRun(){
+      document.body.classList.add('focus');
+      document.getElementById('stage-canvas').scrollIntoView({behavior:'smooth', block:'start'});
+      runAnimation();
+    }
+    function exitFocus(){
+      document.body.classList.remove('focus');
+      window.scrollTo({top:0, behavior:'smooth'});
+      document.getElementById('km').textContent = recordType==='monthly' ? "0.0" : "0.00";
+    }
+
+    window.addEventListener('resize', ()=>{ scaleStageCanvas(); fitKmRow(); });
+    window.addEventListener('orientationchange', ()=> { setTimeout(()=>{ scaleStageCanvas(); fitKmRow(); }, 50); });
+
+    /* ===========================
+       타입/모드별 제어 API
+       =========================== */
+    function setTypeStatsStyle(type, { size, labelSize, gap, pull, pull2 } = {}){
+      const root = document.documentElement.style;
+      if(type==='type1'){
+        if (size)      root.setProperty('--t1-statSize', size);
+        if (labelSize) root.setProperty('--t1-labelSize', labelSize);
+        if (gap!=null) root.setProperty('--t1-statGap', gap);
+        if (pull!=null)root.setProperty('--t1-statPull', pull);
+        if (pull2!=null)root.setProperty('--t1-statPull2', pull2);
+      }else{
+        if (size)      root.setProperty('--t2-statSize', size);
+        if (labelSize) root.setProperty('--t2-labelSize', labelSize);
+        if (gap!=null) root.setProperty('--t2-statGap', gap);
+        if (pull!=null) root.setProperty('--t2-statPull', pull);
+        if (pull2!=null)root.setProperty('--t2-statPull2', pull2);
+      }
+      renderStats();
+    }
+    function setTypeKmWordStyle(type, { size, gap } = {}){
+      const root = document.documentElement.style;
+      if(type==='type1'){
+        if (size) root.setProperty('--t1-kmWordSize', size);
+        if (gap)  root.setProperty('--t1-kmWordGap', gap);
+      }else{
+        if (size) root.setProperty('--t2-kmWordSize', size);
+        if (gap)  root.setProperty('--t2-kmWordGap', gap);
+      }
+    }
+    function setTypeKmScale(type, scale){
+      const root = document.documentElement.style;
+      const val = String(scale);
+      if(type==='type1') root.setProperty('--t1-kmScale', val);
+      else               root.setProperty('--t2-kmScale', val);
+      fitKmRow();
+    }
+    function setModeStyle(mode, { kmScale, statGap, kmWordBottomGap } = {}){
+      const root = document.documentElement.style;
+      if(mode==='daily'){
+        if (kmScale!=null) root.setProperty('--d-kmScale', String(kmScale));
+        if (statGap!=null) root.setProperty('--d-statGap', String(statGap));
+        if (kmWordBottomGap!=null) root.setProperty('--d-kmWordBottomGap', String(kmWordBottomGap));
+      }else{
+        if (kmScale!=null) root.setProperty('--m-kmScale', String(kmScale));
+        if (statGap!=null) root.setProperty('--m-statGap', String(statGap));
+        if (kmWordBottomGap!=null) root.setProperty('--m-kmWordBottomGap', String(kmWordBottomGap));
+      }
+      fitKmRow();
+    }
+
+    // 초기화
+    window.onload = ()=>{
+      setRecordType('daily');
+      setLayout('type1');
+      setBackground('white');
+      setFont('Anton');
+
+      // 기본 스타일
+      setTypeStatsStyle('type1', { size:'40px', labelSize:'18px', gap:'24px', pull:'0px' });
+      setTypeKmWordStyle('type1', { size:'36px', gap:'16px' });
+      setTypeKmScale('type1', 1.00);
+
+      setTypeStatsStyle('type2', { size:'40px', labelSize:'20px', gap:'16px', pull:'50px', pull2:'40px' });
+      setTypeKmWordStyle('type2', { size:'36px', gap:'16px' });
+      setTypeKmScale('type2', 1.00);
+
+      // 모드별 배수 (필요 시 조정)
+      setModeStyle('daily',   { kmScale:1.0 });
+      setModeStyle('monthly', { kmScale:1.0 });
+
+      const t=new Date();
+      document.getElementById('date-input').value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+      selectedDate = t;
+
+      scaleStageCanvas();
+      applyLayoutVisual();
+
+      // 초기 km 표시 규칙 적용
+      renderKm(0);
+
+      applyFontIndents(selectedFont, layoutType);
+
+      fitKmRow();
+      renderStats();
+    };
   </script>
 </body>
 </html>
