@@ -15,9 +15,8 @@
       --maxw:480px;
       --gapBelowKm: 12px;
       --radius:14px;
-      --dateGap: 12px;
 
-      /* 공통 기본값 (실제 적용값은 body.type1/type2에서 매핑됨) */
+      /* 공통 기본값 (실제 적용값은 body.type1/type2 + mode에서 매핑됨) */
       --kmWordSize: 28px;
       --kmWordGap: 0px;
 
@@ -62,16 +61,40 @@
       --t2-kmWordLiftTop: -15px;
       --t2-kmWordBottomGap: 26px;
 
-      /* ▼ Monthly 모드 */
+      /* ▼ 모드 매핑 베이스 */
       --m-statGap: var(--statGap);
       --m-kmWordBottomGap: var(--kmWordBottomGap);
       --m-kmScale: 1;
 
-      /* ▼ Daily 모드 */
       --d-statGap: var(--statGap);
       --d-kmWordBottomGap: var(--kmWordBottomGap);
       --d-kmScale: 1;
+
+      /* =========================
+         날짜(D2/M1/M2) 스타일 컨트롤 변수
+         - 아래 3세트를 마음대로 조절하면 됨
+         ========================= */
+      /* D2 (Daily Type 2) */
+      --d2-dateSize: 60px;
+      --d2-dateGap: 10px;
+      --d2-dateTranslate: 0px, 0px;
+
+      /* M1 (Monthly Type 1) */
+      --m1-dateSize: 50px;
+      --m1-dateGap: 10px;
+      --m1-dateTranslate: 0px, 0px;
+
+      /* M2 (Monthly Type 2) */
+      --m2-dateSize: 50px;
+      --m2-dateGap: 10px;
+      --m2-dateTranslate: 0px, 0px;
+
+      /* 현재 활성 조합이 매핑되는 실사용 변수 */
+      --dateSize: 42px;
+      --dateGap: 12px;
+      --dateTranslate: 0px, 0px;
     }
+
     *{box-sizing:border-box}
     html, body { background:#fff; color:#000; min-height:100%; }
     body{ margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; }
@@ -120,6 +143,26 @@
       --statGap: var(--m-statGap);
     }
 
+    /* 날짜 스타일 조합 매핑 */
+    /* D2 = daily + type2 */
+    body.mode-daily.type2{
+      --dateSize: var(--d2-dateSize);
+      --dateGap: var(--d2-dateGap);
+      --dateTranslate: var(--d2-dateTranslate);
+    }
+    /* M1 = monthly + type1 */
+    body.mode-monthly.type1{
+      --dateSize: var(--m1-dateSize);
+      --dateGap: var(--m1-dateGap);
+      --dateTranslate: var(--m1-dateTranslate);
+    }
+    /* M2 = monthly + type2 */
+    body.mode-monthly.type2{
+      --dateSize: var(--m2-dateSize);
+      --dateGap: var(--m2-dateGap);
+      --dateTranslate: var(--m2-dateTranslate);
+    }
+
     header{ padding:var(--pad); text-align:left; }
     h1{ margin:6px 0 2px; font-size:18px; font-weight:800; }
     .subtitle{ font-size:12px; opacity:.8 }
@@ -129,10 +172,10 @@
 
     .upload-box{ border:1px solid #ddd; border-radius:10px; padding:16px; }
     .upload-label{
-      display:block; background:#000; color:#FF8800; padding:14px 16px; font-weight:800;
+      display:block; background:#000; color:#FF9100; padding:14px 16px; font-weight:800;
       border-radius:12px; text-align:center; margin-bottom:10px;
     }
-    .status{ color:#F07D00; font-weight:700; font-size:13px; }
+    .status{ color:#FF9100; font-weight:700; font-size:13px; }
 
     .row-head{ display:flex; justify-content:space-between; gap:10px; margin:10px 0 6px; }
     .row-head .label{ font-size:13px; font-weight:800; opacity:.9; }
@@ -165,7 +208,8 @@
 
     .run-button{
       width:100%; height:52px; border-radius:16px;
-      background:#FF8800; color:#000; border:3px solid #F07D00; margin-top:10px; font-size:18px; font-weight:900;
+      background:#FF9100; color:#000; border:3px solid #CD6B00; margin-top:10px; font-size:18px; font-weight:900;
+      box-shadow:0 0 0 3px rgba(0,112,255,.25);
     }
 
     /* ===== OUTPUT STAGE ===== */
@@ -187,11 +231,11 @@
     .date-display{
       display:none;
       font-weight:900;
-      font-size:42px;
+      font-size: var(--dateSize);
       line-height:1.05;
       margin:6px 0 var(--dateGap);
       white-space:nowrap;
-      transform: translate(0,0);
+      transform: translate(var(--dateTranslate));
       transform-origin:left bottom;
       text-align:left;
     }
@@ -297,7 +341,7 @@
 </head>
 <body class="bg-white type1 mode-daily">
   <header>
-    <h1>RUNIMATOR V.0.10.2 BETA</h1>
+    <h1>RUNIMATOR V.0.10.3 BETA</h1>
     <div class="subtitle">by JS @runarchive.js</div>
   </header>
 
@@ -337,7 +381,7 @@
         </div>
       </div>
 
-      <!-- 날짜 (Type2 전용) -->
+      <!-- 날짜 (Type2/M1 전용 노출) -->
       <div class="date-row" id="date-section">
         <div class="control-title title-left">Date</div>
         <input id="date-input" class="date-input" type="date"/>
@@ -408,8 +452,8 @@
       timeH: null, timeM: null, timeS: null,
       timeRaw: null
     };
-    let recordType = 'daily';
-    let layoutType = 'type1';
+    let recordType = 'daily';   // 'daily' | 'monthly'
+    let layoutType = 'type1';   // 'type1' | 'type2'
     let selectedFont = 'Anton';
     let selectedDate = new Date();
 
@@ -424,11 +468,13 @@
     const runsWrap    = document.getElementById('runs-wrap');
 
     const MONTH_ABBR = ["JAN.","FEB.","MAR.","APR.","MAY.","JUN.","JUL.","AUG.","SEP.","OCT.","NOV.","DEC."];
-    function formatDate(d){
+    function formatDateText(d){
       const day = String(d.getDate());
       const mon = MONTH_ABBR[d.getMonth()];
       const yr  = d.getFullYear();
-      return `${day} ${mon} ${yr}`;
+      if (recordType === 'monthly') return `${mon} ${yr}`;        // M1, M2
+      if (layoutType === 'type2')   return `${day} ${mon} ${yr}`; // D2
+      return ``; // D1은 빈 문자열 (숨김)
     }
 
     /* ---------- OCR 파싱 ---------- */
@@ -532,7 +578,7 @@
       runsWrap.style.display = (recordType === 'monthly') ? 'block' : 'none';
 
       if (recordType === 'monthly') {
-        const runsVal = (parsedData.runs == null || isNaN(parsedData.runs)) ? 0 : parsedData.runs; /* ← null이면 0 */
+        const runsVal = (parsedData.runs == null || isNaN(parsedData.runs)) ? 0 : parsedData.runs; /* null이면 0 */
         document.getElementById('runs').textContent = String(runsVal);
       }
       document.getElementById('pace').textContent = formatPaceByType();
@@ -689,42 +735,24 @@
       const kmWord   = document.getElementById("km-word");
       const dateDisp = document.getElementById("date-display");
 
-      const fontSettings = {
-        "Anton": { base: 200, weight: 700, dateSize: "60px", dateGap: "10px", dateWeight: 700 },
-        "Big Shoulders Inline Text": { base: 200, weight: 800, dateSize: "40px", dateGap: "20px", dateWeight: 800 },
-        "Alfa Slab One": { base: 180, weight: 700, dateSize: "45px", dateGap: "15px", dateWeight: 900, dateTranslate: "0px, 20px" },
-        "Orbitron": { base: 160, weight: 700, dateSize: "38px", dateGap: "10px", dateWeight: 700, dateTranslate: "10px, 20px" },
-        "Special Gothic Expanded One": { base: 160, weight: 700, dateSize: "36px", dateGap: "0px", dateWeight: 700, dateTranslate: "0px, 20px" },
-        "Graduate": { base: 200, weight: 700, dateSize: "42px", dateGap: "10px", dateWeight: 700, dateTranslate: "7px, 20px" },
-        "Gloria Hallelujah": { base: 190, weight: 700, dateSize: "44px", dateGap: "0px", dateWeight: 700, dateTranslate: "7px, 20px"  },
-        "Rock Salt": { base: 140, weight: 700, dateSize: "36px", dateGap: "40px", dateWeight: 600, kmWordGap: "40px", translate: "25px,-25px", dateTranslate: "20px,0px" }
-      };
-      const cfg = fontSettings[font] || { base: 200, weight: 700, dateSize: "42px", dateGap: "12px", dateWeight:700 };
-
       km.style.fontFamily = font + ", sans-serif";
-      km.style.fontSize   = cfg.base + "px";
-      km.style.fontWeight = cfg.weight;
-      km.style.transform  = cfg.translate ? `translate(${cfg.translate})` : "translate(0,0)";
 
-      const dateFollowSet = new Set([
+      // 날짜는 조합 변수로 제어하므로 폰트 변경 시 사이즈/갭/트랜스폼은 건드리지 않음
+      const strongFonts = new Set([
         "Anton","Orbitron","Special Gothic Expanded One","Graduate","Gloria Hallelujah"
       ]);
-      dateDisp.style.fontFamily = dateFollowSet.has(font) ? (font + ", sans-serif") : "";
-      dateDisp.style.fontWeight = (cfg.dateWeight != null ? cfg.dateWeight : cfg.weight);
-      dateDisp.style.fontSize   = cfg.dateSize;
-      dateDisp.style.marginBottom = cfg.dateGap;
+      dateDisp.style.fontFamily = strongFonts.has(font) ? (font + ", sans-serif") : "";
+      dateDisp.style.fontWeight = 800; // 시인성 좋게 고정(원하면 조절 가능)
 
-      if (layoutType === 'type2') {
-        dateDisp.style.transform = cfg.dateTranslate ? `translate(${cfg.dateTranslate})` : 'translate(0,0)';
-      } else {
-        dateDisp.style.transform = 'translate(0,0)';
-      }
-
-      document.documentElement.style.setProperty('--dateGap',  cfg.dateGap);
-      document.documentElement.style.setProperty('--gapBelowKm', font === "Rock Salt" ? "28px" : "12px");
-      document.documentElement.style.setProperty('--kmWordGap', cfg.kmWordGap || getComputedStyle(document.body).getPropertyValue('--kmWordGap'));
-
-      kmWord.style.fontFamily = "";
+      // 숫자 기본 크기/두께 (폰트별)
+      const fontBase = {
+        "Anton": 200, "Big Shoulders Inline Text": 200, "Alfa Slab One": 180,
+        "Orbitron": 160, "Special Gothic Expanded One": 160, "Graduate": 200,
+        "Gloria Hallelujah": 190, "Rock Salt": 140
+      };
+      km.style.fontSize   = (fontBase[font] ?? 200) + "px";
+      km.style.fontWeight = 700;
+      km.style.transform  = "translate(0,0)";
 
       const targetBtn = fontGridEl.querySelector(`button[data-font="${CSS.escape(font)}"]`);
       updateActive(fontGridEl, targetBtn);
@@ -733,6 +761,7 @@
 
       fitKmRow();
       renderStats();
+      renderDateDisplay(); // 폰트 바뀌어도 즉시 반영
     }
 
     // 테마 적용
@@ -752,7 +781,7 @@
     }
 
     function setRecordType(mode){
-      recordType = mode;
+      recordType = mode; // 'daily' | 'monthly'
       document.body.classList.toggle('mode-daily', mode==='daily');
       document.body.classList.toggle('mode-monthly', mode==='monthly');
 
@@ -764,8 +793,9 @@
       // KM 초기 포맷도 모드 규칙 반영
       renderKm(document.getElementById('km').textContent.replace(/[^\d.]/g,'') || 0);
       renderStats();
-      updateGridCols();  // 열 수 강제
+      updateGridCols();
       fitKmRow();
+      applyLayoutVisual(); // 날짜 표시/숨김 재평가
     }
 
     function setDateFromInput(){
@@ -774,33 +804,44 @@
       selectedDate = new Date(y, m-1, d);
       renderDateDisplay(); syncDateWidth();
     }
+
     function renderDateDisplay(){
-      if (layoutType !== 'type2') return;
-      dateDisplay.textContent = formatDate(selectedDate);
+      // D1: 숨김 / D2: 일+월+년 / M1,M2: 월+년
+      const txt = formatDateText(selectedDate);
+      dateDisplay.textContent = txt;
+      // 표시 여부는 applyLayoutVisual에서 결정
     }
 
     function applyLayoutVisual(){
       const word = document.getElementById('km-word');
 
+      // 날짜 입력 UI: type2에서는 항상 보임, type1에서는 monthly에서만 보임
       if(layoutType==='type1'){
-        dateSection.style.display = 'none';
-        dateDisplay.style.display = 'none';
-        word.style.display = 'block';
+        dateSection.style.display = (recordType==='monthly') ? 'grid' : 'none';
       }else{
         dateSection.style.display = 'grid';
-        dateDisplay.style.display = 'block';
-        word.style.display = 'block';
-
-        if(!dateInput.value){
-          const today = new Date();
-          const yyyy = today.getFullYear();
-          const mm = String(today.getMonth()+1).padStart(2,'0');
-          const dd = String(today.getDate()).padStart(2,'0');
-          dateInput.value = `${yyyy}-${mm}-${dd}`;
-          selectedDate = today;
-        }
-        renderDateDisplay();
       }
+
+      // 실제 출력되는 날짜 표시 영역
+      if (layoutType==='type2' || (layoutType==='type1' && recordType==='monthly')) {
+        dateDisplay.style.display = 'block';
+      } else {
+        dateDisplay.style.display = 'none'; // D1은 숨김
+      }
+
+      // "Kilometers" 워딩은 두 타입 모두 사용
+      word.style.display = 'block';
+
+      // 날짜 기본값 주입
+      if(!dateInput.value){
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth()+1).padStart(2,'0');
+        const dd = String(today.getDate()).padStart(2,'0');
+        dateInput.value = `${yyyy}-${mm}-${dd}`;
+        selectedDate = today;
+      }
+      renderDateDisplay();
 
       document.body.classList.remove('type1','type2');
       document.body.classList.add(layoutType);
@@ -809,15 +850,34 @@
       applyFontIndents(selectedFont, layoutType);
 
       renderStats();
-      updateGridCols();  // 열 수 강제
+      updateGridCols();
       fitKmRow();
     }
 
     function setLayout(type){
-      layoutType = type;
+      layoutType = type; // 'type1' | 'type2'
       const btn = layoutRow.querySelector(`button[data-layout="${CSS.escape(type)}"]`);
       updateActive(layoutRow, btn);
       applyLayoutVisual();
+    }
+
+    // === 날짜 스타일 조정용 공개 API ===
+    // setDateStyle('d2'|'m1'|'m2', { size:'60px', gap:'10px', translate:'0px,0px' })
+    function setDateStyle(which, { size, gap, translate } = {}){
+      const root = document.documentElement.style;
+      if(which==='d2'){
+        if(size) root.setProperty('--d2-dateSize', size);
+        if(gap) root.setProperty('--d2-dateGap', gap);
+        if(translate) root.setProperty('--d2-dateTranslate', translate);
+      }else if(which==='m1'){
+        if(size) root.setProperty('--m1-dateSize', size);
+        if(gap) root.setProperty('--m1-dateGap', gap);
+        if(translate) root.setProperty('--m1-dateTranslate', translate);
+      }else if(which==='m2'){
+        if(size) root.setProperty('--m2-dateSize', size);
+        if(gap) root.setProperty('--m2-dateGap', gap);
+        if(translate) root.setProperty('--m2-dateTranslate', translate);
+      }
     }
 
     // === 이벤트 바인딩 ===
@@ -923,6 +983,11 @@
       // 모드별 배수 (필요 시 조정)
       setModeStyle('daily',   { kmScale:1.0 });
       setModeStyle('monthly', { kmScale:1.0 });
+
+      // (원하면 여기서 날짜 스타일 기본값도 만져도 됨)
+      // setDateStyle('d2', { size:'60px', gap:'10px', translate:'0px,0px' });
+      // setDateStyle('m1', { size:'50px', gap:'10px', translate:'0px,0px' });
+      // setDateStyle('m2', { size:'50px', gap:'10px', translate:'0px,0px' });
 
       const t=new Date();
       document.getElementById('date-input').value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
