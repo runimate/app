@@ -24,21 +24,21 @@
       --statSize: 40px;
       --labelSize: 20px;
       --statGap: 49px;
-      --statPull: 0px;   /* 2열 당김(Type2에서 Pace→Time 간격 조절) */
-      --statPull2: 0px;  /* 3열 당김(Monthly Type2에서 Time 당김) */
+      --statPull: 0px;   /* 2열에서 두 번째 칸 당김 */
+      --statPull2: 0px;  /* 3열에서 세 번째 칸 당김 */
 
       --kmScale: 1;
-      --modeKmScale: 1;  /* 모드(daily/monthly)별 스케일 배수 */
+      --modeKmScale: 1;  /* 모드(daily/monthly) 배수 */
 
-      /* Kilometers와 첫 컬럼(Avg. Pace) 정렬 + 인덴트 */
-      --gridFirstColIndent: 5px; /* Avg. Pace 첫 컬럼 들여쓰기 */
-      --kmWordIndent: 0px;       /* Kilometers 좌우 보정 */
+      /* 정렬/인덴트 */
+      --gridFirstColIndent: 5px;
+      --kmWordIndent: 0px;
 
-      /* Kilometers 수직/하단 간격 */
-      --kmWordLiftTop: 0px;        /* 음수면 위로 당김 */
-      --kmWordBottomGap: 26px;     /* Kilometers ↔ 하단 통계 간격 */
+      /* 수직 간격 */
+      --kmWordLiftTop: 0px;
+      --kmWordBottomGap: 26px;
 
-      /* ▼ Type1 전용 */
+      /* ▼ Type1 */
       --t1-kmScale: 1;
       --t1-kmWordSize: 50px;
       --t1-kmWordGap: 0px;
@@ -50,7 +50,7 @@
       --t1-kmWordLiftTop: -15px;
       --t1-kmWordBottomGap: 26px;
 
-      /* ▼ Type2 전용 */
+      /* ▼ Type2 */
       --t2-kmScale: 1;
       --t2-kmWordSize: 50px;
       --t2-kmWordGap: 0px;
@@ -62,12 +62,12 @@
       --t2-kmWordLiftTop: -15px;
       --t2-kmWordBottomGap: 26px;
 
-      /* ▼ Monthly 전용(필요시 조절) */
+      /* ▼ Monthly 모드 */
       --m-statGap: var(--statGap);
       --m-kmWordBottomGap: var(--kmWordBottomGap);
       --m-kmScale: 1;
 
-      /* ▼ Daily 전용(필요시 조절) */
+      /* ▼ Daily 모드 */
       --d-statGap: var(--statGap);
       --d-kmWordBottomGap: var(--kmWordBottomGap);
       --d-kmScale: 1;
@@ -194,6 +194,7 @@
       white-space:nowrap;
       transform: translate(0,0);
       transform-origin:left bottom;
+      text-align:left;
     }
 
     .km-row-wrap{ display:flex; justify-content:flex-start; margin:6px auto var(--gapBelowKm); width:100%; }
@@ -214,55 +215,55 @@
       margin-left: calc(var(--gridFirstColIndent) + var(--kmWordIndent));
     }
 
-/* 하단 통계 */
-.grid{
-  --cols: 2; /* type2 기본 2열 */
-  display:grid;
-  grid-template-columns: repeat(var(--cols), max-content);
-  column-gap: var(--statGap);
-  row-gap: 8px;
-  margin-top:0; color:inherit; text-align:left; align-items:start;
-}
-/* 1열(첫 칸) 들여쓰기 */
-.grid > div:nth-child(1){ grid-column:1 / 2; margin-left:var(--gridFirstColIndent); }
-.grid > div:nth-child(2){ grid-column:2 / 3; transform: translateX(var(--statPull)); }
-.grid > div:nth-child(3){ grid-column:3 / 4; transform: translateX(var(--statPull2)); }
+    /* 하단 통계 (좌측 정렬 강제) */
+    .grid{
+      --cols: 2; /* type2 기본 2열 */
+      display:grid;
+      grid-template-columns: repeat(var(--cols), max-content);
+      column-gap: var(--statGap);
+      row-gap: 8px;
+      margin-top:0; color:inherit; text-align:left; align-items:start;
+      justify-content:start;   /* ← 좌측 정렬 */
+      justify-items:start;     /* ← 좌측 정렬 */
+    }
+    /* 1열(첫 칸) 들여쓰기 */
+    .grid > div:nth-child(1){ grid-column:1 / 2; margin-left:var(--gridFirstColIndent); }
+    .grid > div:nth-child(2){ grid-column:2 / 3; transform: translateX(var(--statPull)); }
+    .grid > div:nth-child(3){ grid-column:3 / 4; transform: translateX(var(--statPull2)); }
 
-.stat{ font-size: var(--statSize); font-weight:800; }
-.label{ font-size: var(--labelSize); opacity:.9 }
+    .stat{ font-size: var(--statSize); font-weight:800; }
+    .label{ font-size: var(--labelSize); opacity:.9 }
 
-/* =========================
-   Type 1 (세로 스택)
-   라벨이 숫자 '위'에 온다
-   ========================= */
-body.type1 .grid{
-  --cols: 1;
-  grid-template-columns: 1fr;
-}
-body.type1 .grid > div{
-  display:flex;
-  flex-direction: column;   /* label 위, stat 아래 */
-  gap:6px;
-  margin-left: var(--gridFirstColIndent);
-  transform:none !important;
-  grid-column: 1 / 2 !important; /* ← 2/3열 강제 무효화 */
-}
-body.type1 .grid > div + div{ margin-top:12px; }
-
-/* =========================
-   Type 2 (가로 열)
-   라벨이 숫자 '아래'에 온다
-   ========================= */
-body.type2 .grid > div{
-  display:flex;
-  flex-direction: column-reverse; /* stat 위, label 아래 */
-  gap:6px;
-}
-    /* label이 위 / stat이 아래 */
-    body.type1 .grid > div .label{ order: 0; }
-    body.type1 .grid > div .stat { order: 1; }
-    /* 세로 간격 */
+    /* =========================
+       Type 1 (세로 스택)
+       라벨이 숫자 '위'
+       ========================= */
+    body.type1 .grid{
+      --cols: 1;
+      grid-template-columns: 1fr;
+    }
+    body.type1 .grid > div{
+      display:flex;
+      flex-direction: column;     /* label 위, stat 아래 */
+      gap:6px;
+      margin-left: var(--gridFirstColIndent);
+      transform:none !important;
+      grid-column: 1 / 2 !important; /* 가로 열 배치 무효화 */
+    }
     body.type1 .grid > div + div{ margin-top:12px; }
+
+    /* =========================
+       Type 2 (가로 열)
+       라벨이 숫자 '아래'
+       ========================= */
+    body.type2 .grid > div{
+      display:flex;
+      flex-direction: column-reverse; /* stat 위, label 아래 */
+      gap:6px;
+      margin-left:0;
+    }
+    body.type2 .grid > div .stat { order:0; }
+    body.type2 .grid > div .label{ order:1; }
 
     body.focus header{ display:none; }
     body.focus .top-ui{ display:none; }
@@ -296,7 +297,7 @@ body.type2 .grid > div{
 </head>
 <body class="bg-white type1 mode-daily">
   <header>
-    <h1>RUNIMATOR V.0.10.1 BETA</h1>
+    <h1>RUNIMATOR V.0.10.2 BETA</h1>
     <div class="subtitle">by JS @runarchive.js</div>
   </header>
 
@@ -462,7 +463,7 @@ body.type2 .grid > div{
         }
       }
 
-      // Distance (월간 한자리 소수까지 허용)
+      // Distance
       const distMatch = text.match(/\b(\d{1,3}\.\d)\d*\b/) || text.match(/\b(\d{1,2}\.\d{1,2})\b/);
 
       // Runs
@@ -477,7 +478,7 @@ body.type2 .grid > div{
       };
     }
 
-    /* ---------- KM 표시 포맷 (상단 숫자만) ---------- */
+    /* ---------- KM 표시 포맷 ---------- */
     function formatKm(value){
       const v = Math.max(0, Number(value) || 0);
       if (recordType === 'monthly') {
@@ -516,7 +517,6 @@ body.type2 .grid > div{
     }
 
     function updateGridCols(){
-      // type1은 항상 1열(세로 스택), type2는 monthly=3열, daily=2열
       if (layoutType === 'type1') {
         statsGrid.style.setProperty('--cols', 1);
       } else {
@@ -526,14 +526,11 @@ body.type2 .grid > div{
     }
 
     function renderStats(){
-      // 라벨 고정
       document.getElementById('pace-label').textContent = 'Avg. Pace';
       document.getElementById('time-label').textContent = 'Time';
 
-      // 모드별 Runs 노출
       runsWrap.style.display = (recordType === 'monthly') ? 'block' : 'none';
 
-      // 값 갱신 (OCR 완료 즉시 반영)
       if (recordType === 'monthly') {
         document.getElementById('runs').textContent = (parsedData.runs ?? '-') + '';
       }
@@ -555,7 +552,7 @@ body.type2 .grid > div{
           const result = await Tesseract.recognize(img, 'eng');
           parsedData = parseFromOCR(result.data.text);
 
-          // OCR 끝나면 Pace/Time과 동일하게 Runs도 즉시 출력
+          /* OCR 직후 Runs/Pace/Time 즉시 반영 */
           renderStats();
 
           status.textContent = "Uploaded!";
@@ -629,7 +626,7 @@ body.type2 .grid > div{
       document.documentElement.style.setProperty('--kmWordIndent', `${conf.kmWord}px`);
     }
 
-    // ---- Fit number row (타입/모드/폰트 스케일 모두 반영) ----
+    // ---- Fit number row ----
     function fitKmRow(){
       const stage   = document.getElementById('stage');
       const row     = document.getElementById('km-row');
@@ -761,12 +758,12 @@ body.type2 .grid > div{
       const btn = modeRow.querySelector(`button[data-mode="${CSS.escape(mode)}"]`);
       updateActive(modeRow, btn);
 
-      // Runs 노출/비노출
       runsWrap.style.display = (mode==='monthly') ? 'block' : 'none';
 
       // KM 초기 포맷도 모드 규칙 반영
       renderKm(document.getElementById('km').textContent.replace(/[^\d.]/g,'') || 0);
       renderStats();
+      updateGridCols();  // 열 수 강제
       fitKmRow();
     }
 
@@ -810,7 +807,8 @@ body.type2 .grid > div{
       setFont(selectedFont);
       applyFontIndents(selectedFont, layoutType);
 
-      renderStats();   // ← 타입 변경 시 그리드 형태 즉시 재반영
+      renderStats();
+      updateGridCols();  // 열 수 강제
       fitKmRow();
     }
 
@@ -921,7 +919,7 @@ body.type2 .grid > div{
       setTypeKmWordStyle('type2', { size:'36px', gap:'16px' });
       setTypeKmScale('type2', 1.00);
 
-      // 모드별(원하면 바꿔서 쓰기)
+      // 모드별 배수 (필요 시 조정)
       setModeStyle('daily',   { kmScale:1.0 });
       setModeStyle('monthly', { kmScale:1.0 });
 
