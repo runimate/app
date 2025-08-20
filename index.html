@@ -429,7 +429,7 @@
     /* 폰트별 자동 스타일 매핑 (날짜/간격/위치 포함) */
     const fontSettings = {
       "Anton": { base: 200, weight: 700, dateSize: "60px", dateGap: "10px", dateWeight: 700 },
-      "Big Shoulders Inline Text": { base: 200, weight: 800, dateSize: "40px", dateGap: "20px", dateWeight: 800 },
+      "Big Shoulders Inline Text": { base: 200, weight: 800, dateSize: "40px", dateGap: "20px", dateWeight: 800, dateTranslate: "8px, 0px" },
       "Alfa Slab One": { base: 180, weight: 700, dateSize: "45px", dateGap: "15px", dateWeight: 900, dateTranslate: "0px, 20px" },
       "Orbitron": { base: 160, weight: 700, dateSize: "38px", dateGap: "10px", dateWeight: 700, dateTranslate: "10px, 20px" },
       "Special Gothic Expanded One": { base: 160, weight: 700, dateSize: "36px", dateGap: "0px", dateWeight: 700, dateTranslate: "0px, 20px" },
@@ -441,11 +441,11 @@
     /* ✅ 폰트별 하단 데이터 좌측 마진 (D2/M2 전용) 맵 */
     const fontStatsOffsetMap = {
       // 필요에 맞게 조정해 사용하세요 (px/%, rem 모두 가능)
-      "Anton":                    { daily: "0px",  monthly: "0px"  },
-      "Big Shoulders Inline Text":{ daily: "6px",  monthly: "8px"  },
+      "Anton":                    { daily: "5px",  monthly: "5px"  },
+      "Big Shoulders Inline Text":{ daily: "8px",  monthly: "8px"  },
       "Alfa Slab One":            { daily: "4px",  monthly: "6px"  },
       "Orbitron":                 { daily: "10px", monthly: "12px" },
-      "Special Gothic Expanded One": { daily: "2px", monthly: "4px" },
+      "Special Gothic Expanded One": { daily: "6px", monthly: "6px" },
       "Graduate":                 { daily: "6px",  monthly: "8px"  },
       "Gloria Hallelujah":        { daily: "8px",  monthly: "10px" },
       "Rock Salt":                { daily: "20px", monthly: "24px" }
