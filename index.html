@@ -247,11 +247,11 @@
       margin-top:0; color:inherit; text-align:left;
       justify-content:start;
       justify-items:start;
-      align-items: baseline;            /* ★ 숫자 라인 높이 맞춤 */
+      align-items: baseline;            /* 숫자 라인 높이 맞춤 (기본) */
     }
 
     .stat{
-      display:inline-block;             /* ★ baseline 효과 확실히 */
+      display:inline-block;             /* baseline 효과 확실히 */
       font-size: var(--statSize);
       font-weight:800;
       line-height:1;
@@ -304,6 +304,20 @@
     }
     body.bg-black .date-input{ color:#fff; }
 
+    /* === Date Tuning UI === */
+    .tune-card{
+      border:1px solid #ddd; border-radius:12px; padding:12px; margin-top:8px;
+    }
+    .seg-row.cols-3{ grid-template-columns:repeat(3,1fr); }
+    .mini{ font-size:12px; opacity:.8; }
+    .grid-3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+    .input{
+      height:40px; border:3px solid var(--fg); border-radius:10px; background:transparent; color:inherit; font-weight:800; padding:0 10px; font-size:14px;
+    }
+    .row{ display:flex; gap:8px; align-items:center; }
+    .btn{ height:40px; border-radius:10px; border:3px solid var(--fg); background:transparent; color:inherit; font-weight:800; padding:0 12px; cursor:pointer; }
+    .btn.is-active{ background:var(--fg); color:var(--bg); }
+
     /* 포커스 화면 중앙정렬 */
     body.focus .stage-outer{
       min-height:100vh;
@@ -318,7 +332,7 @@
 </head>
 <body class="bg-white type1 mode-daily">
   <header>
-    <h1>RUNIMATOR V.0.10.7 BETA</h1>
+    <h1>RUNIMATOR V.0.10.8 BETA</h1>
     <div class="subtitle">by JS @runarchive.js</div>
   </header>
 
@@ -376,6 +390,36 @@
           <button data-font="Graduate" style="font-family:'Graduate', serif;">School</button>
           <button data-font="Gloria Hallelujah" style="font-family:'Gloria Hallelujah', cursive;">Gloria</button>
           <button data-font="Rock Salt" style="font-family:'Rock Salt', cursive;">Rock</button>
+        </div>
+      </section>
+
+      <!-- Date Tuning -->
+      <section class="section tune-card">
+        <div class="row" style="justify-content:space-between;">
+          <div class="control-title">Date Tuning <span class="mini">(폰트/타입별 적용)</span></div>
+          <div class="seg-row cols-3" id="combo-row" style="width:280px;">
+            <button class="btn" data-combo="d2">D2</button>
+            <button class="btn" data-combo="m1">M1</button>
+            <button class="btn" data-combo="m2">M2</button>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top:8px;">
+          <div>
+            <div class="mini">Size (px)</div>
+            <input id="tune-size" class="input" type="number" step="1" placeholder="e.g. 60"/>
+          </div>
+          <div>
+            <div class="mini">Gap (px)</div>
+            <input id="tune-gap" class="input" type="number" step="1" placeholder="e.g. 10"/>
+          </div>
+          <div>
+            <div class="mini">Translate (x,y)</div>
+            <input id="tune-translate" class="input" type="text" placeholder="e.g. 0px, 20px"/>
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <button id="tune-save" class="btn">Save</button>
+          <button id="tune-reset" class="btn">Reset</button>
         </div>
       </section>
 
@@ -446,7 +490,37 @@
     const paceWrap    = document.getElementById('pace-wrap');
     const timeWrap    = document.getElementById('time-wrap');
 
+    const comboRow    = document.getElementById('combo-row');
+    const sizeInput   = document.getElementById('tune-size');
+    const gapInput    = document.getElementById('tune-gap');
+    const transInput  = document.getElementById('tune-translate');
+    const saveBtn     = document.getElementById('tune-save');
+    const resetBtn    = document.getElementById('tune-reset');
+
     const MONTH_ABBR = ["JAN.","FEB.","MAR.","APR.","MAY.","JUN.","JUL.","AUG.","SEP.","OCT.","NOV.","DEC."];
+
+    /* === 폰트별 기본값(미세 튜닝용) === */
+    const fontSettings = {
+      "Anton": { base: 200, weight: 700, dateSize: "60px", dateGap: "10px", dateWeight: 700 },
+      "Big Shoulders Inline Text": { base: 200, weight: 800, dateSize: "40px", dateGap: "20px", dateWeight: 800 },
+      "Alfa Slab One": { base: 180, weight: 700, dateSize: "45px", dateGap: "15px", dateWeight: 900, dateTranslate: "0px, 20px" },
+      "Orbitron": { base: 160, weight: 700, dateSize: "38px", dateGap: "10px", dateWeight: 700, dateTranslate: "10px, 20px" },
+      "Special Gothic Expanded One": { base: 160, weight: 700, dateSize: "36px", dateGap: "0px", dateWeight: 700, dateTranslate: "0px, 20px" },
+      "Graduate": { base: 200, weight: 700, dateSize: "42px", dateGap: "10px", dateWeight: 700, dateTranslate: "7px, 20px" },
+      "Gloria Hallelujah": { base: 190, weight: 700, dateSize: "44px", dateGap: "0px", dateWeight: 700, dateTranslate: "7px, 20px"  },
+      "Rock Salt": { base: 140, weight: 700, dateSize: "36px", dateGap: "40px", dateWeight: 600, kmWordGap: "40px", translate: "25px,-25px", dateTranslate: "20px,0px" }
+    };
+
+    /* 폰트/조합별 사용자 튜닝 저장소 { [font]: { d2:{}, m1:{}, m2:{} } } */
+    const dateTune = {};
+
+    function currentComboKey(){
+      if(recordType==='daily' && layoutType==='type2') return 'd2';
+      if(recordType==='monthly' && layoutType==='type1') return 'm1';
+      if(recordType==='monthly' && layoutType==='type2') return 'm2';
+      // 그 외 조합(D1 등)은 날짜 안 보임 -> D2 기준값 편집하도록 둠
+      return 'd2';
+    }
 
     function formatDateText(d){
       const day = String(d.getDate());
@@ -463,7 +537,7 @@
       return ``;                                     // D1 숨김
     }
 
-    /* ---------- OCR 파싱 ---------- */
+    /* ---------- 공통 유틸 ---------- */
     function zero2(n){ return String(n).padStart(2,'0'); }
     function normalizeOCR(s){
       return s.replace(/[\u2018\u2019\u2032\u2035]/g,"'")
@@ -474,7 +548,63 @@
               .trim();
     }
 
-    // ★ Runs 인식 강화 버전
+    /* ---------- 이미지 전처리(업스케일+이진화) ---------- */
+    async function preprocessImageToDataURL(imgDataURL, scale = 2.0, threshold = 180){
+      return new Promise(resolve=>{
+        const img = new Image();
+        img.onload = ()=>{
+          const w = Math.round(img.width * scale);
+          const h = Math.round(img.height * scale);
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          const ctx = c.getContext('2d', { willReadFrequently:true });
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(img, 0, 0, w, h);
+          const im = ctx.getImageData(0,0,w,h);
+          const data = im.data;
+          for(let i=0;i<data.length;i+=4){
+            const r=data[i], g=data[i+1], b=data[i+2];
+            const gray = (r*0.299 + g*0.587 + b*0.114);
+            const v = gray > threshold ? 255 : 0;
+            data[i]=data[i+1]=data[i+2]=v; // binarize
+          }
+          ctx.putImageData(im,0,0);
+          resolve(c.toDataURL("image/png"));
+        };
+        img.src = imgDataURL;
+      });
+    }
+
+    /* ---------- Runs word-bbox 기반 추가 추출 ---------- */
+    function extractRunsFromWords(words){
+      if(!Array.isArray(words) || !words.length) return null;
+      const anchors = words.filter(w => (w.text||"").toLowerCase()==='runs');
+      const sameLineNear = (anchor)=>{
+        const same = words.filter(w => w.line === anchor.line);
+        const nums = same
+          .filter(w => /^\d{1,3}$/.test((w.text||'').trim()))
+          .map(w => ({
+            n: +w.text.trim(),
+            dx: Math.abs(((w.bbox&&w.bbox.x0)||0) - ((anchor.bbox&&anchor.bbox.x1)||0))
+          }));
+        if(nums.length){ nums.sort((a,b)=>a.dx-b.dx); return nums[0].n; }
+        const cand = words
+          .filter(w => /^\d{1,3}$/.test((w.text||'').trim()))
+          .map(w => {
+            const ay = (anchor.bbox&&(anchor.bbox.y0+anchor.bbox.y1)/2) || 0;
+            const wy = (w.bbox&&(w.bbox.y0+w.bbox.y1)/2) || 0;
+            return { n:+w.text.trim(), dy: Math.abs(ay - wy) };
+          });
+        if(cand.length){ cand.sort((a,b)=>a.dy-b.dy); return cand[0].n; }
+        return null;
+      };
+      const picks = anchors.map(a=>sameLineNear(a)).filter(v=>Number.isInteger(v));
+      if(!picks.length) return null;
+      picks.sort((a,b)=>a-b);
+      return picks[Math.floor(picks.length/2)];
+    }
+
+    /* ---------- 텍스트 파서 ---------- */
     function parseFromOCR(textRaw){
       const text = normalizeOCR(textRaw);
 
@@ -485,15 +615,13 @@
       let timeH=null,timeM=null,timeS=null,timeRaw=null;
       let m = text.match(/\b(\d{1,2}):(\d{2}):(\d{2})\b/);
       if(m){ timeH=+m[1]; timeM=+m[2]; timeS=+m[3]; timeRaw=`${zero2(timeH)}:${zero2(timeM)}:${zero2(timeS)}`; }
-      else{
-        m = text.match(/\b(\d{1,2}):(\d{2})\b/);
-        if(m){ timeM=+m[1]; timeS=+m[2]; timeRaw=`${zero2(timeM)}:${zero2(timeS)}`; }
-      }
+      else{ m = text.match(/\b(\d{1,2}):(\d{2})\b/);
+            if(m){ timeM=+m[1]; timeS=+m[2]; timeRaw=`${zero2(timeM)}:${zero2(timeS)}`; } }
 
       // Distance (월간: 소수 한자리까지 우선)
       const distMatch = text.match(/\b(\d{1,3}\.\d)\d*\b/) || text.match(/\b(\d{1,2}\.\d{1,2})\b/);
 
-      // ===== Runs 보강 =====
+      // Runs(텍스트 기반 보강 3단계)
       function findRunsStrong(t){
         const lines = t.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
         for(let i=0;i<lines.length;i++){
@@ -606,6 +734,30 @@
       }
     }
 
+    /* ★ M2 숫자 하단 정렬(픽셀맞춤) */
+    function alignStatsBaseline(){
+      if(layoutType !== 'type2') return;
+      const stats = [];
+      const addIfVisible = (id)=>{
+        const wrap = document.getElementById(id+'-wrap');
+        if(getComputedStyle(wrap).display!=='none'){
+          stats.push(document.getElementById(id));
+        }
+      };
+      addIfVisible('runs'); addIfVisible('pace'); addIfVisible('time');
+
+      // 초기화
+      stats.forEach(el=>{ el.style.transform = ''; });
+
+      if(!stats.length) return;
+      const bottoms = stats.map(el=>el.getBoundingClientRect().bottom);
+      const maxBottom = Math.max(...bottoms);
+      stats.forEach((el,i)=>{
+        const dy = Math.round(maxBottom - bottoms[i]);
+        if (dy) el.style.transform = `translateY(${dy}px)`;
+      });
+    }
+
     function renderStats(){
       document.getElementById('pace-label').textContent = 'Avg. Pace';
       document.getElementById('time-label').textContent = 'Time';
@@ -620,7 +772,8 @@
       document.getElementById('time').textContent = formatTimeByType();
 
       updateGridCols();
-      layoutStatsGrid();   // ★ D2/M2 배치 보장
+      layoutStatsGrid();   // D2/M2 배치
+      alignStatsBaseline();// 숫자 하단 맞춤
     }
 
     // ---- Upload ----
@@ -632,13 +785,45 @@
       reader.onload = async () => {
         try{
           const img = reader.result;
-          // ★ 인식 옵션 강화
-          const result = await Tesseract.recognize(img, 'eng', {
+
+          const ocrOpts = {
             tessedit_char_whitelist: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz:/\"' .",
             preserve_interword_spaces: '1',
-            tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK  // psm 6
-          });
-          parsedData = parseFromOCR(result.data.text);
+            tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK
+          };
+
+          // 1) 원본 OCR
+          const res1 = await Tesseract.recognize(img, 'eng', ocrOpts);
+          // 2) 전처리(업스케일+이진화) 후 OCR
+          const pre = await preprocessImageToDataURL(img, 2.0, 180);
+          const res2 = await Tesseract.recognize(pre, 'eng', ocrOpts);
+
+          // 3) 텍스트 파싱
+          const p1 = parseFromOCR(res1.data.text);
+          const p2 = parseFromOCR(res2.data.text);
+
+          // 4) word-bbox로 Runs 보강
+          const rWords1 = extractRunsFromWords(res1.data.words||[]);
+          const rWords2 = extractRunsFromWords(res2.data.words||[]);
+
+          // 5) 결과 병합(중앙값/우선순위)
+          const pick = (a,b)=> (a!=null ? a : b);
+          parsedData = {
+            km: pick(p2.km, p1.km), // 숫자 안정성 때문에 전처리 우선
+            paceMin: pick(p1.paceMin, p2.paceMin),
+            paceSec: pick(p1.paceSec, p2.paceSec),
+            timeH: pick(p1.timeH, p2.timeH),
+            timeM: pick(p1.timeM, p2.timeM),
+            timeS: pick(p1.timeS, p2.timeS),
+            timeRaw: pick(p1.timeRaw, p2.timeRaw),
+            runs: (()=>{
+              const pool = [p1.runs, p2.runs, rWords1, rWords2].filter(v=>Number.isInteger(v));
+              if(!pool.length) return null;
+              pool.sort((x,y)=>x-y);
+              return pool[Math.floor(pool.length/2)]; // 중앙값으로 튐 완화(17→14 등)
+            })()
+          };
+
           renderStats(); // OCR 직후 Runs/Pace/Time 즉시 반영
           status.textContent = "Uploaded!";
         }catch(err){
@@ -765,32 +950,101 @@
       if(targetBtn) targetBtn.classList.add('is-active');
     }
 
+    /* === 폰트 기본값을 CSS 변수에 주입 (튜닝값 없을 때) === */
+    function applyFontDefaultsFromSettings(font){
+      const fs = fontSettings[font] || {};
+      const root = document.documentElement.style;
+
+      // 날짜 기본치
+      const dz = fs.dateSize || '50px';
+      const dg = fs.dateGap  || '10px';
+      const dt = fs.dateTranslate || '0px, 0px';
+
+      // 폰트별 사용자가 이미 튜닝했으면 그대로 두고, 없으면 기본 복사
+      const hasTune = !!dateTune[font];
+      if(!hasTune){
+        root.setProperty('--d2-dateSize', dz);
+        root.setProperty('--d2-dateGap',  dg);
+        root.setProperty('--d2-dateTranslate', dt);
+        root.setProperty('--m1-dateSize', dz);
+        root.setProperty('--m1-dateGap',  dg);
+        root.setProperty('--m1-dateTranslate', dt);
+        root.setProperty('--m2-dateSize', dz);
+        root.setProperty('--m2-dateGap',  dg);
+        root.setProperty('--m2-dateTranslate', dt);
+      }
+
+      // km-word 간격(있을 때만)
+      if(fs.kmWordGap){
+        root.setProperty('--t1-kmWordGap', fs.kmWordGap);
+        root.setProperty('--t2-kmWordGap', fs.kmWordGap);
+      }
+    }
+
+    /* === 저장된 Date Tuning을 CSS 변수에 적용 === */
+    function applyDateTuneFor(font){
+      const tune = dateTune[font]; if(!tune) return;
+      const root = document.documentElement.style;
+      const apply = (key, baseVar) => {
+        const t = tune[key]; if(!t) return;
+        if(t.size)      root.setProperty(`--${baseVar}Size`, t.size);
+        if(t.gap)       root.setProperty(`--${baseVar}Gap`, t.gap);
+        if(t.translate) root.setProperty(`--${baseVar}Translate`, t.translate);
+      };
+      apply('d2','d2-date');
+      apply('m1','m1-date');
+      apply('m2','m2-date');
+    }
+
+    /* === Date Tuning UI <-> 현재 값 동기화 === */
+    function syncDateTuneInputs(){
+      const key = currentComboKey();
+      const cs = getComputedStyle(document.body);
+      const size = cs.getPropertyValue('--dateSize').trim().replace('px','');
+      const gap  = cs.getPropertyValue('--dateGap').trim().replace('px','');
+      const trans= cs.getPropertyValue('--dateTranslate').trim();
+
+      sizeInput.value = size || '';
+      gapInput.value  = gap  || '';
+      transInput.value= trans || '';
+
+      // 버튼 active
+      [...comboRow.querySelectorAll('.btn')].forEach(b=>b.classList.toggle('is-active', b.dataset.combo===key));
+    }
+
     // ---- Font switching ----
     function setFont(font){
       selectedFont = font;
 
       const km       = document.getElementById("km");
       const dateDisp = document.getElementById("date-display");
+      const fs = fontSettings[font] || {};
 
+      // KM 숫자 폰트/크기/두께
       km.style.fontFamily = font + ", sans-serif";
+      const fallbackBase = {"Anton":200,"Big Shoulders Inline Text":200,"Alfa Slab One":180,"Orbitron":160,"Special Gothic Expanded One":160,"Graduate":200,"Gloria Hallelujah":190,"Rock Salt":140}[font] || 200;
+      km.style.fontSize   = ((fs.base!=null ? fs.base : fallbackBase)) + "px";
+      km.style.fontWeight = (fs.weight!=null ? fs.weight : 700);
+      km.style.transform  = fs.translate ? `translate(${fs.translate})` : "translate(0,0)";
 
-      const strongFonts = new Set(["Anton","Orbitron","Special Gothic Expanded One","Graduate","Gloria Hallelujah"]);
-      dateDisp.style.fontFamily = strongFonts.has(font) ? (font + ", sans-serif") : "";
-      dateDisp.style.fontWeight = 800;
+      // 날짜 텍스트 가독성
+      dateDisp.style.fontFamily = font + ", sans-serif";
+      dateDisp.style.fontWeight = (fs.dateWeight!=null ? fs.dateWeight : 800);
 
-      const fontBase = { "Anton":200,"Big Shoulders Inline Text":200,"Alfa Slab One":180,"Orbitron":160,"Special Gothic Expanded One":160,"Graduate":200,"Gloria Hallelujah":190,"Rock Salt":140 };
-      km.style.fontSize   = (fontBase[font] ?? 200) + "px";
-      km.style.fontWeight = 700;
-      km.style.transform  = "translate(0,0)";
-
+      // 버튼 active
       const targetBtn = fontGridEl.querySelector(`button[data-font="${CSS.escape(font)}"]`);
       updateActive(fontGridEl, targetBtn);
 
+      // 폰트별 인덴트
       applyFontIndents(selectedFont, layoutType);
 
+      // 폰트 기본값 주입 + 사용자 튜닝 적용
+      applyFontDefaultsFromSettings(selectedFont);
+      applyDateTuneFor(selectedFont);
+      renderDateDisplay();
       fitKmRow();
       renderStats();
-      renderDateDisplay();
+      syncDateTuneInputs();
     }
 
     // 테마 적용
@@ -813,6 +1067,7 @@
       updateGridCols();
       fitKmRow();
       applyLayoutVisual();
+      syncDateTuneInputs();
     }
 
     function setDateFromInput(){
@@ -859,8 +1114,10 @@
 
       renderStats();
       updateGridCols();
-      layoutStatsGrid(); // ★
+      layoutStatsGrid();
       fitKmRow();
+      alignStatsBaseline();
+      syncDateTuneInputs();
     }
 
     function setLayout(type){
@@ -869,7 +1126,7 @@
       applyLayoutVisual();
     }
 
-    // 날짜 스타일 조정 API
+    // 날짜 스타일 조정 API (CSS 변수에 직접)
     function setDateStyle(which, { size, gap, translate } = {}){
       const root = document.documentElement.style;
       if(which==='d2'){ if(size) root.setProperty('--d2-dateSize', size); if(gap) root.setProperty('--d2-dateGap', gap); if(translate) root.setProperty('--d2-dateTranslate', translate); }
@@ -877,6 +1134,45 @@
       else if(which==='m2'){ if(size) root.setProperty('--m2-dateSize', size); if(gap) root.setProperty('--m2-dateGap', gap); if(translate) root.setProperty('--m2-dateTranslate', translate); }
       renderDateDisplay();
     }
+
+    // === Date Tuning UI 동작 ===
+    function activeComboFromUI(){
+      const btn = comboRow.querySelector('.btn.is-active');
+      return btn ? btn.dataset.combo : currentComboKey();
+    }
+    comboRow.addEventListener('click', (e)=>{
+      const btn = e.target.closest('.btn'); if(!btn) return;
+      [...comboRow.querySelectorAll('.btn')].forEach(b=>b.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      syncDateTuneInputs();
+    });
+
+    saveBtn.addEventListener('click', ()=>{
+      const combo = activeComboFromUI();
+      const size = sizeInput.value ? `${parseInt(sizeInput.value,10)}px` : null;
+      const gap  = gapInput.value  ? `${parseInt(gapInput.value,10)}px`  : null;
+      const tr   = transInput.value || null;
+
+      dateTune[selectedFont] = dateTune[selectedFont] || { d2:{}, m1:{}, m2:{} };
+      if(size) dateTune[selectedFont][combo].size = size;
+      if(gap)  dateTune[selectedFont][combo].gap  = gap;
+      if(tr)   dateTune[selectedFont][combo].translate = tr;
+
+      // 즉시 적용
+      setDateStyle(combo, { size, gap, translate: tr });
+      renderDateDisplay();
+      syncDateTuneInputs();
+    });
+
+    resetBtn.addEventListener('click', ()=>{
+      const combo = activeComboFromUI();
+      if(dateTune[selectedFont]) delete dateTune[selectedFont][combo];
+      // 폰트 기본으로 되돌림
+      applyFontDefaultsFromSettings(selectedFont);
+      applyDateTuneFor(selectedFont);
+      renderDateDisplay();
+      syncDateTuneInputs();
+    });
 
     // 이벤트 바인딩
     fontGridEl.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-font]'); if(btn) setFont(btn.dataset.font); });
@@ -896,8 +1192,8 @@
       document.getElementById('km').textContent = recordType==='monthly' ? "0.0" : "0.00";
     }
 
-    window.addEventListener('resize', ()=>{ scaleStageCanvas(); fitKmRow(); });
-    window.addEventListener('orientationchange', ()=> { setTimeout(()=>{ scaleStageCanvas(); fitKmRow(); }, 50); });
+    window.addEventListener('resize', ()=>{ scaleStageCanvas(); fitKmRow(); alignStatsBaseline(); });
+    window.addEventListener('orientationchange', ()=> { setTimeout(()=>{ scaleStageCanvas(); fitKmRow(); alignStatsBaseline(); }, 50); });
 
     /* ===========================
        타입/모드별 제어 API
@@ -972,6 +1268,9 @@
       document.getElementById('date-input').value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
       selectedDate = t;
 
+      // Date Tuning 초기 버튼 상태(D2 기본)
+      updateActive(comboRow, comboRow.querySelector('[data-combo="d2"]'));
+
       scaleStageCanvas();
       applyLayoutVisual();
 
@@ -980,6 +1279,7 @@
 
       fitKmRow();
       renderStats();
+      syncDateTuneInputs();
     };
   </script>
 </body>
