@@ -473,6 +473,8 @@
               .replace(/[ ]{2,}/g,' ')
               .trim();
     }
+
+    // ★ Runs 인식 강화 버전
     function parseFromOCR(textRaw){
       const text = normalizeOCR(textRaw);
 
@@ -483,21 +485,51 @@
       let timeH=null,timeM=null,timeS=null,timeRaw=null;
       let m = text.match(/\b(\d{1,2}):(\d{2}):(\d{2})\b/);
       if(m){ timeH=+m[1]; timeM=+m[2]; timeS=+m[3]; timeRaw=`${zero2(timeH)}:${zero2(timeM)}:${zero2(timeS)}`; }
-      else{ m = text.match(/\b(\d{1,2}):(\d{2})\b/);
-            if(m){ timeM=+m[1]; timeS=+m[2]; timeRaw=`${zero2(timeM)}:${zero2(timeS)}`; } }
+      else{
+        m = text.match(/\b(\d{1,2}):(\d{2})\b/);
+        if(m){ timeM=+m[1]; timeS=+m[2]; timeRaw=`${zero2(timeM)}:${zero2(timeS)}`; }
+      }
 
       // Distance (월간: 소수 한자리까지 우선)
       const distMatch = text.match(/\b(\d{1,3}\.\d)\d*\b/) || text.match(/\b(\d{1,2}\.\d{1,2})\b/);
 
-      // Runs (보강)
-      let runs = null;
-      // 1) "Runs 17" / "Runs: 17"
-      let r = text.match(/\bRuns?\b[^\d]{0,10}(\d{1,3})/i);
-      // 2) "17 Runs"
-      if(!r) r = text.match(/\b(\d{1,3})\s*Runs?\b/i);
-      // 3) 줄바꿈으로 분리된 "Runs\n17" 또는 "17\nRuns"
-      if(!r) r = text.match(/Runs?[^\S\r\n]*[\r\n]+[^\d\r\n]*?(\d{1,3})/i) || text.match(/(\d{1,3})[^\S\r\n]*[\r\n]+[^\S\r\n]*Runs?/i);
-      if(r) runs = parseInt(r[1] || r[0], 10);
+      // ===== Runs 보강 =====
+      function findRunsStrong(t){
+        const lines = t.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+        for(let i=0;i<lines.length;i++){
+          const L = lines[i];
+          if (/^Runs?$/i.test(L) || /\bRuns?\b/i.test(L)){
+            const prev = lines[i-1]||"", next = lines[i+1]||"";
+            let mm;
+            if ((mm = prev.match(/^\s*(\d{1,3})\s*$/))) return +mm[1];
+            if ((mm = next.match(/^\s*(\d{1,3})\s*$/))) return +mm[1];
+            if ((mm = L.match(/\b(\d{1,3})\b/)))       return +mm[1];
+          }
+        }
+        return null;
+      }
+      function findRunsNearWord(t){
+        const idx = t.search(/\bRuns?\b/i);
+        if (idx === -1) return null;
+        const before = t.slice(Math.max(0, idx-60), idx);
+        const after  = t.slice(idx, idx+60);
+        let mm;
+        mm = before.match(/(\d{1,3})(?![\d:])/g);
+        if (mm && mm.length) return +mm[mm.length-1];
+        mm = after.match(/(\d{1,3})(?![\d:])/);
+        if (mm) return +mm[1];
+        return null;
+      }
+      function findRunsHeuristic(t){
+        const pacePos = t.search(/\d{1,2}\s*'\s*\d{2}/);
+        const scope = pacePos>0 ? t.slice(0, pacePos) : t;
+        const cands = (scope.match(/\b\d{1,3}\b/g) || []).map(s=>+s).filter(n=>n>=0 && n<=999);
+        return cands.length ? cands[cands.length-1] : null;
+      }
+
+      let runs = findRunsStrong(text);
+      if (runs==null) runs = findRunsNearWord(text);
+      if (runs==null) runs = findRunsHeuristic(text);
 
       return {
         km:   distMatch ? distMatch[1] : null,
@@ -581,7 +613,7 @@
       runsWrap.style.display = (recordType === 'monthly') ? 'block' : 'none';
 
       if (recordType === 'monthly') {
-        const runsVal = (parsedData.runs == null || Number.isNaN(parsedData.runs)) ? '--' : parsedData.runs; /* null이면 -- */
+        const runsVal = (parsedData.runs == null || Number.isNaN(parsedData.runs)) ? '--' : parsedData.runs;
         document.getElementById('runs').textContent = String(runsVal);
       }
       document.getElementById('pace').textContent = formatPaceByType();
@@ -600,7 +632,12 @@
       reader.onload = async () => {
         try{
           const img = reader.result;
-          const result = await Tesseract.recognize(img, 'eng');
+          // ★ 인식 옵션 강화
+          const result = await Tesseract.recognize(img, 'eng', {
+            tessedit_char_whitelist: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz:/\"' .",
+            preserve_interword_spaces: '1',
+            tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK  // psm 6
+          });
           parsedData = parseFromOCR(result.data.text);
           renderStats(); // OCR 직후 Runs/Pace/Time 즉시 반영
           status.textContent = "Uploaded!";
