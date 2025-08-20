@@ -33,6 +33,9 @@
       --gridFirstColIndent: 5px;
       --kmWordIndent: 0px;
 
+      /* 하단 데이터(stats) 좌측 마진 (D2/M2 전용) */
+      --statsLeftOffset: 0px;
+
       /* 수직 간격 */
       --kmWordLiftTop: 0px;
       --kmWordBottomGap: 26px;
@@ -157,7 +160,7 @@
     .status{ color:#FF9000; font-weight:700; font-size:13px; }
 
     .row-head{ display:flex; justify-content:space-between; gap:10px; margin:10px 0 6px; }
-    .row-head .label{ font-size:13px; font-weight:800; opacity:.9; }
+    .row-head .label{ font-size:13px; font-weight:800; }
 
     .seg-row, .bg-row{ display:grid; gap:10px; }
     .seg-row.cols-2{ grid-template-columns:repeat(2,1fr); }
@@ -249,18 +252,17 @@
       align-items: baseline;            /* 숫자 라인 높이 맞춤 (기본) */
     }
 
-    .stat{
-      display:inline-block;             /* baseline 효과 확실히 */
-      font-size: var(--statSize);
-      font-weight:800;
-      line-height:1;
-      font-variant-numeric: tabular-nums;  /* 자릿수 정렬 */
-      -moz-font-feature-settings: "tnum";
-      font-feature-settings: "tnum";
+    /* ✅ D2/M2: label이 숫자 아래로 오도록 Type2에서만 column-reverse */
+    body.type2 .grid > div{
+      display:flex;
+      flex-direction: column-reverse;
+      gap:6px;
+      margin-left:0;
     }
-    .label{ font-size: var(--labelSize); opacity:.9 }
+    body.type2 .grid > div .stat { order:0; }
+    body.type2 .grid > div .label{ order:1; }
 
-    /* Type1(세로 스택) — 라벨이 숫자 위 */
+    /* ✅ Type1: label이 숫자 위 */
     body.type1 .grid{
       --cols: 1;
       grid-template-columns: 1fr;
@@ -275,15 +277,19 @@
     }
     body.type1 .grid > div + div{ margin-top:12px; }
 
-    /* Type2(가로) — 라벨 아래 */
-    body.type2 .grid > div{
-      display:flex;
-      flex-direction: column-reverse;
-      gap:6px;
-      margin-left:0;
+    /* ✅ 폰트별 좌측 마진 조정 (D2/M2 전용) */
+    body.type2 #stats-grid{ margin-left: var(--statsLeftOffset); }
+
+    .stat{
+      display:inline-block;
+      font-size: var(--statSize);
+      font-weight:800;
+      line-height:1;
+      font-variant-numeric: tabular-nums;
+      -moz-font-feature-settings: "tnum";
+      font-feature-settings: "tnum";
     }
-    body.type2 .grid > div .stat { order:0; }
-    body.type2 .grid > div .label{ order:1; }
+    .label{ font-size: var(--labelSize); opacity:.9 }
 
     body.focus header{ display:none; }
     body.focus .top-ui{ display:none; }
@@ -296,7 +302,6 @@
     .control-title.title-left { text-align:left; margin:14px 0 8px; }
 
     .date-row{ display:none; grid-template-columns:1fr; gap:8px; margin-top:12px; }
-    .date-row .control-title{ margin:0; }
     .date-input{
       height:44px; border:3px solid var(--fg); border-radius:var(--radius);
       background:transparent; color:#000; font-weight:700; padding:0 12px; font-size:16px;
@@ -431,6 +436,19 @@
       "Graduate": { base: 200, weight: 700, dateSize: "42px", dateGap: "10px", dateWeight: 700, dateTranslate: "7px, 20px" },
       "Gloria Hallelujah": { base: 190, weight: 700, dateSize: "44px", dateGap: "0px", dateWeight: 700, dateTranslate: "7px, 20px" },
       "Rock Salt": { base: 140, weight: 700, dateSize: "36px", dateGap: "40px", dateWeight: 600, kmWordGap: "40px", translate: "25px,-25px", dateTranslate: "20px,0px" }
+    };
+
+    /* ✅ 폰트별 하단 데이터 좌측 마진 (D2/M2 전용) 맵 */
+    const fontStatsOffsetMap = {
+      // 필요에 맞게 조정해 사용하세요 (px/%, rem 모두 가능)
+      "Anton":                    { daily: "0px",  monthly: "0px"  },
+      "Big Shoulders Inline Text":{ daily: "6px",  monthly: "8px"  },
+      "Alfa Slab One":            { daily: "4px",  monthly: "6px"  },
+      "Orbitron":                 { daily: "10px", monthly: "12px" },
+      "Special Gothic Expanded One": { daily: "2px", monthly: "4px" },
+      "Graduate":                 { daily: "6px",  monthly: "8px"  },
+      "Gloria Hallelujah":        { daily: "8px",  monthly: "10px" },
+      "Rock Salt":                { daily: "20px", monthly: "24px" }
     };
 
     let parsedData = {
@@ -758,7 +776,7 @@
               const pool = [p1.runs, p2.runs, rWords1, rWords2].filter(v=>Number.isInteger(v));
               if(!pool.length) return null;
               pool.sort((x,y)=>x-y);
-              return pool[Math.floor(pool.length/2)]; // 중앙값으로 튐 완화(17→14 등)
+              return pool[Math.floor(pool.length/2)];
             })()
           };
 
@@ -832,6 +850,17 @@
       const conf = (fontIndentMap[font] && fontIndentMap[font][type]) || defaults;
       document.documentElement.style.setProperty('--gridFirstColIndent', `${conf.grid}px`);
       document.documentElement.style.setProperty('--kmWordIndent', `${conf.kmWord}px`);
+    }
+
+    /* ✅ 폰트별 하단 데이터 좌측 마진 적용 (D2/M2) */
+    function applyFontStatsOffset(font){
+      if (layoutType !== 'type2') { // type1에서는 사용 안 함
+        document.documentElement.style.setProperty('--statsLeftOffset', '0px');
+        return;
+      }
+      const map = fontStatsOffsetMap[font] || { daily:"0px", monthly:"0px" };
+      const val = (recordType === 'daily') ? map.daily : map.monthly;
+      document.documentElement.style.setProperty('--statsLeftOffset', val || '0px');
     }
 
     // ---- Fit number row ----
@@ -914,35 +943,32 @@
         dateDisp.style.fontFamily = font + ", sans-serif";
         dateDisp.style.fontWeight = (fs.dateWeight ?? 700);
       } else {
-        dateDisp.style.fontFamily = "";     // 기본 상속(= Kilometers와 동일한 계열)
+        dateDisp.style.fontFamily = "";     // 기본 상속
         dateDisp.style.fontWeight = 700;
       }
 
-      // 날짜 크기·간격·위치 → CSS 변수에 반영 (D2/M1/M2 동일 정책)
+      // 날짜 크기·간격·위치 → CSS 변수에 반영
       const root = document.documentElement.style;
       const dSize = fs.dateSize || "50px";
       const dGap  = fs.dateGap  || "10px";
       const dTrans= fs.dateTranslate || "0px,0px";
-
       root.setProperty("--d2-dateSize", dSize);
       root.setProperty("--d2-dateGap", dGap);
       root.setProperty("--d2-dateTranslate", dTrans);
-
       root.setProperty("--m1-dateSize", dSize);
       root.setProperty("--m1-dateGap", dGap);
       root.setProperty("--m1-dateTranslate", dTrans);
-
       root.setProperty("--m2-dateSize", dSize);
       root.setProperty("--m2-dateGap", dGap);
       root.setProperty("--m2-dateTranslate", dTrans);
 
-      // 폰트별 들여쓰기/간격 적용
       if (fs.kmWordGap) document.documentElement.style.setProperty('--kmWordGap', fs.kmWordGap);
 
       const targetBtn = fontGridEl.querySelector(`button[data-font="${CSS.escape(font)}"]`);
       updateActive(fontGridEl, targetBtn);
 
       applyFontIndents(selectedFont, layoutType);
+      applyFontStatsOffset(selectedFont);          // ✅ 폰트별 하단 데이터 좌측 마진 적용
       fitKmRow();
       renderStats();
       renderDateDisplay();
@@ -968,6 +994,7 @@
       updateGridCols();
       fitKmRow();
       applyLayoutVisual();
+      applyFontStatsOffset(selectedFont);          // ✅ 모드 변경 시도 재적용
     }
 
     function setDateFromInput(){
@@ -1011,6 +1038,7 @@
 
       setFont(selectedFont);
       applyFontIndents(selectedFont, layoutType);
+      applyFontStatsOffset(selectedFont);          // ✅ 레이아웃 변경 시 재적용
 
       renderStats();
       updateGridCols();
@@ -1133,6 +1161,7 @@
 
       renderKm(0);
       applyFontIndents(selectedFont, layoutType);
+      applyFontStatsOffset(selectedFont);    // ✅ 초기 적용
 
       fitKmRow();
       renderStats();
