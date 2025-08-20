@@ -902,9 +902,21 @@
       km.style.fontWeight = (fs.weight ?? 700);
       km.style.transform  = fs.translate ? `translate(${fs.translate})` : "translate(0,0)";
 
-      // 날짜 텍스트
-      dateDisp.style.fontFamily = font + ", sans-serif";
-      dateDisp.style.fontWeight = (fs.dateWeight ?? 700);
+      // 날짜 폰트: 지정한 5종만 해당 폰트 적용, 나머지는 기본(상속)
+      const dateFontWhitelist = new Set([
+        "Anton",
+        "Orbitron",                         // Tron
+        "Special Gothic Expanded One",      // Gothic
+        "Graduate",                         // School
+        "Gloria Hallelujah"                 // Gloria
+      ]);
+      if (dateFontWhitelist.has(font)) {
+        dateDisp.style.fontFamily = font + ", sans-serif";
+        dateDisp.style.fontWeight = (fs.dateWeight ?? 700);
+      } else {
+        dateDisp.style.fontFamily = "";     // 기본 상속(= Kilometers와 동일한 계열)
+        dateDisp.style.fontWeight = 700;
+      }
 
       // 날짜 크기·간격·위치 → CSS 변수에 반영 (D2/M1/M2 동일 정책)
       const root = document.documentElement.style;
