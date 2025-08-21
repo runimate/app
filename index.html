@@ -440,6 +440,7 @@
 
     /* ✅ 폰트별 하단 데이터 좌측 마진 (D2/M2 전용) 맵 */
     const fontStatsOffsetMap = {
+      // 필요에 맞게 조정해 사용하세요 (px/%, rem 모두 가능)
       "Anton":                    { daily: "5px",  monthly: "5px"  },
       "Big Shoulders Inline Text":{ daily: "8px",  monthly: "8px"  },
       "Alfa Slab One":            { daily: "4px",  monthly: "6px"  },
@@ -529,14 +530,10 @@
       });
     }
 
-    /* ---------- Runs word-bbox 기반 추가 추출 (영/한) ---------- */
+    /* ---------- Runs word-bbox 기반 추가 추출 ---------- */
     function extractRunsFromWords(words){
       if(!Array.isArray(words) || !words.length) return null;
-      const isRunWord = (t)=>{
-        const s=(t||"").toLowerCase();
-        return s==='runs' || s==='run' || t==='러닝' || t==='런닝';
-      };
-      const anchors = words.filter(w => isRunWord(w.text));
+      const anchors = words.filter(w => (w.text||"").toLowerCase()==='runs');
       const sameLineNear = (anchor)=>{
         const same = words.filter(w => w.line === anchor.line);
         const nums = same
@@ -562,12 +559,12 @@
       return picks[Math.floor(picks.length/2)];
     }
 
-    /* ---------- 텍스트 파서 (영/한 라벨 대응) ---------- */
+    /* ---------- 텍스트 파서 ---------- */
     function parseFromOCR(textRaw){
       const text = normalizeOCR(textRaw);
 
-      // Pace: 7'29'' 혹은 7'29"
-      const paceMatch = text.match(/\b(\d{1,2})\s*'\s*(\d{2})\s*(?:["”]{1,2}|'{2})?\b/);
+      // Pace
+      const paceMatch = text.match(/\b(\d{1,2})\s*'\s*(\d{2})\s*"?\b/);
 
       // Time: HH:MM:SS 또는 MM:SS
       let timeH=null,timeM=null,timeS=null,timeRaw=null;
@@ -576,51 +573,55 @@
       else{ m = text.match(/\b(\d{1,2}):(\d{2})\b/);
             if(m){ timeM=+m[1]; timeS=+m[2]; timeRaw=`${zero2(timeM)}:${zero2(timeS)}`; } }
 
-// Distance (한/영 라벨 근처 우선, 그 다음 전체에서 탐색)
-// - 데일리: 소수 2자리 우선  (예: 3.01)
-// - 먼슬리: 소수 1자리 우선  (예: 49.5)
-// - 쉼표 OCR(3,01)도 점으로 정규화 처리
+      /* ---------- Distance (한/영 라벨 근처 우선, 쉼표 정규화) ---------- */
+      function pickFirst(re) {
+        const mm = text.match(re);
+        return mm ? mm[1].replace(',', '.') : null;
+      }
 
-function pickFirst(re) {
-  const m = text.match(re);
-  return m ? m[1].replace(',', '.') : null;
-}
+      // 라벨 근처 우선 (킬로미터 | kilometer)
+      let kmFromLabel = null;
+      {
+        const kmIdx = text.search(/킬로미터|kilometer/i);
+        if (kmIdx !== -1) {
+          const before = text.slice(Math.max(0, kmIdx - 40), kmIdx);
+          kmFromLabel =
+            (before.match(/(\d{1,3}[.,]\d{2})\b/)?.[1] || "").replace(',', '.') ||
+            (before.match(/(\d{1,3}[.,]\d)\b/)?.[1]   || "").replace(',', '.') ||
+            (before.match(/(\d{1,3})\b/)?.[1]         || "") ;
+          if (!kmFromLabel) kmFromLabel = null;
+        }
+      }
 
-// 라벨 근처 우선 (킬로미터|kilometer)
-let kmFromLabel = null;
-{
-  const kmIdx = text.search(/킬로미터|kilometer/i);
-  if (kmIdx !== -1) {
-    const before = text.slice(Math.max(0, kmIdx - 40), kmIdx);
-    // 숫자 바로 앞쪽에서 거리 패턴 탐색
-    kmFromLabel =
-      pickFirst(/(\d{1,3}[.,]\d{2})\b/) ||   // 2자리
-      pickFirst(/(\d{1,3}[.,]\d)\b/)   ||    // 1자리
-      pickFirst(/(\d{1,3})\b/);              // 정수 (예외)
-  }
-}
+      let kmNum = kmFromLabel;
+      if (!kmNum) {
+        if (recordType === 'daily') {
+          kmNum =
+            pickFirst(/\b(\d{1,3}[.,]\d{2})\b/) ||
+            pickFirst(/\b(\d{1,3}[.,]\d)\b/)   ||
+            pickFirst(/\b(\d{1,3})\b/);
+        } else {
+          kmNum =
+            pickFirst(/\b(\d{1,3}[.,]\d)\b/)   ||
+            pickFirst(/\b(\d{1,3}[.,]\d{2})\b/)||
+            pickFirst(/\b(\d{1,3})\b/);
+        }
+      }
 
-let kmNum = kmFromLabel;
-if (!kmNum) {
-  if (recordType === 'daily') {
-    kmNum =
-      pickFirst(/\b(\d{1,3}[.,]\d{2})\b/) || // 3.01 같은 2자리 우선
-      pickFirst(/\b(\d{1,3}[.,]\d)\b/)   ||  // 1자리
-      pickFirst(/\b(\d{1,3})\b/);            // 정수
-  } else {
-    kmNum =
-      pickFirst(/\b(\d{1,3}[.,]\d)\b/)   ||  // 49.5 같은 1자리 우선
-      pickFirst(/\b(\d{1,3}[.,]\d{2})\b/)||  // 2자리(예외적으로 있을 때)
-      pickFirst(/\b(\d{1,3})\b/);
-  }
-}
+      return {
+        km:   kmNum,
+        runs,
+        paceMin: paceMatch ? parseInt(paceMatch[1],10) : null,
+        paceSec: paceMatch ? parseInt(paceMatch[2],10) : null,
+        timeH, timeM, timeS, timeRaw
+      };
 
-      // Runs (영: Runs, 한: 러닝/런닝)
+      // Runs(텍스트 기반 보강 3단계)
       function findRunsStrong(t){
         const lines = t.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
         for(let i=0;i<lines.length;i++){
           const L = lines[i];
-          if (/\bRuns?\b/i.test(L) || /(?:^|[^가-힣])(러닝|런닝)(?:$|[^가-힣])/i.test(L)){
+          if (/^Runs?$/i.test(L) || /\bRuns?\b/i.test(L)){
             const prev = lines[i-1]||"", next = lines[i+1]||"";
             let mm;
             if ((mm = prev.match(/^\s*(\d{1,3})\s*$/))) return +mm[1];
@@ -632,11 +633,9 @@ if (!kmNum) {
       }
       function findRunsNearWord(t){
         const idx = t.search(/\bRuns?\b/i);
-        const kidx = t.search(/러닝|런닝/i);
-        const anchor = (idx!==-1 ? idx : kidx);
-        if (anchor === -1) return null;
-        const before = t.slice(Math.max(0, anchor-60), anchor);
-        const after  = t.slice(anchor, anchor+60);
+        if (idx === -1) return null;
+        const before = t.slice(Math.max(0, idx-60), idx);
+        const after  = t.slice(idx, idx+60);
         let mm;
         mm = before.match(/(\d{1,3})(?![\d:])/g);
         if (mm && mm.length) return +mm[mm.length-1];
@@ -645,24 +644,11 @@ if (!kmNum) {
         return null;
       }
       function findRunsHeuristic(t){
-        // pace 앞쪽에 자주 위치: 월간 화면에서 "10 러닝"
         const pacePos = t.search(/\d{1,2}\s*'\s*\d{2}/);
         const scope = pacePos>0 ? t.slice(0, pacePos) : t;
         const cands = (scope.match(/\b\d{1,3}\b/g) || []).map(s=>+s).filter(n=>n>=0 && n<=999);
         return cands.length ? cands[cands.length-1] : null;
       }
-
-      let runs = findRunsStrong(text);
-      if (runs==null) runs = findRunsNearWord(text);
-      if (runs==null) runs = findRunsHeuristic(text);
-
-      return {
-        km:   distMatch ? distMatch[1] : null,
-        runs,
-        paceMin: paceMatch ? parseInt(paceMatch[1],10) : null,
-        paceSec: paceMatch ? parseInt(paceMatch[2],10) : null,
-        timeH, timeM, timeS, timeRaw
-      };
     }
 
     /* ---------- KM 표시 포맷 ---------- */
@@ -784,33 +770,30 @@ if (!kmNum) {
         try{
           const img = reader.result;
 
-          // ⚠️ 한국어 + 영어 동시 인식 (라벨: 킬로미터/평균 페이스/시간/러닝)
-          const ocrLang = 'kor+eng';
-          // 한국어를 막지 않도록 화이트리스트 제거 (기본 문자셋 사용)
           const ocrOpts = {
+            tessedit_char_whitelist: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz:/\"' .",
             preserve_interword_spaces: '1',
             tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK
           };
 
           // 1) 원본 OCR
-          const res1 = await Tesseract.recognize(img, ocrLang, ocrOpts);
-
+          const res1 = await Tesseract.recognize(img, 'eng', ocrOpts);
           // 2) 전처리(업스케일+이진화) 후 OCR
           const pre = await preprocessImageToDataURL(img, 2.0, 180);
-          const res2 = await Tesseract.recognize(pre, ocrLang, ocrOpts);
+          const res2 = await Tesseract.recognize(pre, 'eng', ocrOpts);
 
           // 3) 텍스트 파싱
-          const p1 = parseFromOCR(res1.data.text || '');
-          const p2 = parseFromOCR(res2.data.text || '');
+          const p1 = parseFromOCR(res1.data.text);
+          const p2 = parseFromOCR(res2.data.text);
 
-          // 4) word-bbox로 Runs 보강 (영/한)
+          // 4) word-bbox로 Runs 보강
           const rWords1 = extractRunsFromWords(res1.data.words||[]);
           const rWords2 = extractRunsFromWords(res2.data.words||[]);
 
           // 5) 결과 병합(중앙값/우선순위)
           const pick = (a,b)=> (a!=null ? a : b);
           parsedData = {
-            km: pick(p2.km, p1.km),
+            km: pick(p2.km, p1.km), // 숫자 안정성 때문에 전처리 우선
             paceMin: pick(p1.paceMin, p2.paceMin),
             paceSec: pick(p1.paceSec, p2.paceSec),
             timeH: pick(p1.timeH, p2.timeH),
@@ -979,16 +962,16 @@ if (!kmNum) {
       // 날짜 폰트: 지정한 5종만 해당 폰트 적용, 나머지는 기본(상속)
       const dateFontWhitelist = new Set([
         "Anton",
-        "Orbitron",
-        "Special Gothic Expanded One",
-        "Graduate",
-        "Gloria Hallelujah"
+        "Orbitron",                         // Tron
+        "Special Gothic Expanded One",      // Gothic
+        "Graduate",                         // School
+        "Gloria Hallelujah"                 // Gloria
       ]);
       if (dateFontWhitelist.has(font)) {
         dateDisp.style.fontFamily = font + ", sans-serif";
         dateDisp.style.fontWeight = (fs.dateWeight ?? 700);
       } else {
-        dateDisp.style.fontFamily = "";
+        dateDisp.style.fontFamily = "";     // 기본 상속
         dateDisp.style.fontWeight = 700;
       }
 
@@ -1013,7 +996,7 @@ if (!kmNum) {
       updateActive(fontGridEl, targetBtn);
 
       applyFontIndents(selectedFont, layoutType);
-      applyFontStatsOffset(selectedFont);
+      applyFontStatsOffset(selectedFont);          // ✅ 폰트별 하단 데이터 좌측 마진 적용
       fitKmRow();
       renderStats();
       renderDateDisplay();
@@ -1039,7 +1022,7 @@ if (!kmNum) {
       updateGridCols();
       fitKmRow();
       applyLayoutVisual();
-      applyFontStatsOffset(selectedFont);
+      applyFontStatsOffset(selectedFont);          // ✅ 모드 변경 시도 재적용
     }
 
     function setDateFromInput(){
@@ -1083,7 +1066,7 @@ if (!kmNum) {
 
       setFont(selectedFont);
       applyFontIndents(selectedFont, layoutType);
-      applyFontStatsOffset(selectedFont);
+      applyFontStatsOffset(selectedFont);          // ✅ 레이아웃 변경 시 재적용
 
       renderStats();
       updateGridCols();
