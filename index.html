@@ -440,7 +440,6 @@
 
     /* ✅ 폰트별 하단 데이터 좌측 마진 (D2/M2 전용) 맵 */
     const fontStatsOffsetMap = {
-      // 필요에 맞게 조정해 사용하세요 (px/%, rem 모두 가능)
       "Anton":                    { daily: "5px",  monthly: "5px"  },
       "Big Shoulders Inline Text":{ daily: "8px",  monthly: "8px"  },
       "Alfa Slab One":            { daily: "4px",  monthly: "6px"  },
@@ -530,10 +529,14 @@
       });
     }
 
-    /* ---------- Runs word-bbox 기반 추가 추출 ---------- */
+    /* ---------- Runs word-bbox 기반 추가 추출 (영/한) ---------- */
     function extractRunsFromWords(words){
       if(!Array.isArray(words) || !words.length) return null;
-      const anchors = words.filter(w => (w.text||"").toLowerCase()==='runs');
+      const isRunWord = (t)=>{
+        const s=(t||"").toLowerCase();
+        return s==='runs' || s==='run' || t==='러닝' || t==='런닝';
+      };
+      const anchors = words.filter(w => isRunWord(w.text));
       const sameLineNear = (anchor)=>{
         const same = words.filter(w => w.line === anchor.line);
         const nums = same
@@ -559,12 +562,12 @@
       return picks[Math.floor(picks.length/2)];
     }
 
-    /* ---------- 텍스트 파서 ---------- */
+    /* ---------- 텍스트 파서 (영/한 라벨 대응) ---------- */
     function parseFromOCR(textRaw){
       const text = normalizeOCR(textRaw);
 
-      // Pace
-      const paceMatch = text.match(/\b(\d{1,2})\s*'\s*(\d{2})\s*"?\b/);
+      // Pace: 7'29'' 혹은 7'29"
+      const paceMatch = text.match(/\b(\d{1,2})\s*'\s*(\d{2})\s*(?:["”]{1,2}|'{2})?\b/);
 
       // Time: HH:MM:SS 또는 MM:SS
       let timeH=null,timeM=null,timeS=null,timeRaw=null;
@@ -573,15 +576,15 @@
       else{ m = text.match(/\b(\d{1,2}):(\d{2})\b/);
             if(m){ timeM=+m[1]; timeS=+m[2]; timeRaw=`${zero2(timeM)}:${zero2(timeS)}`; } }
 
-      // Distance (월간: 소수 한자리까지 우선)
+      // Distance
       const distMatch = text.match(/\b(\d{1,3}\.\d)\d*\b/) || text.match(/\b(\d{1,2}\.\d{1,2})\b/);
 
-      // Runs(텍스트 기반 보강 3단계)
+      // Runs (영: Runs, 한: 러닝/런닝)
       function findRunsStrong(t){
         const lines = t.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
         for(let i=0;i<lines.length;i++){
           const L = lines[i];
-          if (/^Runs?$/i.test(L) || /\bRuns?\b/i.test(L)){
+          if (/\bRuns?\b/i.test(L) || /(?:^|[^가-힣])(러닝|런닝)(?:$|[^가-힣])/i.test(L)){
             const prev = lines[i-1]||"", next = lines[i+1]||"";
             let mm;
             if ((mm = prev.match(/^\s*(\d{1,3})\s*$/))) return +mm[1];
@@ -593,9 +596,11 @@
       }
       function findRunsNearWord(t){
         const idx = t.search(/\bRuns?\b/i);
-        if (idx === -1) return null;
-        const before = t.slice(Math.max(0, idx-60), idx);
-        const after  = t.slice(idx, idx+60);
+        const kidx = t.search(/러닝|런닝/i);
+        const anchor = (idx!==-1 ? idx : kidx);
+        if (anchor === -1) return null;
+        const before = t.slice(Math.max(0, anchor-60), anchor);
+        const after  = t.slice(anchor, anchor+60);
         let mm;
         mm = before.match(/(\d{1,3})(?![\d:])/g);
         if (mm && mm.length) return +mm[mm.length-1];
@@ -604,6 +609,7 @@
         return null;
       }
       function findRunsHeuristic(t){
+        // pace 앞쪽에 자주 위치: 월간 화면에서 "10 러닝"
         const pacePos = t.search(/\d{1,2}\s*'\s*\d{2}/);
         const scope = pacePos>0 ? t.slice(0, pacePos) : t;
         const cands = (scope.match(/\b\d{1,3}\b/g) || []).map(s=>+s).filter(n=>n>=0 && n<=999);
@@ -742,30 +748,33 @@
         try{
           const img = reader.result;
 
+          // ⚠️ 한국어 + 영어 동시 인식 (라벨: 킬로미터/평균 페이스/시간/러닝)
+          const ocrLang = 'kor+eng';
+          // 한국어를 막지 않도록 화이트리스트 제거 (기본 문자셋 사용)
           const ocrOpts = {
-            tessedit_char_whitelist: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz:/\"' .",
             preserve_interword_spaces: '1',
             tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK
           };
 
           // 1) 원본 OCR
-          const res1 = await Tesseract.recognize(img, 'eng', ocrOpts);
+          const res1 = await Tesseract.recognize(img, ocrLang, ocrOpts);
+
           // 2) 전처리(업스케일+이진화) 후 OCR
           const pre = await preprocessImageToDataURL(img, 2.0, 180);
-          const res2 = await Tesseract.recognize(pre, 'eng', ocrOpts);
+          const res2 = await Tesseract.recognize(pre, ocrLang, ocrOpts);
 
           // 3) 텍스트 파싱
-          const p1 = parseFromOCR(res1.data.text);
-          const p2 = parseFromOCR(res2.data.text);
+          const p1 = parseFromOCR(res1.data.text || '');
+          const p2 = parseFromOCR(res2.data.text || '');
 
-          // 4) word-bbox로 Runs 보강
+          // 4) word-bbox로 Runs 보강 (영/한)
           const rWords1 = extractRunsFromWords(res1.data.words||[]);
           const rWords2 = extractRunsFromWords(res2.data.words||[]);
 
           // 5) 결과 병합(중앙값/우선순위)
           const pick = (a,b)=> (a!=null ? a : b);
           parsedData = {
-            km: pick(p2.km, p1.km), // 숫자 안정성 때문에 전처리 우선
+            km: pick(p2.km, p1.km),
             paceMin: pick(p1.paceMin, p2.paceMin),
             paceSec: pick(p1.paceSec, p2.paceSec),
             timeH: pick(p1.timeH, p2.timeH),
@@ -934,16 +943,16 @@
       // 날짜 폰트: 지정한 5종만 해당 폰트 적용, 나머지는 기본(상속)
       const dateFontWhitelist = new Set([
         "Anton",
-        "Orbitron",                         // Tron
-        "Special Gothic Expanded One",      // Gothic
-        "Graduate",                         // School
-        "Gloria Hallelujah"                 // Gloria
+        "Orbitron",
+        "Special Gothic Expanded One",
+        "Graduate",
+        "Gloria Hallelujah"
       ]);
       if (dateFontWhitelist.has(font)) {
         dateDisp.style.fontFamily = font + ", sans-serif";
         dateDisp.style.fontWeight = (fs.dateWeight ?? 700);
       } else {
-        dateDisp.style.fontFamily = "";     // 기본 상속
+        dateDisp.style.fontFamily = "";
         dateDisp.style.fontWeight = 700;
       }
 
@@ -968,7 +977,7 @@
       updateActive(fontGridEl, targetBtn);
 
       applyFontIndents(selectedFont, layoutType);
-      applyFontStatsOffset(selectedFont);          // ✅ 폰트별 하단 데이터 좌측 마진 적용
+      applyFontStatsOffset(selectedFont);
       fitKmRow();
       renderStats();
       renderDateDisplay();
@@ -994,7 +1003,7 @@
       updateGridCols();
       fitKmRow();
       applyLayoutVisual();
-      applyFontStatsOffset(selectedFont);          // ✅ 모드 변경 시도 재적용
+      applyFontStatsOffset(selectedFont);
     }
 
     function setDateFromInput(){
@@ -1038,7 +1047,7 @@
 
       setFont(selectedFont);
       applyFontIndents(selectedFont, layoutType);
-      applyFontStatsOffset(selectedFont);          // ✅ 레이아웃 변경 시 재적용
+      applyFontStatsOffset(selectedFont);
 
       renderStats();
       updateGridCols();
