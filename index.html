@@ -576,8 +576,44 @@
       else{ m = text.match(/\b(\d{1,2}):(\d{2})\b/);
             if(m){ timeM=+m[1]; timeS=+m[2]; timeRaw=`${zero2(timeM)}:${zero2(timeS)}`; } }
 
-      // Distance
-      const distMatch = text.match(/\b(\d{1,3}\.\d)\d*\b/) || text.match(/\b(\d{1,2}\.\d{1,2})\b/);
+// Distance (한/영 라벨 근처 우선, 그 다음 전체에서 탐색)
+// - 데일리: 소수 2자리 우선  (예: 3.01)
+// - 먼슬리: 소수 1자리 우선  (예: 49.5)
+// - 쉼표 OCR(3,01)도 점으로 정규화 처리
+
+function pickFirst(re) {
+  const m = text.match(re);
+  return m ? m[1].replace(',', '.') : null;
+}
+
+// 라벨 근처 우선 (킬로미터|kilometer)
+let kmFromLabel = null;
+{
+  const kmIdx = text.search(/킬로미터|kilometer/i);
+  if (kmIdx !== -1) {
+    const before = text.slice(Math.max(0, kmIdx - 40), kmIdx);
+    // 숫자 바로 앞쪽에서 거리 패턴 탐색
+    kmFromLabel =
+      pickFirst(/(\d{1,3}[.,]\d{2})\b/) ||   // 2자리
+      pickFirst(/(\d{1,3}[.,]\d)\b/)   ||    // 1자리
+      pickFirst(/(\d{1,3})\b/);              // 정수 (예외)
+  }
+}
+
+let kmNum = kmFromLabel;
+if (!kmNum) {
+  if (recordType === 'daily') {
+    kmNum =
+      pickFirst(/\b(\d{1,3}[.,]\d{2})\b/) || // 3.01 같은 2자리 우선
+      pickFirst(/\b(\d{1,3}[.,]\d)\b/)   ||  // 1자리
+      pickFirst(/\b(\d{1,3})\b/);            // 정수
+  } else {
+    kmNum =
+      pickFirst(/\b(\d{1,3}[.,]\d)\b/)   ||  // 49.5 같은 1자리 우선
+      pickFirst(/\b(\d{1,3}[.,]\d{2})\b/)||  // 2자리(예외적으로 있을 때)
+      pickFirst(/\b(\d{1,3})\b/);
+  }
+}
 
       // Runs (영: Runs, 한: 러닝/런닝)
       function findRunsStrong(t){
