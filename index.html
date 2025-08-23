@@ -341,7 +341,7 @@
       <section class="section upload-box">
         <label for="file-upload" class="upload-label">
           <span class="upload-icon" aria-hidden="true">
-            <!-- ① 심플 라인 업로드 아이콘 -->
+            <!-- 라인 업로드 아이콘 -->
             <svg viewBox="0 0 24 24" fill="none" stroke="#FF9000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <path d="M7 10l5-5 5 5"/>
@@ -436,7 +436,7 @@
 
   <script>
     /* =============================
-       폰트/레이아웃 설정 (기존)
+       폰트/레이아웃 설정
        ============================= */
     const fontSettings = {
       "Anton": { base: 200, weight: 700, dateSize: "60px", dateGap: "10px", dateWeight: 700 },
@@ -513,7 +513,7 @@
     }
 
     /* =============================
-       이미지 전처리/ROI 헬퍼 (신규)
+       이미지 전처리/ROI 헬퍼
        ============================= */
     async function toCanvas(imgDataURL){
       return new Promise(res=>{
@@ -538,7 +538,6 @@
         for(let i=0;i<data.length;i+=4){
           const r=data[i], g=data[i+1], b=data[i+2];
           const gray = (r*0.299 + g*0.587 + b*0.114);
-          // 약간 덜 공격적으로 이진화 → 소수점/9 꼬리 보존
           const v = gray > threshold ? 255 : (gray > threshold-25 ? 200 : 0);
           data[i]=data[i+1]=data[i+2]=v;
         }
@@ -547,7 +546,7 @@
       });
     }
 
-    // 상단 큰 숫자 ROI 잘라내기 (윗 8~32% 영역, 좌우 8% 마진)
+    // 상단 큰 숫자 ROI (윗 8~32% 영역, 좌우 8% 마진)
     async function cropTopNumberROI(imgDataURL, topPct=0.08, heightPct=0.24, sidePct=0.08, scale=2.4){
       const {img, w, h} = await toCanvas(imgDataURL);
       const x = Math.round(w*sidePct);
@@ -564,14 +563,14 @@
       return c.toDataURL('image/png');
     }
 
-    // 숫자/점만 읽기 위한 공통 옵션
+    // 숫자/점만 허용
     const KM_LINE_OCR_OPTS = {
       tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
       tessedit_char_whitelist: '0123456789.,'
     };
 
     /* =============================
-       파서/후보 선택 로직 (개선)
+       파서/후보 선택 로직
        ============================= */
     function numsFromText(s){
       const t = normalizeOCR(s||'');
@@ -579,7 +578,6 @@
       return m.map(x => ({ val: parseFloat(x.replace(',','.')), dec: (x.split(/[.,]/)[1]||'').length }));
     }
 
-    // 워드 박스를 라인으로 묶어, "큰 글씨 & 상단" 라인에서 소수 포함 숫자 추출
     function kmCandidatesFromWords(words){
       if(!Array.isArray(words) || !words.length) return [];
       const lines = new Map();
@@ -595,9 +593,8 @@
         L.y    = Math.min(L.y, y);
       }
       const arr = [...lines.values()];
-      // 상단 우선, 같은 상단이면 큰 글씨 라인 우선
       arr.sort((a,b)=> (a.y - b.y) || (b.maxH - a.maxH));
-      const top = arr.slice(0, 5); // 상단 몇 줄만 검사
+      const top = arr.slice(0, 5);
       const out = [];
       for(const L of top){
         const joined = L.text.join(' ');
@@ -609,10 +606,8 @@
       return out;
     }
 
-    // 후보들 중 최종값 선택: ROI가점 → 소수 2자리 선호(일반적인 데일리) → 다수결 → 근소값 평균
     function pickBestKm(cands){
       if(!cands || !cands.length) return null;
-      // key는 두 자리까지 반올림한 스트링
       const groups = new Map();
       for(const c of cands){
         const key = (Math.round(c.val*100)/100).toFixed(2);
@@ -644,13 +639,12 @@
         Tesseract.recognize(pre200, 'eng+kor', ocrBaseOpts)
       ]);
 
-      // 텍스트에서 소수 추출
       [ ['raw',resRaw], ['bin170',res170], ['bin200',res200] ].forEach(([tag,res])=>{
         numsFromText(res.data.text).forEach(o=> out.push({ ...o, src:`${tag}-text` }));
         kmCandidatesFromWords(res.data.words).forEach(o=> out.push({ ...o, src:`${tag}-words` }));
       });
 
-      // 2) ROI (윗쪽 라인만 숫자 전용으로)
+      // 2) ROI (윗쪽 라인만 숫자 전용)
       const roi = await cropTopNumberROI(imgDataURL, 0.08, 0.26, 0.08, 2.8);
       const roiB170 = await preprocessImageToDataURL(roi, 1.0, 170);
       const roiB190 = await preprocessImageToDataURL(roi, 1.0, 190);
@@ -700,7 +694,6 @@
         }
       }
 
-      // km는 외부의 ROI 멀티패스로 우선 결정, 여기 값은 보조 후보로만 사용
       const runs = (() => {
         const lines = text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
         for(let i=0;i<lines.length;i++){
@@ -713,7 +706,6 @@
             if ((mm = L.match(/\b(\d{1,3})\b/)))       return +mm[1];
           }
         }
-        // 보조 휴리스틱
         const pacePos = text.search(/\d{1,2}\s*'\s*\d{2}/);
         const scope = pacePos>0 ? text.slice(0, pacePos) : text;
         const cands = (scope.match(/\b\d{1,3}\b/g) || []).map(s=>+s).filter(n=>n>=0 && n<=999);
@@ -730,7 +722,7 @@
     }
 
     /* =============================
-       표기/레이아웃 유틸 (기존)
+       표기/레이아웃 유틸
        ============================= */
     function formatKm(value){
       const v = Math.max(0, Number(value) || 0);
@@ -842,7 +834,7 @@
     }
 
     /* =============================
-       업로드 → OCR → 병합 로직 (개선)
+       업로드 → OCR → 병합 로직
        ============================= */
     document.getElementById("file-upload").addEventListener("change", async (e)=>{
       const file = e.target.files[0]; if(!file) return;
@@ -853,27 +845,22 @@
         try{
           const img = reader.result;
 
-          // 기존 전체 텍스트 파싱 (runs/pace/time 등)
+          // 전체 텍스트 파싱 (runs/pace/time 등)
           const baseOpts = { preserve_interword_spaces: '1', tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK };
-          const [res1, pre, res2] = await (async ()=>{
-            const r1 = await Tesseract.recognize(img, 'eng+kor', baseOpts);
-            const pre = await preprocessImageToDataURL(img, 2.0, 180);
-            const r2 = await Tesseract.recognize(pre, 'eng+kor', baseOpts);
-            return [r1, pre, r2];
-          })();
+          const r1 = await Tesseract.recognize(img, 'eng+kor', baseOpts);
+          const pre = await preprocessImageToDataURL(img, 2.0, 180);
+          const r2 = await Tesseract.recognize(pre, 'eng+kor', baseOpts);
 
-          const p1 = parseFromOCR(res1.data.text || "");
-          const p2 = parseFromOCR(res2.data.text || "");
+          const p1 = parseFromOCR(r1.data.text || "");
+          const p2 = parseFromOCR(r2.data.text || "");
 
-          // ✅ 상단 큰 숫자 정밀 추출 (멀티패스 + ROI + 워드기반)
+          // 상단 큰 숫자 정밀 추출 (멀티패스 + ROI + 워드기반)
           const kmCandidates = await multiPassKmCandidates(img);
-          // 보조 후보(라벨 주변에서 추정한 값)도 함께 넣어 다수결
           if(p1.km) kmCandidates.push({ val: parseFloat(String(p1.km).replace(',','.')), dec: (String(p1.km).split(/[.,]/)[1]||'').length, src:'aux' });
           if(p2.km) kmCandidates.push({ val: parseFloat(String(p2.km).replace(',','.')), dec: (String(p2.km).split(/[.,]/)[1]||'').length, src:'aux' });
-
           const kmBest = pickBestKm(kmCandidates);
 
-          // Runs는 워드 라인 기반 보정(기존 함수)
+          // Runs 라벨 근처 가중
           function extractRunsFromWords(words){
             if(!Array.isArray(words) || !words.length) return null;
             const anchors = words.filter(w => {
@@ -904,12 +891,12 @@
             picks.sort((a,b)=>a-b);
             return picks[Math.floor(picks.length/2)];
           }
-          const rWords1 = extractRunsFromWords(res1.data.words||[]);
-          const rWords2 = extractRunsFromWords(res2.data.words||[]);
+          const rWords1 = extractRunsFromWords(r1.data.words||[]);
+          const rWords2 = extractRunsFromWords(r2.data.words||[]);
 
           const pick = (a,b)=> (a!=null ? a : b);
           parsedData = {
-            km: kmBest ?? pick(p2.km, p1.km),   // ← 최종 거리
+            km: kmBest ?? pick(p2.km, p1.km),   // 최종 거리(내부 저장)
             paceMin: pick(p1.paceMin, p2.paceMin),
             paceSec: pick(p1.paceSec, p2.paceSec),
             timeH: pick(p1.timeH, p2.timeH),
@@ -924,8 +911,10 @@
             })()
           };
 
-          renderKm(parsedData.km);
+          // ✅ 업로드 직후: km 출력은 항상 0으로, 하단 정보만 즉시 갱신
+          renderKm(0);
           renderStats();
+
           status.textContent = "Uploaded!";
         }catch(err){
           console.error(err);
@@ -936,7 +925,7 @@
     });
 
     /* =============================
-       애니메이션/스케일 등 (기존)
+       애니메이션/스케일 등
        ============================= */
     const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
     function animateNumber(id,start,end,duration){
