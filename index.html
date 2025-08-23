@@ -440,7 +440,6 @@
 
     /* ✅ 폰트별 하단 데이터 좌측 마진 (D2/M2 전용) 맵 */
     const fontStatsOffsetMap = {
-      // 필요에 맞게 조정해 사용하세요 (px/%, rem 모두 가능)
       "Anton":                    { daily: "5px",  monthly: "5px"  },
       "Big Shoulders Inline Text":{ daily: "8px",  monthly: "8px"  },
       "Alfa Slab One":            { daily: "4px",  monthly: "6px"  },
@@ -530,33 +529,53 @@
       });
     }
 
-    /* ---------- Runs word-bbox 기반 추가 추출 ---------- */
-    function extractRunsFromWords(words){
-      if(!Array.isArray(words) || !words.length) return null;
-      const anchors = words.filter(w => (w.text||"").toLowerCase()==='runs');
-      const sameLineNear = (anchor)=>{
-        const same = words.filter(w => w.line === anchor.line);
-        const nums = same
-          .filter(w => /^\d{1,3}$/.test((w.text||'').trim()))
-          .map(w => ({
-            n: +w.text.trim(),
-            dx: Math.abs(((w.bbox&&w.bbox.x0)||0) - ((anchor.bbox&&anchor.bbox.x1)||0))
-          }));
-        if(nums.length){ nums.sort((a,b)=>a.dx-b.dx); return nums[0].n; }
-        const cand = words
-          .filter(w => /^\d{1,3}$/.test((w.text||'').trim()))
-          .map(w => {
-            const ay = (anchor.bbox&&(anchor.bbox.y0+anchor.bbox.y1)/2) || 0;
-            const wy = (w.bbox&&(w.bbox.y0+w.bbox.y1)/2) || 0;
-            return { n:+w.text.trim(), dy: Math.abs(ay - wy) };
-          });
-        if(cand.length){ cand.sort((a,b)=>a.dy-b.dy); return cand[0].n; }
-        return null;
+    /* ---------- Runs (영/한 라벨 + 기하 탐색) ---------- */
+    function extractRunsByGeometry(wordsEng = [], wordsKor = []) {
+      const words = [...(wordsEng||[]), ...(wordsKor||[])];
+      if (!words.length) return null;
+
+      const txt = w => (w.text || '').toString().trim().toLowerCase();
+      const anchors = words.filter(w => ['runs','러닝'].includes(txt(w)));
+      if (!anchors.length) return null;
+
+      const nums = words.filter(w => /^\d{1,3}$/.test((w.text||'').trim()));
+      if (!nums.length) return null;
+
+      const over = (a,b) => {
+        const ax0=a.bbox?.x0??0, ax1=a.bbox?.x1??0, bx0=b.bbox?.x0??0, bx1=b.bbox?.x1??0;
+        const L = Math.max(ax0, bx0), R = Math.min(ax1, bx1);
+        const inter = Math.max(0, R - L);
+        const denom = Math.max(1, Math.min(ax1-ax0, bx1-bx0));
+        return inter / denom;
       };
-      const picks = anchors.map(a=>sameLineNear(a)).filter(v=>Number.isInteger(v));
-      if(!picks.length) return null;
-      picks.sort((a,b)=>a-b);
-      return picks[Math.floor(picks.length/2)];
+
+      const candidates = [];
+      anchors.forEach(a=>{
+        const ay0=a.bbox?.y0??0, ay1=a.bbox?.y1??0;
+
+        // 1) 라벨 바로 '위' 같은 열의 숫자
+        const up = nums
+          .filter(n=>{
+            const ny1=n.bbox?.y1??0;
+            return ny1 <= ay0 && over(a,n) >= 0.45;
+          })
+          .map(n=>({n, dy: Math.abs(ay0 - (n.bbox?.y1??ay0)), pri:1}));
+
+        // 2) 같은 라인 근처 백업
+        const sameLine = nums
+          .map(n=>{
+            const ac = (ay0+ay1)/2, nc = ((n.bbox?.y0??0)+(n.bbox?.y1??0))/2;
+            return {n, dy: Math.abs(ac - nc), pri:2};
+          });
+
+        candidates.push(...up, ...sameLine);
+      });
+
+      if (!candidates.length) return null;
+      candidates.sort((a,b)=> (a.pri-b.pri) || (a.dy-b.dy));
+      const best = candidates[0]?.n;
+      const val = best ? parseInt(String(best.text).trim(),10) : null;
+      return Number.isInteger(val) ? val : null;
     }
 
     /* ---------- 텍스트 파서 ---------- */
@@ -564,7 +583,13 @@
       const text = normalizeOCR(textRaw);
 
       // Pace
-      const paceMatch = text.match(/\b(\d{1,2})\s*'\s*(\d{2})\s*"?\b/);
+      const paceMatch = text.match(/\b(\d{1,2})\s*['’]\s*(\d{2})\s*(?:["”]{0,2})\b/);
+      let paceMin = paceMatch ? parseInt(paceMatch[1],10) : null;
+      let paceSec = paceMatch ? parseInt(paceMatch[2],10) : null;
+      if (paceSec != null) {                 // 흔한 오인 보정
+        if (paceSec >= 60 && paceSec <= 62) paceSec = 50;
+        if (paceSec < 0) paceSec = 0;
+      }
 
       // Time: HH:MM:SS 또는 MM:SS
       let timeH=null,timeM=null,timeS=null,timeRaw=null;
@@ -573,7 +598,7 @@
       else{ m = text.match(/\b(\d{1,2}):(\d{2})\b/);
             if(m){ timeM=+m[1]; timeS=+m[2]; timeRaw=`${zero2(timeM)}:${zero2(timeS)}`; } }
 
-      /* ---------- Distance (한/영 라벨 근처 우선, 쉼표 정규화) ---------- */
+      /* ---------- Distance (한/영 라벨 근처 우선, 쉼표 정규화, 일/월 우선순위) ---------- */
       function pickFirst(re) {
         const mm = text.match(re);
         return mm ? mm[1].replace(',', '.') : null;
@@ -584,11 +609,11 @@
       {
         const kmIdx = text.search(/킬로미터|kilometer/i);
         if (kmIdx !== -1) {
-          const before = text.slice(Math.max(0, kmIdx - 40), kmIdx);
+          const before = text.slice(Math.max(0, kmIdx - 60), kmIdx);
           kmFromLabel =
             (before.match(/(\d{1,3}[.,]\d{2})\b/)?.[1] || "").replace(',', '.') ||
             (before.match(/(\d{1,3}[.,]\d)\b/)?.[1]   || "").replace(',', '.') ||
-            (before.match(/(\d{1,3})\b/)?.[1]         || "") ;
+            (before.match(/(\d{1,3})\b/)?.[1]         || "");
           if (!kmFromLabel) kmFromLabel = null;
         }
       }
@@ -608,47 +633,26 @@
         }
       }
 
+      /* ---------- Runs (텍스트 백업: 'Runs|러닝' 주변 숫자) ---------- */
+      let runsText = null;
+      {
+        const idx = text.search(/(?:\bRuns?\b|러닝)/i);
+        if (idx !== -1) {
+          const before = text.slice(Math.max(0, idx-60), idx);
+          const after  = text.slice(idx, idx+60);
+          let mm;
+          mm = before.match(/(\d{1,3})(?![\d:])/g);
+          if (mm && mm.length) runsText = +mm[mm.length-1];
+          if (runsText==null){ mm = after.match(/(\d{1,3})(?![\d:])/); if (mm) runsText = +mm[1]; }
+        }
+      }
+
       return {
         km:   kmNum,
-        runs,
-        paceMin: paceMatch ? parseInt(paceMatch[1],10) : null,
-        paceSec: paceMatch ? parseInt(paceMatch[2],10) : null,
+        runs: Number.isInteger(runsText) ? runsText : null,
+        paceMin, paceSec,
         timeH, timeM, timeS, timeRaw
       };
-
-      // Runs(텍스트 기반 보강 3단계)
-      function findRunsStrong(t){
-        const lines = t.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
-        for(let i=0;i<lines.length;i++){
-          const L = lines[i];
-          if (/^Runs?$/i.test(L) || /\bRuns?\b/i.test(L)){
-            const prev = lines[i-1]||"", next = lines[i+1]||"";
-            let mm;
-            if ((mm = prev.match(/^\s*(\d{1,3})\s*$/))) return +mm[1];
-            if ((mm = next.match(/^\s*(\d{1,3})\s*$/))) return +mm[1];
-            if ((mm = L.match(/\b(\d{1,3})\b/)))       return +mm[1];
-          }
-        }
-        return null;
-      }
-      function findRunsNearWord(t){
-        const idx = t.search(/\bRuns?\b/i);
-        if (idx === -1) return null;
-        const before = t.slice(Math.max(0, idx-60), idx);
-        const after  = t.slice(idx, idx+60);
-        let mm;
-        mm = before.match(/(\d{1,3})(?![\d:])/g);
-        if (mm && mm.length) return +mm[mm.length-1];
-        mm = after.match(/(\d{1,3})(?![\d:])/);
-        if (mm) return +mm[1];
-        return null;
-      }
-      function findRunsHeuristic(t){
-        const pacePos = t.search(/\d{1,2}\s*'\s*\d{2}/);
-        const scope = pacePos>0 ? t.slice(0, pacePos) : t;
-        const cands = (scope.match(/\b\d{1,3}\b/g) || []).map(s=>+s).filter(n=>n>=0 && n<=999);
-        return cands.length ? cands[cands.length-1] : null;
-      }
     }
 
     /* ---------- KM 표시 포맷 ---------- */
@@ -770,38 +774,42 @@
         try{
           const img = reader.result;
 
-          const ocrOpts = {
-            tessedit_char_whitelist: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz:/\"' .",
+          // 3패스 OCR
+          const res1 = await Tesseract.recognize(img, 'eng', {
             preserve_interword_spaces: '1',
             tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK
-          };
-
-          // 1) 원본 OCR
-          const res1 = await Tesseract.recognize(img, 'eng', ocrOpts);
-          // 2) 전처리(업스케일+이진화) 후 OCR
+          });
           const pre = await preprocessImageToDataURL(img, 2.0, 180);
-          const res2 = await Tesseract.recognize(pre, 'eng', ocrOpts);
+          const res2 = await Tesseract.recognize(pre, 'eng', {
+            preserve_interword_spaces: '1',
+            tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK
+          });
+          const res3 = await Tesseract.recognize(img, 'kor+eng', {
+            preserve_interword_spaces: '1',
+            tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK
+          });
 
-          // 3) 텍스트 파싱
+          // 파싱
           const p1 = parseFromOCR(res1.data.text);
           const p2 = parseFromOCR(res2.data.text);
+          const p3 = parseFromOCR(res3.data.text);
 
-          // 4) word-bbox로 Runs 보강
-          const rWords1 = extractRunsFromWords(res1.data.words||[]);
-          const rWords2 = extractRunsFromWords(res2.data.words||[]);
+          // Runs geometry (영/한 words 동시 사용)
+          const runsGeom = extractRunsByGeometry(res1.data.words||[], res3.data.words||[]);
 
-          // 5) 결과 병합(중앙값/우선순위)
+          // 병합
           const pick = (a,b)=> (a!=null ? a : b);
+          const runsTextPool = [p1.runs, p2.runs, p3.runs].filter(Number.isInteger);
           parsedData = {
-            km: pick(p2.km, p1.km), // 숫자 안정성 때문에 전처리 우선
-            paceMin: pick(p1.paceMin, p2.paceMin),
-            paceSec: pick(p1.paceSec, p2.paceSec),
-            timeH: pick(p1.timeH, p2.timeH),
-            timeM: pick(p1.timeM, p2.timeM),
-            timeS: pick(p1.timeS, p2.timeS),
-            timeRaw: pick(p1.timeRaw, p2.timeRaw),
+            km: pick(p2.km, pick(p3.km, p1.km)), // 숫자 안정성: 전처리 > kor+eng > eng
+            paceMin: pick(p1.paceMin, pick(p2.paceMin, p3.paceMin)),
+            paceSec: pick(p1.paceSec, pick(p2.paceSec, p3.paceSec)),
+            timeH: pick(p1.timeH, pick(p2.timeH, p3.timeH)),
+            timeM: pick(p1.timeM, pick(p2.timeM, p3.timeM)),
+            timeS: pick(p1.timeS, pick(p2.timeS, p3.timeS)),
+            timeRaw: pick(p1.timeRaw, pick(p2.timeRaw, p3.timeRaw)),
             runs: (()=>{
-              const pool = [p1.runs, p2.runs, rWords1, rWords2].filter(v=>Number.isInteger(v));
+              const pool = [...runsTextPool, runsGeom].filter(Number.isInteger);
               if(!pool.length) return null;
               pool.sort((x,y)=>x-y);
               return pool[Math.floor(pool.length/2)];
@@ -959,19 +967,15 @@
       km.style.fontWeight = (fs.weight ?? 700);
       km.style.transform  = fs.translate ? `translate(${fs.translate})` : "translate(0,0)";
 
-      // 날짜 폰트: 지정한 5종만 해당 폰트 적용, 나머지는 기본(상속)
+      // 날짜 폰트
       const dateFontWhitelist = new Set([
-        "Anton",
-        "Orbitron",                         // Tron
-        "Special Gothic Expanded One",      // Gothic
-        "Graduate",                         // School
-        "Gloria Hallelujah"                 // Gloria
+        "Anton","Orbitron","Special Gothic Expanded One","Graduate","Gloria Hallelujah"
       ]);
       if (dateFontWhitelist.has(font)) {
         dateDisp.style.fontFamily = font + ", sans-serif";
         dateDisp.style.fontWeight = (fs.dateWeight ?? 700);
       } else {
-        dateDisp.style.fontFamily = "";     // 기본 상속
+        dateDisp.style.fontFamily = "";
         dateDisp.style.fontWeight = 700;
       }
 
@@ -996,7 +1000,7 @@
       updateActive(fontGridEl, targetBtn);
 
       applyFontIndents(selectedFont, layoutType);
-      applyFontStatsOffset(selectedFont);          // ✅ 폰트별 하단 데이터 좌측 마진 적용
+      applyFontStatsOffset(selectedFont);
       fitKmRow();
       renderStats();
       renderDateDisplay();
@@ -1022,7 +1026,7 @@
       updateGridCols();
       fitKmRow();
       applyLayoutVisual();
-      applyFontStatsOffset(selectedFont);          // ✅ 모드 변경 시도 재적용
+      applyFontStatsOffset(selectedFont);
     }
 
     function setDateFromInput(){
@@ -1066,7 +1070,7 @@
 
       setFont(selectedFont);
       applyFontIndents(selectedFont, layoutType);
-      applyFontStatsOffset(selectedFont);          // ✅ 레이아웃 변경 시 재적용
+      applyFontStatsOffset(selectedFont);
 
       renderStats();
       updateGridCols();
@@ -1081,7 +1085,7 @@
       applyLayoutVisual();
     }
 
-    // 날짜 스타일 조정 API (UI 제거, 내부 변수만 조정용)
+    // 날짜 스타일 조정 API
     function setDateStyle(which, { size, gap, translate } = {}){
       const root = document.documentElement.style;
       if(which==='d2'){ if(size) root.setProperty('--d2-dateSize', size); if(gap) root.setProperty('--d2-dateGap', gap); if(translate) root.setProperty('--d2-dateTranslate', translate); }
@@ -1189,7 +1193,7 @@
 
       renderKm(0);
       applyFontIndents(selectedFont, layoutType);
-      applyFontStatsOffset(selectedFont);    // ✅ 초기 적용
+      applyFontStatsOffset(selectedFont);
 
       fitKmRow();
       renderStats();
