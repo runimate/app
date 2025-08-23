@@ -249,10 +249,9 @@
       margin-top:0; color:inherit; text-align:left;
       justify-content:start;
       justify-items:start;
-      align-items: baseline;            /* 숫자 라인 높이 맞춤 (기본) */
+      align-items: baseline;
     }
 
-    /* ✅ D2/M2: label이 숫자 아래로 오도록 Type2에서만 column-reverse */
     body.type2 .grid > div{
       display:flex;
       flex-direction: column-reverse;
@@ -262,7 +261,6 @@
     body.type2 .grid > div .stat { order:0; }
     body.type2 .grid > div .label{ order:1; }
 
-    /* ✅ Type1: label이 숫자 위 */
     body.type1 .grid{
       --cols: 1;
       grid-template-columns: 1fr;
@@ -277,7 +275,6 @@
     }
     body.type1 .grid > div + div{ margin-top:12px; }
 
-    /* ✅ 폰트별 좌측 마진 조정 (D2/M2 전용) */
     body.type2 #stats-grid{ margin-left: var(--statsLeftOffset); }
 
     .stat{
@@ -308,7 +305,6 @@
     }
     body.bg-black .date-input{ color:#fff; }
 
-    /* 포커스 화면 중앙정렬 */
     body.focus .stage-outer{
       min-height:100vh;
       display:flex;
@@ -330,19 +326,21 @@
   <div class="top-ui">
     <div class="wrap">
 
-      <!-- 업로드 -->
-      <section class="section upload-box">
-        <label for="file-upload" class="upload-label">Upload your NRC record image</label>
-        <input type="file" id="file-upload" accept="image/*" style="display:none;" />
-        <div class="status" id="upload-status"></div>
-      </section>
-
-      <!-- 기록 유형 -->
+      <!-- 기록 유형 (🔼 최상단으로 이동) -->
       <div class="row-head"><div class="label">Record Type</div></div>
       <div class="seg-row cols-2" id="mode-row">
         <button class="pill-btn" data-mode="daily">Daily</button>
         <button class="pill-btn" data-mode="monthly">Monthly</button>
       </div>
+
+      <!-- 업로드 (🔽 두 번째 섹션으로 이동) -->
+      <section class="section upload-box">
+        <label for="file-upload" class="upload-label">
+          <span id="upload-label-text">Upload your NRC record image for TODAY</span>
+        </label>
+        <input type="file" id="file-upload" accept="image/*" style="display:none;" />
+        <div class="status" id="upload-status"></div>
+      </section>
 
       <!-- 레이아웃 & BG -->
       <div class="two-col">
@@ -407,7 +405,6 @@
 
         <!-- 하단 통계 -->
         <div class="grid" id="stats-grid">
-          <!-- Runs는 Monthly에서만 노출 -->
           <div id="runs-wrap" style="display:none;">
             <div class="label">Runs</div>
             <div class="stat" id="runs">--</div>
@@ -438,16 +435,15 @@
       "Rock Salt": { base: 140, weight: 700, dateSize: "36px", dateGap: "40px", dateWeight: 600, kmWordGap: "40px", translate: "25px,-25px", dateTranslate: "20px,0px" }
     };
 
-    /* ✅ 폰트별 하단 데이터 좌측 마진 (D2/M2 전용) 맵 */
     const fontStatsOffsetMap = {
-      "Anton":                    { daily: "5px",  monthly: "5px"  },
-      "Big Shoulders Inline Text":{ daily: "8px",  monthly: "8px"  },
-      "Alfa Slab One":            { daily: "4px",  monthly: "6px"  },
-      "Orbitron":                 { daily: "10px", monthly: "12px" },
+      "Anton": { daily: "5px", monthly: "5px" },
+      "Big Shoulders Inline Text": { daily: "8px", monthly: "8px" },
+      "Alfa Slab One": { daily: "4px", monthly: "6px" },
+      "Orbitron": { daily: "10px", monthly: "12px" },
       "Special Gothic Expanded One": { daily: "6px", monthly: "6px" },
-      "Graduate":                 { daily: "6px",  monthly: "8px"  },
-      "Gloria Hallelujah":        { daily: "8px",  monthly: "10px" },
-      "Rock Salt":                { daily: "24px", monthly: "24px" }
+      "Graduate": { daily: "6px", monthly: "8px" },
+      "Gloria Hallelujah": { daily: "8px", monthly: "10px" },
+      "Rock Salt": { daily: "24px", monthly: "24px" }
     };
 
     let parsedData = {
@@ -474,36 +470,34 @@
     const paceWrap    = document.getElementById('pace-wrap');
     const timeWrap    = document.getElementById('time-wrap');
 
+    const uploadLabelText = document.getElementById('upload-label-text');
+
     const MONTH_ABBR = ["JAN.","FEB.","MAR.","APR.","MAY.","JUN.","JUL.","AUG.","SEP.","OCT.","NOV.","DEC."];
 
     function formatDateText(d){
       const day = String(d.getDate());
       const yr  = d.getFullYear();
-
       if (recordType === 'daily' && layoutType === 'type2') {
         const monShort = MONTH_ABBR[d.getMonth()];
-        return `${day} ${monShort} ${yr}`;            // D2
+        return `${day} ${monShort} ${yr}`;
       }
       if (recordType === 'monthly') {
         const monLong = d.toLocaleString('en-US', { month: 'long' });
-        return `${monLong} ${yr}`;                   // M1, M2
+        return `${monLong} ${yr}`;
       }
-      return ``;                                     // D1 숨김
+      return ``;
     }
 
-    /* ---------- 공통 유틸 ---------- */
     function zero2(n){ return String(n).padStart(2,'0'); }
     function normalizeOCR(s){
-      return s
-        .replace(/[\u2018\u2019\u2032\u2035]/g,"'")
-        .replace(/[\u201C\u201D\u2033]/g,'"')
-        .replace(/[·•]/g,'.')
-        .replace(/\u200B|\u00A0/g,' ')
-        .replace(/[ ]{2,}/g,' ')
-        .trim();
+      return s.replace(/[\u2018\u2019\u2032\u2035]/g,"'")
+              .replace(/[\u201C\u201D\u2033]/g,'"')
+              .replace(/[·•]/g,'.')
+              .replace(/\u200B|\u00A0/g,' ')
+              .replace(/[ ]{2,}/g,' ')
+              .trim();
     }
 
-    /* ---------- 이미지 전처리(업스케일+이진화) ---------- */
     async function preprocessImageToDataURL(imgDataURL, scale = 2.0, threshold = 180){
       return new Promise(resolve=>{
         const img = new Image();
@@ -521,7 +515,7 @@
             const r=data[i], g=data[i+1], b=data[i+2];
             const gray = (r*0.299 + g*0.587 + b*0.114);
             const v = gray > threshold ? 255 : 0;
-            data[i]=data[i+1]=data[i+2]=v; // binarize
+            data[i]=data[i+1]=data[i+2]=v;
           }
           ctx.putImageData(im,0,0);
           resolve(c.toDataURL("image/png"));
@@ -530,10 +524,8 @@
       });
     }
 
-    /* ---------- Runs word-bbox 기반 추가 추출 ---------- */
     function extractRunsFromWords(words){
       if(!Array.isArray(words) || !words.length) return null;
-      // 영문 Runs + 한글 러닝 둘 다 앵커로 사용
       const anchors = words.filter(w => {
         const t = (w.text||"").trim().toLowerCase();
         return t === 'runs' || t === '러닝';
@@ -563,43 +555,34 @@
       return picks[Math.floor(picks.length/2)];
     }
 
-    /* ---------- 텍스트 파서 ---------- */
     function parseFromOCR(textRaw){
       const text = normalizeOCR(textRaw);
 
-      /* Pace (7'29'') */
       const paceMatch = text.match(/\b(\d{1,2})\s*'\s*(\d{2})\s*"?\b/);
 
-      /* Time: HH:MM:SS 또는 MM:SS */
       let timeH=null,timeM=null,timeS=null,timeRaw=null;
       let m = text.match(/\b(\d{1,2}):(\d{2}):(\d{2})\b/);
       if(m){ timeH=+m[1]; timeM=+m[2]; timeS=+m[3]; timeRaw=`${zero2(timeH)}:${zero2(timeM)}:${zero2(timeS)}`; }
       else{ m = text.match(/\b(\d{1,2}):(\d{2})\b/);
             if(m){ timeM=+m[1]; timeS=+m[2]; timeRaw=`${zero2(timeM)}:${zero2(timeS)}`; } }
 
-      /* ---------- Distance (한/영 라벨 근처 우선, 쉼표/공백 정규화) ---------- */
-      const re2dec  = /(\d{1,3})\s*[.,]\s*(\d{2})\b/;     // 2자리
-      const re1dec  = /(\d{1,3})\s*[.,]\s*(\d{1})\b/;     // 1자리
-      const reInt   = /\b(\d{1,3})\b/;                    // 정수
+      const re2dec  = /(\d{1,3})\s*[.,]\s*(\d{2})\b/;
+      const re1dec  = /(\d{1,3})\s*[.,]\s*(\d{1})\b/;
+      const reInt   = /\b(\d{1,3})\b/;
 
       function first2Dec(s){ const mm = s.match(re2dec); return mm ? `${mm[1]}.${mm[2]}` : null; }
       function first1Dec(s){ const mm = s.match(re1dec); return mm ? `${mm[1]}.${mm[2]}` : null; }
       function firstInt (s){ const mm = s.match(reInt ); return mm ? mm[1] : null; }
 
-      // 라벨 근처 우선 (킬로미터 | kilometer)
       let kmFromLabel = null;
       {
         const idx = text.search(/킬로미터|kilometer/i);
         if (idx !== -1) {
-          const before = text.slice(Math.max(0, idx - 60), idx); // 위쪽 큰 숫자 영역
-          kmFromLabel =
-            first2Dec(before) ||
-            first1Dec(before) ||
-            firstInt(before);
+          const before = text.slice(Math.max(0, idx - 60), idx);
+          kmFromLabel = first2Dec(before) || first1Dec(before) || firstInt(before);
         }
       }
 
-      // 전체에서 보강
       let kmNum = kmFromLabel;
       if (!kmNum) {
         if (recordType === 'daily') {
@@ -609,7 +592,6 @@
         }
       }
 
-      /* ---------- Runs (영문/한글 라벨 모두) ---------- */
       function findRunsStrong(t){
         const lines = t.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
         for(let i=0;i<lines.length;i++){
@@ -657,7 +639,6 @@
       };
     }
 
-    /* ---------- KM 표시 포맷 ---------- */
     function formatKm(value){
       const v = Math.max(0, Number(value) || 0);
       if (recordType === 'monthly') return v.toFixed(1);
@@ -669,13 +650,11 @@
       document.getElementById('km').textContent = formatKm(value);
     }
 
-    /* ---- 칼럼 개수/배치 ---- */
     function updateGridCols(){
       const cols = (layoutType==='type1') ? 1 : (recordType==='monthly' ? 3 : 2);
       statsGrid.style.setProperty('--cols', cols);
     }
 
-    /* ★ 조합에 따라 칸 직접 배치 (D2 좌측 정렬 보장) */
     function layoutStatsGrid(){
       if (layoutType === 'type1'){
         [runsWrap, paceWrap, timeWrap].forEach(el=>{
@@ -686,7 +665,6 @@
         return;
       }
       if (recordType === 'daily'){
-        // D2: Pace 1열, Time 2열
         paceWrap.style.gridColumn = '1 / 2';
         timeWrap.style.gridColumn = '2 / 3';
         paceWrap.style.transform = 'translateX(0)';
@@ -694,7 +672,6 @@
         paceWrap.style.marginLeft = '0';
         timeWrap.style.marginLeft = '0';
       } else {
-        // M2: Runs 1열, Pace 2열, Time 3열
         runsWrap.style.gridColumn = '1 / 2';
         paceWrap.style.gridColumn = '2 / 3';
         timeWrap.style.gridColumn = '3 / 4';
@@ -707,7 +684,6 @@
       }
     }
 
-    /* ---------- 하단 통계 포맷 ---------- */
     function zero2txt(n){ return String(n).padStart(2,'0'); }
     function formatPaceByType(){
       if(parsedData.paceMin==null || parsedData.paceSec==null){
@@ -724,7 +700,6 @@
       return `${String(M)}m ${zero2txt(S)}s`;
     }
 
-    /* ★ M2 숫자 하단 정렬(픽셀맞춤) */
     function alignStatsBaseline(){
       if(layoutType !== 'type2') return;
       const stats = [];
@@ -736,7 +711,6 @@
       };
       addIfVisible('runs'); addIfVisible('pace'); addIfVisible('time');
 
-      // 초기화
       stats.forEach(el=>{ el.style.transform = ''; });
 
       if(!stats.length) return;
@@ -762,8 +736,17 @@
       document.getElementById('time').textContent = formatTimeByType();
 
       updateGridCols();
-      layoutStatsGrid();   // D2/M2 배치
-      alignStatsBaseline();// 숫자 하단 맞춤
+      layoutStatsGrid();
+      alignStatsBaseline();
+    }
+
+    // 🔹 업로드 라벨 문구 업데이트
+    function updateUploadLabel(){
+      if(!uploadLabelText) return;
+      uploadLabelText.textContent =
+        recordType === 'monthly'
+          ? 'Upload your NRC mileage image for THIS MONTH'
+          : 'Upload your NRC record image for TODAY';
     }
 
     // ---- Upload ----
@@ -776,27 +759,21 @@
         try{
           const img = reader.result;
 
-          // ✅ 한글+영문 동시 인식 (화이트리스트 제거: 한글 누락 방지)
           const ocrOpts = {
             preserve_interword_spaces: '1',
             tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK
           };
 
-          // 1) 원본 OCR
           const res1 = await Tesseract.recognize(img, 'eng+kor', ocrOpts);
-          // 2) 전처리(업스케일+이진화) 후 OCR
           const pre = await preprocessImageToDataURL(img, 2.0, 180);
           const res2 = await Tesseract.recognize(pre, 'eng+kor', ocrOpts);
 
-          // 3) 텍스트 파싱
           const p1 = parseFromOCR(res1.data.text || "");
           const p2 = parseFromOCR(res2.data.text || "");
 
-          // 4) word-bbox로 Runs 보강 (영/한 지원)
           const rWords1 = extractRunsFromWords(res1.data.words||[]);
           const rWords2 = extractRunsFromWords(res2.data.words||[]);
 
-          // 5) 결과 병합(전처리 우선 + 중앙값)
           const pick = (a,b)=> (a!=null ? a : b);
           parsedData = {
             km: pick(p2.km, p1.km),
@@ -814,7 +791,7 @@
             })()
           };
 
-          renderStats(); // OCR 직후 Runs/Pace/Time 즉시 반영
+          renderStats();
           status.textContent = "Uploaded!";
         }catch(err){
           status.textContent = "Upload failed";
@@ -823,7 +800,6 @@
       reader.readAsDataURL(file);
     });
 
-    // ---- Count-up ----
     const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
     function animateNumber(id,start,end,duration){
       return new Promise(resolve=>{
@@ -841,7 +817,6 @@
       });
     }
 
-    // ---- Pixel-perfect scale ----
     function scaleStageCanvas(){
       const canvas = document.getElementById('stage-canvas');
       if(!canvas) return;
@@ -851,7 +826,6 @@
       canvas.style.transform = `scale(${scale})`;
     }
 
-    /* ====== km 폰트별/타입별 스케일 맵 ====== */
     const kmFontScale = {
       "Anton": { type1: 0.90, type2: 1.00 },
       "Big Shoulders Inline Text": { type1: 0.95, type2: 1.10 },
@@ -868,7 +842,6 @@
       fitKmRow();
     }
 
-    /* ====== 폰트별/타입별 들여쓰기 맵 ====== */
     const fontIndentMap = {
       "Anton": { type1: { grid: 5,  kmWord: 0 },  type2: { grid: 5,  kmWord: 0 } },
       "Big Shoulders Inline Text": { type1: { grid: 8,  kmWord: 3 },  type2: { grid: 8,  kmWord: 3 } },
@@ -886,7 +859,6 @@
       document.documentElement.style.setProperty('--kmWordIndent', `${conf.kmWord}px`);
     }
 
-    /* ✅ 폰트별 하단 데이터 좌측 마진 적용 (D2/M2) */
     function applyFontStatsOffset(font){
       if (layoutType !== 'type2') {
         document.documentElement.style.setProperty('--statsLeftOffset', '0px');
@@ -897,7 +869,6 @@
       document.documentElement.style.setProperty('--statsLeftOffset', val || '0px');
     }
 
-    // ---- Fit number row ----
     function fitKmRow(){
       const stage   = document.getElementById('stage');
       const row     = document.getElementById('km-row');
@@ -945,13 +916,11 @@
       fitKmRow();
     }
 
-    /* 그룹 버튼 active 토글 */
     function updateActive(groupEl, targetBtn){
       [...groupEl.querySelectorAll('button')].forEach(b=>b.classList.remove('is-active'));
       if(targetBtn) targetBtn.classList.add('is-active');
     }
 
-    // ---- Font switching ----
     function setFont(font){
       selectedFont = font;
 
@@ -959,13 +928,11 @@
       const dateDisp = document.getElementById("date-display");
       const fs = fontSettings[font] || {};
 
-      // 메인 숫자
       km.style.fontFamily = font + ", sans-serif";
       km.style.fontSize   = ((fs.base ?? 200)) + "px";
       km.style.fontWeight = (fs.weight ?? 700);
       km.style.transform  = fs.translate ? `translate(${fs.translate})` : "translate(0,0)";
 
-      // 날짜 폰트: 지정한 5종만 해당 폰트 적용, 나머지는 기본(상속)
       const dateFontWhitelist = new Set([
         "Anton","Orbitron","Special Gothic Expanded One","Graduate","Gloria Hallelujah"
       ]);
@@ -977,7 +944,6 @@
         dateDisp.style.fontWeight = 700;
       }
 
-      // 날짜 크기·간격·위치 → CSS 변수에 반영
       const root = document.documentElement.style;
       const dSize = fs.dateSize || "50px";
       const dGap  = fs.dateGap  || "10px";
@@ -1004,7 +970,6 @@
       renderDateDisplay();
     }
 
-    // 테마 적용
     function setBackground(color){
       const htmlEl = document.documentElement, bodyEl = document.body;
       if(color==='black'){ htmlEl.classList.replace('bg-white','bg-black'); bodyEl.classList.replace('bg-white','bg-black'); }
@@ -1025,6 +990,7 @@
       fitKmRow();
       applyLayoutVisual();
       applyFontStatsOffset(selectedFont);
+      updateUploadLabel();    // ← 업로드 라벨 문구 동기화
     }
 
     function setDateFromInput(){
@@ -1083,7 +1049,6 @@
       applyLayoutVisual();
     }
 
-    // 날짜 스타일 조정 API (UI 제거, 내부 변수만 조정용)
     function setDateStyle(which, { size, gap, translate } = {}){
       const root = document.documentElement.style;
       if(which==='d2'){ if(size) root.setProperty('--d2-dateSize', size); if(gap) root.setProperty('--d2-dateGap', gap); if(translate) root.setProperty('--d2-dateTranslate', translate); }
@@ -1092,7 +1057,6 @@
       renderDateDisplay();
     }
 
-    // 이벤트 바인딩
     fontGridEl.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-font]'); if(btn) setFont(btn.dataset.font); });
     bgRow.addEventListener('click',   (e)=>{ const btn=e.target.closest('button[data-bg]');    if(btn) setBackground(btn.dataset.bg); });
     modeRow.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-mode]');  if(btn) setRecordType(btn.dataset.mode); });
@@ -1113,9 +1077,6 @@
     window.addEventListener('resize', ()=>{ scaleStageCanvas(); fitKmRow(); alignStatsBaseline(); });
     window.addEventListener('orientationchange', ()=> { setTimeout(()=>{ scaleStageCanvas(); fitKmRow(); alignStatsBaseline(); }, 50); });
 
-    /* ===========================
-       타입/모드별 제어 API
-       =========================== */
     function setTypeStatsStyle(type, { size, labelSize, gap, pull, pull2 } = {}){
       const root = document.documentElement.style;
       if(type==='type1'){
@@ -1166,7 +1127,7 @@
 
     // 초기화
     window.onload = ()=>{
-      setRecordType('daily');
+      setRecordType('daily');   // ← 내부적으로 updateUploadLabel도 호출됨
       setLayout('type1');
       setBackground('white');
       setFont('Anton');
@@ -1191,10 +1152,11 @@
 
       renderKm(0);
       applyFontIndents(selectedFont, layoutType);
-      applyFontStatsOffset(selectedFont);    // ✅ 초기 적용
+      applyFontStatsOffset(selectedFont);
 
       fitKmRow();
       renderStats();
+      updateUploadLabel(); // 초기 라벨 보정
     };
   </script>
 </body>
