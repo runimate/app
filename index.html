@@ -334,7 +334,7 @@
 </head>
 <body class="bg-white type1 mode-daily">
   <header>
-    <h1>RUNIMATE V.0.9.6 BETA</h1>
+    <h1>RUNIMATE V.0.9.5 BETA</h1>
     <div class="subtitle">by JS @runarchive.js</div>
   </header>
 
@@ -530,14 +530,14 @@
     /* =============================
        시간·페이스 파서 & 교차검증 유틸
        ============================= */
-    function parseTimeToSec(t){
+    function parseTimeToSec(t){ // "40:13" or "1:02:05"
       if(!t) return NaN;
       const parts = t.split(':').map(n=>parseInt(n,10));
       if(parts.length===2) return parts[0]*60 + parts[1];
       if(parts.length===3) return parts[0]*3600 + parts[1]*60 + parts[2];
       return NaN;
     }
-    function parsePaceToSecPerKm(p){
+    function parsePaceToSecPerKm(p){ // "6'43\"" or "6:43"
       if(!p) return NaN;
       const clean = p.replace(/[^\d:]/g,':');
       const [m,s] = clean.split(':').map(n=>parseInt(n||'0',10));
@@ -559,6 +559,7 @@
       return timeSec / paceSecPerKm;
     }
     function reconcile(inputs){
+      // inputs: { timeStr, distStr, paceStr, unit:'km'|'mi' }
       const toKm = (d,unit)=> unit==='mi' ? d*1.609344 : d;
 
       const timeSec = parseTimeToSec(inputs.timeStr||'');
@@ -578,7 +579,7 @@
         const relDiff = absDiff / Math.max(1, paceSecCalc);
         const withinTolerance = (absDiff <= 3) || (relDiff <= 0.02);
         if(withinTolerance){
-          final.paceSec = (paceSecCalc*2 + paceSecOCR)/3;
+          final.paceSec = (paceSecCalc*2 + paceSecOCR)/3; // 계산값 가중
           final.source.pace = 'calc+ocr';
           final.flags.push('pace_matched');
         }else{
@@ -586,6 +587,7 @@
           final.flags.push(`diff=${Math.round(absDiff)}s`);
         }
       }else if(!isFinite(paceSecCalc) && isFinite(paceSecOCR) && isFinite(timeSec)){
+        // dist 누락 → 역산
         const distFromPace = distanceFrom(timeSec, paceSecOCR);
         if(isFinite(distFromPace)){
           final.distKm = distFromPace;
@@ -605,7 +607,7 @@
     }
 
     /* =============================
-       이미지 전처리/ROI 헬퍼
+       이미지 전처리/ROI 헬퍼 (속도 개선 버전)
        ============================= */
     async function toCanvas(imgDataURL){
       return new Promise(res=>{
@@ -614,6 +616,8 @@
         img.src = imgDataURL;
       });
     }
+
+    // 단일 이진화(빠른 경로)
     async function preprocessImageToDataURL(imgDataURL, scale = 2.4, threshold = 190){
       return new Promise(async (resolve)=>{
         const {img, w:W, h:H} = await toCanvas(imgDataURL);
@@ -636,6 +640,8 @@
         resolve(c.toDataURL("image/png"));
       });
     }
+
+    // 가벼운 언샤프(날카롭게)
     async function unsharp(srcDataURL, amount=0.9){
       const {img,w,h} = await toCanvas(srcDataURL);
       const c=document.createElement('canvas'); c.width=w; c.height=h;
@@ -654,6 +660,8 @@
       ctx.putImageData(im,0,0);
       return c.toDataURL('image/png');
     }
+
+    // 상단 큰 숫자 ROI (조금 더 넓게)
     async function cropTopNumberROI(imgDataURL, topPct=0.06, heightPct=0.30, sidePct=0.06, scale=2.8){
       const {img, w, h} = await toCanvas(imgDataURL);
       const x = Math.round(w*sidePct);
@@ -670,6 +678,7 @@
       return c.toDataURL('image/png');
     }
 
+    // 숫자 전용 옵션
     const KM_LINE_OCR_OPTS_7 = {
       tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
       tessedit_char_whitelist: '0123456789.,',
@@ -689,6 +698,7 @@
       const m = t.match(/\b\d{1,3}[.,]\d{1,2}\b/g) || [];
       return m.map(x => ({ val: parseFloat(x.replace(',','.')), dec: (x.split(/[.,]/)[1]||'').length }));
     }
+
     function kmCandidatesFromWords(words){
       if(!Array.isArray(words) || !words.length) return [];
       const lines = new Map();
@@ -762,6 +772,7 @@
       return ranked[0]?.val ?? null;
     }
 
+    // 5-가드 보조 함수들
     async function recognizeLeadingChar(roiBinDataURL){
       const {img,w,h} = await toCanvas(roiBinDataURL);
       const c=document.createElement('canvas'); c.width=w; c.height=h;
@@ -841,7 +852,7 @@
       const out = [];
       const roi0 = await cropTopNumberROI(imgDataURL, 0.06, 0.30, 0.06, 2.8);
       const roi1 = await unsharp(roi0, 0.9);
-      const roi2 = await preprocessImageToDataURL(roi1, 1.0, 190);
+      const roi2 = await preprocessImageToDataURL(roi1, 1.0, 190); // 이진화본
 
       const [rA, rB, rC] = await Promise.all([
         Tesseract.recognize(roi1, 'eng', KM_LINE_OCR_OPTS_7),
@@ -917,22 +928,17 @@
     }
 
     /* =============================
-       표기/레이아웃 유틸
+       표기/레이아웃 유틸 (반올림 금지: 절사)
        ============================= */
-    // ▼▼▼ 여기 수정: D=소수 둘째자리까지 절사, M=첫째자리까지 절사, 항상 자리수 고정 표시 ▼▼▼
-    function formatKm(value){
-      let v = Number(value) || 0;
-      if (recordType === 'monthly'){
-        // M → 0.1 단위 절사, 항상 한 자리 표시
-        const t = Math.trunc(v * 10) / 10;
-        return t.toFixed(1);
-      } else {
-        // D → 0.01 단위 절사, 항상 두 자리 표시
-        const t = Math.trunc(v * 100) / 100;
-        return t.toFixed(2);
-      }
+    function truncate(value, digits){
+      const f = Math.pow(10, digits);
+      return Math.floor((Number(value)||0) * f) / f;
     }
-
+    function formatKm(value){
+      const v = Math.max(0, Number(value) || 0);
+      if (recordType === 'monthly') return truncate(v, 1).toFixed(1); // M: 한 자리 절사
+      return truncate(v, 2).toFixed(2); // D: 두 자리 절사
+    }
     function renderKm(value){
       document.getElementById('km').textContent = formatKm(value);
     }
@@ -1021,6 +1027,7 @@
       document.getElementById('pace').textContent = formatPaceByType();
       document.getElementById('time').textContent = formatTimeByType();
 
+      // 교차검증 배지 렌더
       renderCVBadges();
 
       updateGridCols();
@@ -1056,8 +1063,16 @@
           hint.textContent = `자동 보정: OCR pace와 계산 pace 차이 ${diffFlag.replace('diff=','')}`;
         }
       }
+
+      // 선두 자리 불일치로 거리 강제 대체 플래그 힌트
+      if(flags.includes('leading_digit_mismatch_override')){
+        hint.style.display = 'block';
+        hint.textContent = (hint.textContent ? hint.textContent + ' | ' : '')
+          + '선두 자리 불일치로 계산거리 사용';
+      }
     }
 
+    // 업로드 라벨 문구 업데이트
     function updateUploadLabel(){
       if(!uploadLabelText) return;
       uploadLabelText.textContent =
@@ -1067,8 +1082,14 @@
     }
 
     /* =============================
-       업로드 → OCR → 병합 + 교차검증
+       업로드 → OCR → 병합 + 교차검증 (+ 선두 자리 규칙)
        ============================= */
+    function leadingDigit(n){
+      if(!isFinite(n)) return null;
+      const s = Math.floor(Math.abs(n)).toString();
+      return s.length ? s[0] : null;
+    }
+
     document.getElementById("file-upload").addEventListener("change", async (e)=>{
       const file = e.target.files[0]; if(!file) return;
       const status = document.getElementById("upload-status");
@@ -1079,17 +1100,21 @@
         try{
           const img = reader.result;
 
+          // 1) KM: ROI 빠른 후보 + ROI 이진화 획득
           const fast = await multiPassKmCandidates_FAST(img);
           let kmCandidates = fast.cands;
           const roiBinForFiveGuard = fast.roiBin;
 
+          // 2) 전체 텍스트 1패스만 (pace/time/runs)
           const baseOpts = { preserve_interword_spaces: '1', tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK };
           const rFull = await Tesseract.recognize(img, 'eng+kor', baseOpts);
           const p = parseFromOCR(rFull.data.text || "");
           if(p.km) kmCandidates.push({ val: parseFloat(String(p.km).replace(',','.')), dec: (String(p.km).split(/[.,]/)[1]||'').length, src:'aux' });
 
+          // 3) KM 고르기
           let kmBest = pickBestKm(kmCandidates);
 
+          // 4) 보수적 선두 5 보정
           if (kmBest!=null){
             const intPart = Math.floor(kmBest);
             if (intPart===2 || intPart===3){
@@ -1111,6 +1136,7 @@
             }
           }
 
+          // Runs 라벨 근처 간단 가중
           function extractRunsFromWords(words){
             if(!Array.isArray(words) || !words.length) return null;
             const anchors = words.filter(w => {
@@ -1135,6 +1161,7 @@
           }
           const rWords = extractRunsFromWords(rFull.data.words||[]);
 
+          // 5) 교차검증(reconcile): time & distance로 pace 재계산 후 OCR pace와 비교/보정
           const paceOCRStr = (p.paceMin!=null && p.paceSec!=null) ? `${p.paceMin}'${String(p.paceSec).padStart(2,'0')}"` : null;
           const distStr = (kmBest ?? p.km ?? '').toString();
           const cv = reconcile({
@@ -1144,7 +1171,39 @@
             unit: 'km'
           });
 
-          let finalKm = isFinite(cv.distance) ? cv.distance : (kmBest ?? (p.km? parseFloat(String(p.km).replace(',','.')) : 0));
+          // === 선두 자리 불일치 규칙용 계산거리 산출 ===
+          const timeSecForCalc = parseTimeToSec(p.timeRaw || '');
+          const paceSecOCR = (p.paceMin!=null && p.paceSec!=null) ? (p.paceMin*60 + p.paceSec) : NaN;
+          // 계산에 사용할 pace: OCR pace 우선, 없으면 cv(=time/dist 기반) pace
+          const paceSecForCalc = isFinite(paceSecOCR) ? paceSecOCR : (isFinite(cv.pace) ? cv.pace : NaN);
+          const calcKmCandidate = (recordType==='daily' && isFinite(timeSecForCalc) && isFinite(paceSecForCalc))
+            ? (timeSecForCalc / paceSecForCalc)
+            : NaN;
+
+          // OCR 거리 원본
+          const ocrKmRaw = (kmBest ?? (p.km ? parseFloat(String(p.km).replace(',','.')) : NaN));
+
+          // 선두 자리(정수 첫 자리) 비교
+          const ldOCR  = leadingDigit(ocrKmRaw);
+          const ldCALC = leadingDigit(calcKmCandidate);
+          const leadMismatch = (ldOCR!==null && ldCALC!==null && ldOCR !== ldCALC);
+
+          // 6) parsedData에 최종값 반영 (우선순위: 선두 불일치→OCR 없음→기존 로직)
+          let finalKm;
+          // 기본 후보 (기존 cv.distance는 OCR 기반 dist를 보존함)
+          const fallbackKm = isFinite(cv.distance) ? cv.distance : (isFinite(ocrKmRaw) ? ocrKmRaw : (isFinite(calcKmCandidate) ? calcKmCandidate : 0));
+
+          if (leadMismatch && isFinite(calcKmCandidate)){
+            finalKm = calcKmCandidate;
+            // 플래그 추가(배지 힌트용)
+            cv.meta.flags = Array.isArray(cv.meta.flags) ? cv.meta.flags : [];
+            cv.meta.flags.push('leading_digit_mismatch_override');
+          } else if (!isFinite(ocrKmRaw) && isFinite(calcKmCandidate)) {
+            finalKm = calcKmCandidate;
+          } else {
+            finalKm = fallbackKm;
+          }
+
           let finalPaceSec = isFinite(cv.pace) ? Math.round(cv.pace) : ((p.paceMin!=null&&p.paceSec!=null)? (p.paceMin*60+p.paceSec) : NaN);
 
           parsedData = {
@@ -1154,9 +1213,10 @@
             timeH: p.timeH, timeM: p.timeM, timeS: p.timeS,
             timeRaw: p.timeRaw || null,
             runs: (recordType==='monthly') ? (p.runs ?? rWords ?? null) : null,
-            cv
+            cv // 메타 저장(배지 표시용)
           };
 
+          // 7) 출력
           renderKm(0);
           renderStats();
 
