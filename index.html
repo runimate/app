@@ -16,27 +16,24 @@
       --gapBelowKm: 12px;
       --radius:14px;
 
-      /* 공통 기본값 (실제 적용값은 body.type1/type2 + mode에서 매핑됨) */
+      /* 공통 기본값 */
       --kmWordSize: 28px;
       --kmWordGap: 0px;
 
       --statSize: 40px;
       --labelSize: 20px;
       --statGap: 49px;
-      --statPull: 0px;   /* 2열에서 두 번째 칸 당김 */
-      --statPull2: 0px;  /* 3열에서 세 번째 칸 당김 */
+      --statPull: 0px;
+      --statPull2: 0px;
 
       --kmScale: 1;
-      --modeKmScale: 1;  /* 모드(daily/monthly) 배수 */
+      --modeKmScale: 1;
 
-      /* 정렬/인덴트 */
       --gridFirstColIndent: 5px;
       --kmWordIndent: 0px;
 
-      /* 하단 데이터(stats) 좌측 마진 (D2/M2 전용) */
       --statsLeftOffset: 0px;
 
-      /* 수직 간격 */
       --kmWordLiftTop: 0px;
       --kmWordBottomGap: 26px;
 
@@ -73,7 +70,7 @@
       --d-kmWordBottomGap: var(--kmWordBottomGap);
       --d-kmScale: 1;
 
-      /* 날짜(D2/M1/M2) 스타일 컨트롤 변수 */
+      /* 날짜 스타일 변수 */
       --d2-dateSize: 60px;
       --d2-dateGap: 10px;
       --d2-dateTranslate: 0px, 0px;
@@ -186,7 +183,7 @@
     .font-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
     .font-grid button{
       height:48px; border-radius:var(--radius); border:3px solid var(--fg);
-      background:transparent; color:var(--fg); font-size:16px; font-weight:800; cursor:pointer;
+      background:transparent; color:{--fg}; font-size:16px; font-weight:800; cursor:pointer;
       transition:transform .04s ease, background .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease;
     }
     .font-grid button:active{ transform:scale(0.99); }
@@ -243,9 +240,8 @@
       margin-left: calc(var(--gridFirstColIndent) + var(--kmWordIndent));
     }
 
-    /* 하단 통계 (좌측 정렬 + 베이스라인 정렬) */
     .grid{
-      --cols: 2; /* type2 기본 2열 */
+      --cols: 2;
       display:grid;
       grid-template-columns: repeat(var(--cols), max-content);
       column-gap: var(--statGap);
@@ -523,7 +519,7 @@
       });
     }
 
-    // 단일 이진화(빠른 경로) + 스케일 최적화
+    // 단일 이진화(빠른 경로)
     async function preprocessImageToDataURL(imgDataURL, scale = 2.4, threshold = 190){
       return new Promise(async (resolve)=>{
         const {img, w:W, h:H} = await toCanvas(imgDataURL);
@@ -547,7 +543,7 @@
       });
     }
 
-    // 가벼운 언샤프
+    // 가벼운 언샤프(날카롭게)
     async function unsharp(srcDataURL, amount=0.9){
       const {img,w,h} = await toCanvas(srcDataURL);
       const c=document.createElement('canvas'); c.width=w; c.height=h;
@@ -555,7 +551,6 @@
       ctx.drawImage(img,0,0);
       const im=ctx.getImageData(0,0,w,h);
       const d=im.data;
-      // 간단 가장자리 강조(수평 1차 미분 근사)
       for(let y=0;y<h;y++){
         for(let x=1;x<w;x++){
           const i=(y*w+x)*4, j=(y*w+x-1)*4;
@@ -568,7 +563,7 @@
       return c.toDataURL('image/png');
     }
 
-    // 상단 큰 숫자 ROI (조금 더 넓게 잡고 스케일↑)
+    // 상단 큰 숫자 ROI (조금 더 넓게)
     async function cropTopNumberROI(imgDataURL, topPct=0.06, heightPct=0.30, sidePct=0.06, scale=2.8){
       const {img, w, h} = await toCanvas(imgDataURL);
       const x = Math.round(w*sidePct);
@@ -585,7 +580,7 @@
       return c.toDataURL('image/png');
     }
 
-    // 숫자 전용(오인식 ↓)
+    // 숫자 전용 옵션
     const KM_LINE_OCR_OPTS_7 = {
       tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
       tessedit_char_whitelist: '0123456789.,',
@@ -598,7 +593,7 @@
     };
 
     /* =============================
-       파서/후보 선택 로직 (간소 + 정밀)
+       파서/후보 선택 로직
        ============================= */
     function numsFromText(s){
       const t = normalizeOCR(s||'');
@@ -672,7 +667,6 @@
         return (b.roi - a.roi) || (b.decHits - a.decHits) || (b.count - a.count) || (b.score - a.score);
       });
 
-      // Pace/Time 기반 추정으로 3.15 ↔ 5.15 같은 애매함 해소
       const est = estimateDistanceFromPaceTime();
       if (ranked.length >= 2 && est!=null){
         const [a,b] = ranked;
@@ -682,14 +676,56 @@
       return ranked[0]?.val ?? null;
     }
 
-    // 빠르고 정확한 KM 후보 추출 (ROI 3패스 + 텍스트 1패스)
+    // ======== ★ 5-가드: 선두 자릿수 구조 분석 (ROI 이진화 이미지 사용) ========
+    async function looksLikeLeadingFive(roiBinDataURL){
+      const {img,w,h} = await toCanvas(roiBinDataURL);
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      const ctx=c.getContext('2d',{willReadFrequently:true});
+      ctx.drawImage(img,0,0);
+      const im=ctx.getImageData(0,0,w,h);
+      const d=im.data;
+
+      // 왼쪽에서 첫 글자 시작 위치 찾기 (검은 픽셀 많은 첫 컬럼)
+      function colBlackCount(x){
+        let sum=0;
+        for(let y=0;y<h;y++){ const i=(y*w+x)*4; if(d[i]<128) sum++; }
+        return sum;
+      }
+      let L=0; const need = Math.max(3, Math.floor(h*0.12));
+      for(let x=0; x<w; x++){ if(colBlackCount(x) > need){ L=x; break; } }
+
+      // 자릿수 폭 추정 (ROI 폭의 ~18%)
+      const digitW = Math.max(8, Math.floor(w*0.18));
+      const R = Math.min(w-1, L + digitW);
+
+      // 상단 가로획 밀도(0~14% 높이)
+      let y0=0, y1=Math.floor(h*0.14);
+      let blackTop=0,totalTop=(y1-y0)*(R-L+1);
+      for(let y=y0; y<y1; y++){
+        for(let x=L; x<=R; x++){ const i=(y*w+x)*4; if(d[i]<128) blackTop++; }
+      }
+      const topDensity = blackTop/Math.max(1,totalTop);
+
+      // 중단 가로획 밀도(48~62% 높이) — 5의 중간 바
+      let my0=Math.floor(h*0.48), my1=Math.floor(h*0.62);
+      let blackMid=0,totalMid=(my1-my0)*(R-L+1);
+      for(let y=my0; y<my1; y++){
+        for(let x=L; x<=R; x++){ const i=(y*w+x)*4; if(d[i]<128) blackMid++; }
+      }
+      const midDensity=blackMid/Math.max(1,totalMid);
+
+      // 기준: 상단 진한 가로선 + 중단 바가 동시에 강하면 5일 확률 높음
+      return (topDensity>0.58 && midDensity>0.40);
+    }
+
+    // 빠르고 정확한 KM 후보 추출 (ROI 3패스 + 텍스트 1패스) → ROI 이진화도 같이 반환
     async function multiPassKmCandidates_FAST(imgDataURL){
       const out = [];
 
-      // ROI 먼저 (숫자 전용 · 빠른 경로)
+      // ROI 먼저
       const roi0 = await cropTopNumberROI(imgDataURL, 0.06, 0.30, 0.06, 2.8);
       const roi1 = await unsharp(roi0, 0.9);
-      const roi2 = await preprocessImageToDataURL(roi1, 1.0, 190);
+      const roi2 = await preprocessImageToDataURL(roi1, 1.0, 190); // 이진화본(5-가드에서 사용)
 
       const [rA, rB, rC] = await Promise.all([
         Tesseract.recognize(roi1, 'eng', KM_LINE_OCR_OPTS_7),
@@ -703,21 +739,9 @@
         kmCandidatesFromWords(res.data.words).forEach(o=> out.push({ ...o, src:`${tag}-words`, score:(o.score||0)+conf*12 }));
       });
 
-      // 조기 종료: 2자리 소수 후보가 2개 이상 같은 값으로 나오면 확정
-      const early = pickBestKm(out);
-      if (early!=null){
-        const hasStrong = out.filter(c=>c.dec===2 && Math.abs(c.val-early)<1e-6).length >= 2;
-        if (hasStrong) return out;
-      }
-
-      // 보조: 전체 텍스트 1패스(페이스/타임/런즈 + 백업 KM)
-      const baseOpts = { preserve_interword_spaces:'1', tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK };
-      const full = await Tesseract.recognize(imgDataURL, 'eng+kor', baseOpts);
-      const confFull = (full.data?.confidence ?? 60)/100;
-      numsFromText(full.data.text).forEach(o=> out.push({ ...o, src:`full-text`, score:(o.score||0)+confFull*8 }));
-      kmCandidatesFromWords(full.data.words).forEach(o=> out.push({ ...o, src:`full-words`, score:(o.score||0)+confFull*8 }));
-
-      return out;
+      // 조기 확정 체크
+      // (그대로 두고, 호출 측에서 최종 보정)
+      return { cands: out, roiBin: roi2 };
     }
 
     /* =============================
@@ -770,7 +794,7 @@
       })();
 
       return {
-        km: kmFromLabel, // 최종 결정은 pickBestKm()에서
+        km: kmFromLabel,
         runs,
         paceMin: paceMatch ? parseInt(paceMatch[1],10) : null,
         paceSec: paceMatch ? parseInt(paceMatch[2],10) : null,
@@ -891,32 +915,49 @@
     }
 
     /* =============================
-       업로드 → OCR → 병합 로직 (속도 개선)
+       업로드 → OCR → 병합 로직 (속도 유지 + 5-가드 적용)
        ============================= */
     document.getElementById("file-upload").addEventListener("change", async (e)=>{
       const file = e.target.files[0]; if(!file) return;
       const status = document.getElementById("upload-status");
-      status.textContent = "Processing…";   // 상태 메시지 간결화
+      status.textContent = "Processing…";
 
       const reader = new FileReader();
       reader.onload = async () => {
         try{
           const img = reader.result;
 
-          // 1) KM: ROI 고정 3패스(빠름) → 조기결정 시 바로 사용
-          const kmCandidates = await multiPassKmCandidates_FAST(img);
+          // 1) KM: ROI 빠른 후보 + ROI 이진화 획득
+          const fast = await multiPassKmCandidates_FAST(img);
+          let kmCandidates = fast.cands;
+          const roiBinForFiveGuard = fast.roiBin;
 
-          // 2) 전체 텍스트 1패스만 수행 (페이스/타임/런즈 + 보조 KM)
+          // 2) 전체 텍스트 1패스만 (pace/time/runs)
           const baseOpts = { preserve_interword_spaces: '1', tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK };
           const rFull = await Tesseract.recognize(img, 'eng+kor', baseOpts);
           const p = parseFromOCR(rFull.data.text || "");
-
           if(p.km) kmCandidates.push({ val: parseFloat(String(p.km).replace(',','.')), dec: (String(p.km).split(/[.,]/)[1]||'').length, src:'aux' });
 
-          // 최종 KM 선택
-          const kmBest = pickBestKm(kmCandidates);
+          // 3) KM 고르기
+          let kmBest = pickBestKm(kmCandidates);
 
-          // Runs 라벨 근처 가중(간결 유지)
+          // 4) ★ 선두 5 보정 로직
+          if (kmBest!=null){
+            const intPart = Math.floor(kmBest);
+            // 2.x 또는 3.x 로 읽혔고, 구조적으로 '5'일 확률이 높거나
+            // 페이스/타임 추정치가 5km 근처면 5.x로 교정
+            if (intPart===2 || intPart===3){
+              let looks5 = false;
+              try{ looks5 = await looksLikeLeadingFive(roiBinForFiveGuard); }catch{}
+              const est = estimateDistanceFromPaceTime();
+              const estNear5 = (est!=null && est>=4.6 && est<=5.8);
+              if (looks5 || estNear5){
+                kmBest = 5 + (kmBest - intPart);
+              }
+            }
+          }
+
+          // Runs 라벨 근처 간단 가중
           function extractRunsFromWords(words){
             if(!Array.isArray(words) || !words.length) return null;
             const anchors = words.filter(w => {
@@ -943,13 +984,13 @@
 
           const pick = (a,b)=> (a!=null ? a : b);
           parsedData = {
-            km: kmBest ?? p.km,
+            km: kmBest ?? p.km ?? null,
             paceMin: p.paceMin, paceSec: p.paceSec,
             timeH: p.timeH, timeM: p.timeM, timeS: p.timeS, timeRaw: p.timeRaw,
             runs: pick(p.runs, rWords)
           };
 
-          // 업로드 직후: km는 0으로, 하단 정보만 즉시 갱신
+          // KM은 0으로 보이게 두고, 하단 정보 먼저 출력
           renderKm(0);
           renderStats();
 
