@@ -513,7 +513,7 @@
     }
 
     /* =============================
-       이미지 전처리/ROI 헬퍼 (+선명화/감마)
+       이미지 전처리/ROI 헬퍼 (속도 개선 버전)
        ============================= */
     async function toCanvas(imgDataURL){
       return new Promise(res=>{
@@ -523,7 +523,8 @@
       });
     }
 
-    async function preprocessImageToDataURL(imgDataURL, scale = 2.0, threshold = 180){
+    // 단일 이진화(빠른 경로) + 스케일 최적화
+    async function preprocessImageToDataURL(imgDataURL, scale = 2.4, threshold = 190){
       return new Promise(async (resolve)=>{
         const {img, w:W, h:H} = await toCanvas(imgDataURL);
         const w = Math.round(W * scale);
@@ -538,7 +539,7 @@
         for(let i=0;i<data.length;i+=4){
           const r=data[i], g=data[i+1], b=data[i+2];
           const gray = (r*0.299 + g*0.587 + b*0.114);
-          const v = gray > threshold ? 255 : (gray > threshold-25 ? 200 : 0);
+          const v = gray > threshold ? 255 : 0;
           data[i]=data[i+1]=data[i+2]=v;
         }
         ctx.putImageData(im,0,0);
@@ -546,55 +547,35 @@
       });
     }
 
-    // 간단 언샤프
-    async function unsharp(srcDataURL, amount=1.0, radius=1){
+    // 가벼운 언샤프
+    async function unsharp(srcDataURL, amount=0.9){
       const {img,w,h} = await toCanvas(srcDataURL);
       const c=document.createElement('canvas'); c.width=w; c.height=h;
       const ctx=c.getContext('2d',{willReadFrequently:true});
       ctx.drawImage(img,0,0);
-      // blur 근사
-      for(let i=0;i<radius;i++){
-        ctx.globalAlpha=0.5; ctx.globalCompositeOperation='destination-out';
-        ctx.filter='blur(1px)'; ctx.drawImage(c,0,0); ctx.filter='none';
-        ctx.globalCompositeOperation='source-over'; ctx.globalAlpha=1;
-      }
-      const c2=document.createElement('canvas'); c2.width=w; c2.height=h;
-      const g=c2.getContext('2d'); g.drawImage(img,0,0);
-      const sharp=g.getImageData(0,0,w,h), blur=ctx.getImageData(0,0,w,h);
-      const d=sharp.data, b=blur.data;
-      for(let p=0;p<d.length;p+=4){
-        d[p]   = Math.max(0, Math.min(255, d[p]   + amount*(d[p]   - b[p])));
-        d[p+1] = Math.max(0, Math.min(255, d[p+1] + amount*(d[p+1] - b[p+1])));
-        d[p+2] = Math.max(0, Math.min(255, d[p+2] + amount*(d[p+2] - b[p+2])));
-      }
-      g.putImageData(sharp,0,0);
-      return c2.toDataURL('image/png');
-    }
-
-    // 감마 보정
-    async function gamma(srcDataURL, gamma=0.85){
-      const {img,w,h} = await toCanvas(srcDataURL);
-      const c=document.createElement('canvas'); c.width=w; c.height=h;
-      const ctx=c.getContext('2d',{willReadFrequently:true});
-      ctx.drawImage(img,0,0);
-      const im=ctx.getImageData(0,0,w,h); const d=im.data;
-      const g=1/Math.max(0.01, gamma);
-      for(let i=0;i<d.length;i+=4){
-        d[i]   = 255*Math.pow(d[i]/255, g);
-        d[i+1] = 255*Math.pow(d[i+1]/255, g);
-        d[i+2] = 255*Math.pow(d[i+2]/255, g);
+      const im=ctx.getImageData(0,0,w,h);
+      const d=im.data;
+      // 간단 가장자리 강조(수평 1차 미분 근사)
+      for(let y=0;y<h;y++){
+        for(let x=1;x<w;x++){
+          const i=(y*w+x)*4, j=(y*w+x-1)*4;
+          d[i]   = Math.min(255, Math.max(0, d[i]   + amount*(d[i]   - d[j])));
+          d[i+1] = Math.min(255, Math.max(0, d[i+1] + amount*(d[i+1] - d[j+1])));
+          d[i+2] = Math.min(255, Math.max(0, d[i+2] + amount*(d[i+2] - d[j+2])));
+        }
       }
       ctx.putImageData(im,0,0);
       return c.toDataURL('image/png');
     }
 
-    // 상단 큰 숫자 ROI
-    async function cropTopNumberROI(imgDataURL, topPct=0.06, heightPct=0.30, sidePct=0.06, scale=3.0){
+    // 상단 큰 숫자 ROI (조금 더 넓게 잡고 스케일↑)
+    async function cropTopNumberROI(imgDataURL, topPct=0.06, heightPct=0.30, sidePct=0.06, scale=2.8){
       const {img, w, h} = await toCanvas(imgDataURL);
       const x = Math.round(w*sidePct);
       const y = Math.round(h*topPct);
       const cw = Math.round(w*(1-2*sidePct));
       const ch = Math.round(h*heightPct);
+
       const c = document.createElement('canvas');
       c.width = Math.round(cw*scale);
       c.height= Math.round(ch*scale);
@@ -604,14 +585,20 @@
       return c.toDataURL('image/png');
     }
 
-    // 숫자/점만 허용
-    const KM_LINE_OCR_OPTS = {
+    // 숫자 전용(오인식 ↓)
+    const KM_LINE_OCR_OPTS_7 = {
       tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
-      tessedit_char_whitelist: '0123456789.,'
+      tessedit_char_whitelist: '0123456789.,',
+      classify_bln_numeric_mode: '1'
+    };
+    const KM_LINE_OCR_OPTS_8 = {
+      tessedit_pageseg_mode: Tesseract.PSM.SINGLE_WORD,
+      tessedit_char_whitelist: '0123456789.,',
+      classify_bln_numeric_mode: '1'
     };
 
     /* =============================
-       파서/후보 선택 로직 (강화)
+       파서/후보 선택 로직 (간소 + 정밀)
        ============================= */
     function numsFromText(s){
       const t = normalizeOCR(s||'');
@@ -635,7 +622,7 @@
       }
       const arr = [...lines.values()];
       arr.sort((a,b)=> (a.y - b.y) || (b.maxH - a.maxH));
-      const top = arr.slice(0, 5);
+      const top = arr.slice(0, 4);
       const out = [];
       for(const L of top){
         const joined = L.text.join(' ');
@@ -663,7 +650,7 @@
       if (!totalSec) return null;
       const paceSec = parsedData.paceMin*60 + parsedData.paceSec;
       if (!paceSec) return null;
-      if (recordType === 'monthly') return null; // 월간은 누적치라 제외
+      if (recordType === 'monthly') return null;
       return totalSec / paceSec;
     }
 
@@ -681,68 +668,54 @@
         g.decHits += (c.dec===preferDec) ? 2 : 0.5;
         g.score += (c.score||0);
       }
-      let ranked = [...groups.values()].sort((a,b)=>{
+      const ranked = [...groups.values()].sort((a,b)=>{
         return (b.roi - a.roi) || (b.decHits - a.decHits) || (b.count - a.count) || (b.score - a.score);
       });
 
-      // Pace/Time 기반 추정치로 타이브레이커
-      const first = ranked[0], second = ranked[1];
+      // Pace/Time 기반 추정으로 3.15 ↔ 5.15 같은 애매함 해소
       const est = estimateDistanceFromPaceTime();
-      if (first && second && est!=null){
-        const d1 = Math.abs(first.val - est), d2 = Math.abs(second.val - est);
-        if (Math.abs(d1 - d2) > 0.12) {
-          return (d1 < d2) ? first.val : second.val;
-        }
+      if (ranked.length >= 2 && est!=null){
+        const [a,b] = ranked;
+        const d1 = Math.abs(a.val - est), d2 = Math.abs(b.val - est);
+        if (Math.abs(d1 - d2) > 0.12) return d1 < d2 ? a.val : b.val;
       }
-      return first?.val ?? null;
+      return ranked[0]?.val ?? null;
     }
 
-    async function multiPassKmCandidates(imgDataURL){
+    // 빠르고 정확한 KM 후보 추출 (ROI 3패스 + 텍스트 1패스)
+    async function multiPassKmCandidates_FAST(imgDataURL){
       const out = [];
-      const ocrBaseOpts = { preserve_interword_spaces:'1', tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK };
 
-      // 전체 텍스트 (라벨/보조)
-      const [resRaw, pre170, pre200] = await Promise.all([
-        Tesseract.recognize(imgDataURL, 'eng+kor', ocrBaseOpts),
-        preprocessImageToDataURL(imgDataURL, 2.4, 170),
-        preprocessImageToDataURL(imgDataURL, 2.4, 200)
+      // ROI 먼저 (숫자 전용 · 빠른 경로)
+      const roi0 = await cropTopNumberROI(imgDataURL, 0.06, 0.30, 0.06, 2.8);
+      const roi1 = await unsharp(roi0, 0.9);
+      const roi2 = await preprocessImageToDataURL(roi1, 1.0, 190);
+
+      const [rA, rB, rC] = await Promise.all([
+        Tesseract.recognize(roi1, 'eng', KM_LINE_OCR_OPTS_7),
+        Tesseract.recognize(roi2, 'eng', KM_LINE_OCR_OPTS_7),
+        Tesseract.recognize(roi2, 'eng', KM_LINE_OCR_OPTS_8)
       ]);
-      const [res170, res200] = await Promise.all([
-        Tesseract.recognize(pre170, 'eng+kor', ocrBaseOpts),
-        Tesseract.recognize(pre200, 'eng+kor', ocrBaseOpts)
-      ]);
 
-      const collect = (tag,res)=>{
-        const conf = (res.data?.confidence ?? 60) / 100;
-        numsFromText(res.data.text).forEach(o=> out.push({ ...o, src:`${tag}-text`, score:(o.score||0)+conf*10 }));
-        kmCandidatesFromWords(res.data.words).forEach(o=> out.push({ ...o, src:`${tag}-words`, score:(o.score||0)+conf*10 }));
-      };
-      collect('raw',resRaw); collect('bin170',res170); collect('bin200',res200);
-
-      // ROI 확대 + 선명화/감마 + 여러 임계값
-      const roi = await cropTopNumberROI(imgDataURL, 0.06, 0.30, 0.06, 3.0);
-      const roiSharp = await unsharp(roi, 1.2, 1);
-      const roiGamma = await gamma(roi, 0.85);
-      const roiB170  = await preprocessImageToDataURL(roiSharp, 1.0, 170);
-      const roiB190  = await preprocessImageToDataURL(roiSharp, 1.0, 190);
-      const roiB210  = await preprocessImageToDataURL(roiSharp, 1.0, 210);
-
-      const opts7 = { ...KM_LINE_OCR_OPTS, tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE };
-      const opts8 = { ...KM_LINE_OCR_OPTS, tessedit_pageseg_mode: Tesseract.PSM.SINGLE_WORD };
-
-      const passes = [
-        ['roi', roi, opts7], ['roi8', roi, opts8],
-        ['roiG', roiGamma, opts7], ['roiG8', roiGamma, opts8],
-        ['roi170', roiB170, opts7], ['roi170w', roiB170, opts8],
-        ['roi190', roiB190, opts7], ['roi190w', roiB190, opts8],
-        ['roi210', roiB210, opts7], ['roi210w', roiB210, opts8],
-      ];
-      const results = await Promise.all(passes.map(([tag,src,opt]) => Tesseract.recognize(src,'eng',opt).then(r=>[tag,r])));
-      results.forEach(([tag,res])=>{
-        const conf = (res.data?.confidence ?? 60) / 100;
+      [['roiA',rA],['roiB',rB],['roiC',rC]].forEach(([tag,res])=>{
+        const conf = (res.data?.confidence ?? 60)/100;
         numsFromText(res.data.text).forEach(o=> out.push({ ...o, src:`${tag}-text`, score:(o.score||0)+conf*12 }));
         kmCandidatesFromWords(res.data.words).forEach(o=> out.push({ ...o, src:`${tag}-words`, score:(o.score||0)+conf*12 }));
       });
+
+      // 조기 종료: 2자리 소수 후보가 2개 이상 같은 값으로 나오면 확정
+      const early = pickBestKm(out);
+      if (early!=null){
+        const hasStrong = out.filter(c=>c.dec===2 && Math.abs(c.val-early)<1e-6).length >= 2;
+        if (hasStrong) return out;
+      }
+
+      // 보조: 전체 텍스트 1패스(페이스/타임/런즈 + 백업 KM)
+      const baseOpts = { preserve_interword_spaces:'1', tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK };
+      const full = await Tesseract.recognize(imgDataURL, 'eng+kor', baseOpts);
+      const confFull = (full.data?.confidence ?? 60)/100;
+      numsFromText(full.data.text).forEach(o=> out.push({ ...o, src:`full-text`, score:(o.score||0)+confFull*8 }));
+      kmCandidatesFromWords(full.data.words).forEach(o=> out.push({ ...o, src:`full-words`, score:(o.score||0)+confFull*8 }));
 
       return out;
     }
@@ -797,27 +770,12 @@
       })();
 
       return {
-        km: kmFromLabel,
+        km: kmFromLabel, // 최종 결정은 pickBestKm()에서
         runs,
         paceMin: paceMatch ? parseInt(paceMatch[1],10) : null,
         paceSec: paceMatch ? parseInt(paceMatch[2],10) : null,
         timeH, timeM, timeS, timeRaw
       };
-    }
-
-    /* =============================
-       월간 신호 감지 (자동 전환)
-       ============================= */
-    function shouldBeMonthly(text, words){
-      const t = (text||'').toLowerCase();
-      if (/\bruns?\b/.test(t) || /러닝/.test(t)) return true;
-      if (/\bkilometers\b/.test(t)) return true;
-      if (/\b\d{1,2}:\d{2}:\d{2}\b/.test(t)) return true;
-      if (Array.isArray(words) && words.some(w=>{
-        const s=(w.text||'').trim().toLowerCase();
-        return s==='runs' || s==='러닝';
-      })) return true;
-      return false;
     }
 
     /* =============================
@@ -933,38 +891,32 @@
     }
 
     /* =============================
-       업로드 → OCR → 병합 로직
+       업로드 → OCR → 병합 로직 (속도 개선)
        ============================= */
     document.getElementById("file-upload").addEventListener("change", async (e)=>{
       const file = e.target.files[0]; if(!file) return;
       const status = document.getElementById("upload-status");
-      status.textContent = "Uploading...";
+      status.textContent = "Processing…";   // 상태 메시지 간결화
+
       const reader = new FileReader();
       reader.onload = async () => {
         try{
           const img = reader.result;
 
-          // 전체 텍스트 파싱 (runs/pace/time 등)
+          // 1) KM: ROI 고정 3패스(빠름) → 조기결정 시 바로 사용
+          const kmCandidates = await multiPassKmCandidates_FAST(img);
+
+          // 2) 전체 텍스트 1패스만 수행 (페이스/타임/런즈 + 보조 KM)
           const baseOpts = { preserve_interword_spaces: '1', tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK };
-          const r1 = await Tesseract.recognize(img, 'eng+kor', baseOpts);
-          const pre = await preprocessImageToDataURL(img, 2.0, 180);
-          const r2 = await Tesseract.recognize(pre, 'eng+kor', baseOpts);
+          const rFull = await Tesseract.recognize(img, 'eng+kor', baseOpts);
+          const p = parseFromOCR(rFull.data.text || "");
 
-          // 월간 신호 감지 → UI 먼저 전환
-          if (shouldBeMonthly(r1.data.text, r1.data.words) || shouldBeMonthly(r2.data.text, r2.data.words)) {
-            setRecordType('monthly');
-          }
+          if(p.km) kmCandidates.push({ val: parseFloat(String(p.km).replace(',','.')), dec: (String(p.km).split(/[.,]/)[1]||'').length, src:'aux' });
 
-          const p1 = parseFromOCR(r1.data.text || "");
-          const p2 = parseFromOCR(r2.data.text || "");
-
-          // 상단 큰 숫자 정밀 추출 (멀티패스 + ROI + 워드기반)
-          const kmCandidates = await multiPassKmCandidates(img);
-          if(p1.km) kmCandidates.push({ val: parseFloat(String(p1.km).replace(',','.')), dec: (String(p1.km).split(/[.,]/)[1]||'').length, src:'aux' });
-          if(p2.km) kmCandidates.push({ val: parseFloat(String(p2.km).replace(',','.')), dec: (String(p2.km).split(/[.,]/)[1]||'').length, src:'aux' });
+          // 최종 KM 선택
           const kmBest = pickBestKm(kmCandidates);
 
-          // Runs 라벨 근처 가중
+          // Runs 라벨 근처 가중(간결 유지)
           function extractRunsFromWords(words){
             if(!Array.isArray(words) || !words.length) return null;
             const anchors = words.filter(w => {
@@ -980,14 +932,6 @@
                   dx: Math.abs(((w.bbox&&w.bbox.x0)||0) - ((anchor.bbox&&anchor.bbox.x1)||0))
                 }));
               if(nums.length){ nums.sort((a,b)=>a.dx-b.dx); return nums[0].n; }
-              const cand = words
-                .filter(w => /^\d{1,3}$/.test((w.text||'').trim()))
-                .map(w => {
-                  const ay = (anchor.bbox&&(anchor.bbox.y0+anchor.bbox.y1)/2) || 0;
-                  const wy = (w.bbox&&(w.bbox.y0+w.bbox.y1)/2) || 0;
-                  return { n:+w.text.trim(), dy: Math.abs(ay - wy) };
-                });
-              if(cand.length){ cand.sort((a,b)=>a.dy-b.dy); return cand[0].n; }
               return null;
             };
             const picks = anchors.map(a=>sameLineNear(a)).filter(v=>Number.isInteger(v));
@@ -995,31 +939,21 @@
             picks.sort((a,b)=>a-b);
             return picks[Math.floor(picks.length/2)];
           }
-          const rWords1 = extractRunsFromWords(r1.data.words||[]);
-          const rWords2 = extractRunsFromWords(r2.data.words||[]);
+          const rWords = extractRunsFromWords(rFull.data.words||[]);
 
           const pick = (a,b)=> (a!=null ? a : b);
           parsedData = {
-            km: kmBest ?? pick(p2.km, p1.km),   // 최종 거리(내부 저장)
-            paceMin: pick(p1.paceMin, p2.paceMin),
-            paceSec: pick(p1.paceSec, p2.paceSec),
-            timeH: pick(p1.timeH, p2.timeH),
-            timeM: pick(p1.timeM, p2.timeM),
-            timeS: pick(p1.timeS, p2.timeS),
-            timeRaw: pick(p1.timeRaw, p2.timeRaw),
-            runs: (()=>{
-              const pool = [p1.runs, p2.runs, rWords1, rWords2].filter(v=>Number.isInteger(v));
-              if(!pool.length) return null;
-              pool.sort((x,y)=>x-y);
-              return pool[Math.floor(pool.length/2)];
-            })()
+            km: kmBest ?? p.km,
+            paceMin: p.paceMin, paceSec: p.paceSec,
+            timeH: p.timeH, timeM: p.timeM, timeS: p.timeS, timeRaw: p.timeRaw,
+            runs: pick(p.runs, rWords)
           };
 
-          // 업로드 직후: km는 0으로, 하단 정보만 출력
+          // 업로드 직후: km는 0으로, 하단 정보만 즉시 갱신
           renderKm(0);
           renderStats();
 
-          status.textContent = "Uploaded!";
+          status.textContent = "Done";
         }catch(err){
           console.error(err);
           status.textContent = "Upload failed";
