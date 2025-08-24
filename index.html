@@ -183,7 +183,7 @@
     .font-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
     .font-grid button{
       height:48px; border-radius:var(--radius); border:3px solid var(--fg);
-      background:transparent; color:{--fg}; font-size:16px; font-weight:800; cursor:pointer;
+      background:transparent; color:var(--fg); font-size:16px; font-weight:800; cursor:pointer;
       transition:transform .04s ease, background .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease;
     }
     .font-grid button:active{ transform:scale(0.99); }
@@ -287,6 +287,22 @@
       font-feature-settings: "tnum";
     }
     .label{ font-size: var(--labelSize); opacity:.9 }
+
+    /* pace 교차검증 배지 */
+    .badge{
+      display:inline-block;
+      margin-left:8px;
+      padding:2px 6px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:800;
+      line-height:1.2;
+      border:2px solid currentColor;
+      opacity:.9;
+      vertical-align:middle;
+    }
+    .badge.ok{ color:#0a7f2e; }
+    .badge.warn{ color:#b00020; }
 
     body.focus header{ display:none; }
     body.focus .top-ui{ display:none; }
@@ -426,6 +442,8 @@
             <div class="stat" id="time">-</div>
           </div>
         </div>
+        <!-- pace 교차검증 배지 표시용 -->
+        <div id="cv-hint" style="display:none; font-size:12px; opacity:.85; margin-top:6px;"></div>
       </div>
     </div>
   </section>
@@ -461,7 +479,8 @@
       runs: null,
       paceMin: null, paceSec: null,
       timeH: null, timeM: null, timeS: null,
-      timeRaw: null
+      timeRaw: null,
+      cv: null // 교차검증 메타
     };
     let recordType = 'daily';   // 'daily' | 'monthly'
     let layoutType = 'type1';   // 'type1' | 'type2'
@@ -506,6 +525,85 @@
               .replace(/\u200B|\u00A0/g,' ')
               .replace(/[ ]{2,}/g,' ')
               .trim();
+    }
+
+    /* =============================
+       시간·페이스 파서 & 교차검증 유틸
+       ============================= */
+    function parseTimeToSec(t){ // "40:13" or "1:02:05"
+      if(!t) return NaN;
+      const parts = t.split(':').map(n=>parseInt(n,10));
+      if(parts.length===2) return parts[0]*60 + parts[1];
+      if(parts.length===3) return parts[0]*3600 + parts[1]*60 + parts[2];
+      return NaN;
+    }
+    function parsePaceToSecPerKm(p){ // "6'43\"" or "6:43"
+      if(!p) return NaN;
+      const clean = p.replace(/[^\d:]/g,':');
+      const [m,s] = clean.split(':').map(n=>parseInt(n||'0',10));
+      if(Number.isNaN(m) || Number.isNaN(s)) return NaN;
+      return m*60 + (s||0);
+    }
+    function formatPace(sec){
+      if(!isFinite(sec)) return '0:00';
+      const m = Math.floor(sec/60);
+      const s = Math.round(sec%60);
+      return `${m}:${String(s).padStart(2,'0')}`;
+    }
+    function paceFrom(timeSec, distKm){
+      if(!timeSec || !distKm) return NaN;
+      return timeSec / distKm;
+    }
+    function distanceFrom(timeSec, paceSecPerKm){
+      if(!timeSec || !paceSecPerKm) return NaN;
+      return timeSec / paceSecPerKm;
+    }
+    function reconcile(inputs){
+      // inputs: { timeStr, distStr, paceStr, unit:'km'|'mi' }
+      const toKm = (d,unit)=> unit==='mi' ? d*1.609344 : d;
+
+      const timeSec = parseTimeToSec(inputs.timeStr||'');
+      const distKm  = toKm(parseFloat((inputs.distStr||'').replace(',','.')), inputs.unit||'km');
+      const paceSecOCR = inputs.paceStr ? parsePaceToSecPerKm(inputs.paceStr) : NaN;
+
+      const paceSecCalc = paceFrom(timeSec, distKm);
+      let final = {
+        timeSec, distKm: isFinite(distKm)? distKm : NaN,
+        paceSec: isFinite(paceSecCalc)? paceSecCalc : NaN,
+        source: { time:'ocr', dist:'ocr', pace:'calc' },
+        flags: []
+      };
+
+      if(isFinite(paceSecOCR) && isFinite(paceSecCalc)){
+        const absDiff = Math.abs(paceSecOCR - paceSecCalc);
+        const relDiff = absDiff / Math.max(1, paceSecCalc);
+        const withinTolerance = (absDiff <= 3) || (relDiff <= 0.02);
+        if(withinTolerance){
+          final.paceSec = (paceSecCalc*2 + paceSecOCR)/3; // 계산값 가중
+          final.source.pace = 'calc+ocr';
+          final.flags.push('pace_matched');
+        }else{
+          final.flags.push('pace_mismatch');
+          final.flags.push(`diff=${Math.round(absDiff)}s`);
+        }
+      }else if(!isFinite(paceSecCalc) && isFinite(paceSecOCR) && isFinite(timeSec)){
+        // dist 누락 → 역산
+        const distFromPace = distanceFrom(timeSec, paceSecOCR);
+        if(isFinite(distFromPace)){
+          final.distKm = distFromPace;
+          final.paceSec = paceSecOCR;
+          final.source.dist = 'pace/time';
+          final.source.pace = 'ocr';
+          final.flags.push('distance_inferred_from_time_pace');
+        }
+      }
+
+      return {
+        time: isFinite(timeSec) ? inputs.timeStr : '—',
+        distance: isFinite(final.distKm) ? final.distKm : NaN,
+        pace: isFinite(final.paceSec) ? final.paceSec : NaN,
+        meta: final
+      };
     }
 
     /* =============================
@@ -624,7 +722,7 @@
         const onlyNum = L.text.filter(t=>/^[0-9.,]+$/.test(t)).join('');
         const c1 = numsFromText(joined);
         const c2 = numsFromText(onlyNum);
-        c1.concat(c2).forEach(o=> out.push({ ...o, score: L.maxH, src:'word-top' }));
+        c1.concat(c2).forEach(o=> out.push({ ...o, src:'word-top', score:L.maxH }));
       }
       return out;
     }
@@ -638,9 +736,7 @@
       }
       if (!totalSec && parsedData.timeRaw){
         const m = parsedData.timeRaw.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
-        if (m){
-          totalSec = (m[3]? (+m[1]*3600 + +m[2]*60 + +m[3]) : (+m[1]*60 + +m[2]));
-        }
+        if (m){ totalSec = (m[3]? (+m[1]*3600 + +m[2]*60 + +m[3]) : (+m[1]*60 + +m[2])); }
       }
       if (!totalSec) return null;
       const paceSec = parsedData.paceMin*60 + parsedData.paceSec;
@@ -676,56 +772,87 @@
       return ranked[0]?.val ?? null;
     }
 
-    // ======== ★ 5-가드: 선두 자릿수 구조 분석 (ROI 이진화 이미지 사용) ========
+    // 5-가드 보조 함수들
+    async function recognizeLeadingChar(roiBinDataURL){
+      const {img,w,h} = await toCanvas(roiBinDataURL);
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      const ctx=c.getContext('2d',{willReadFrequently:true});
+      ctx.drawImage(img,0,0);
+      function colBlackCount(x){ let s=0; for(let y=0;y<h;y++){ if(ctx.getImageData(x,y,1,1).data[0]<128) s++; } return s; }
+      let L=0; const need = Math.max(3, Math.floor(h*0.12));
+      for(let x=0;x<w;x++){ if(colBlackCount(x)>need){ L=x; break; } }
+      const digitW = Math.max(8, Math.floor(w*0.18));
+      const R = Math.min(w-1, L+digitW);
+
+      const cc=document.createElement('canvas');
+      cc.width = R-L+1; cc.height = h;
+      cc.getContext('2d').drawImage(c, L, 0, R-L+1, h, 0, 0, R-L+1, h);
+      const cropURL = cc.toDataURL('image/png');
+
+      const charRes = await Tesseract.recognize(cropURL, 'eng', {
+        tessedit_pageseg_mode: Tesseract.PSM.SINGLE_CHAR,
+        tessedit_char_whitelist: '235',
+        classify_bln_numeric_mode: '1'
+      });
+      const ch = (charRes.data.text||'').trim().charAt(0) || '';
+      const conf = Number(charRes.data.confidence ?? 0);
+      return { ch, conf };
+    }
     async function looksLikeLeadingFive(roiBinDataURL){
       const {img,w,h} = await toCanvas(roiBinDataURL);
       const c=document.createElement('canvas'); c.width=w; c.height=h;
       const ctx=c.getContext('2d',{willReadFrequently:true});
       ctx.drawImage(img,0,0);
-      const im=ctx.getImageData(0,0,w,h);
-      const d=im.data;
+      const im=ctx.getImageData(0,0,w,h).data;
 
-      // 왼쪽에서 첫 글자 시작 위치 찾기 (검은 픽셀 많은 첫 컬럼)
-      function colBlackCount(x){
-        let sum=0;
-        for(let y=0;y<h;y++){ const i=(y*w+x)*4; if(d[i]<128) sum++; }
-        return sum;
-      }
+      function colBlackCount(x){ let s=0; for(let y=0;y<h;y++){ if(im[(y*w+x)*4]<128) s++; } return s; }
       let L=0; const need = Math.max(3, Math.floor(h*0.12));
-      for(let x=0; x<w; x++){ if(colBlackCount(x) > need){ L=x; break; } }
-
-      // 자릿수 폭 추정 (ROI 폭의 ~18%)
+      for(let x=0;x<w;x++){ if(colBlackCount(x)>need){ L=x; break; } }
       const digitW = Math.max(8, Math.floor(w*0.18));
-      const R = Math.min(w-1, L + digitW);
+      const R = Math.min(w-1, L+digitW);
 
-      // 상단 가로획 밀도(0~14% 높이)
-      let y0=0, y1=Math.floor(h*0.14);
-      let blackTop=0,totalTop=(y1-y0)*(R-L+1);
-      for(let y=y0; y<y1; y++){
-        for(let x=L; x<=R; x++){ const i=(y*w+x)*4; if(d[i]<128) blackTop++; }
+      function bandDensity(y0,y1){
+        let black=0; const total=(y1-y0)*(R-L+1);
+        for(let y=y0; y<y1; y++){
+          for(let x=L; x<=R; x++){ if(im[(y*w+x)*4]<128) black++; }
+        }
+        return black/Math.max(1,total);
       }
-      const topDensity = blackTop/Math.max(1,totalTop);
+      const topDensity = bandDensity(0, Math.floor(h*0.14));
+      const midDensity = bandDensity(Math.floor(h*0.47), Math.floor(h*0.62));
 
-      // 중단 가로획 밀도(48~62% 높이) — 5의 중간 바
-      let my0=Math.floor(h*0.48), my1=Math.floor(h*0.62);
-      let blackMid=0,totalMid=(my1-my0)*(R-L+1);
-      for(let y=my0; y<my1; y++){
-        for(let x=L; x<=R; x++){ const i=(y*w+x)*4; if(d[i]<128) blackMid++; }
+      let leftVert=0, total=0;
+      const vx0 = Math.min(R, L + Math.max(2, Math.floor(digitW*0.18)));
+      for(let y=Math.floor(h*0.35); y<Math.floor(h*0.85); y++){
+        total++;
+        if(im[(y*w+vx0)*4] < 128) leftVert++;
       }
-      const midDensity=blackMid/Math.max(1,totalMid);
+      const leftVertRatio = leftVert/Math.max(1,total);
 
-      // 기준: 상단 진한 가로선 + 중단 바가 동시에 강하면 5일 확률 높음
-      return (topDensity>0.58 && midDensity>0.40);
+      return (topDensity>0.62 && midDensity>0.46 && leftVertRatio>0.32);
+    }
+    function groupScores(cands){
+      const m=new Map();
+      for(const c of cands){
+        const key=(Math.round(c.val*100)/100).toFixed(2);
+        const s=(c.score||0)+ (String(c.src||'').includes('roi')?4:0);
+        m.set(key,(m.get(key)||0)+s);
+      }
+      return m;
+    }
+    function bestScoreAround(scoresMap, center, tol=0.25){
+      let best=0;
+      for(const [k,v] of scoresMap){
+        const x=parseFloat(k); if(Math.abs(x-center)<=tol) best=Math.max(best,v);
+      }
+      return best;
     }
 
-    // 빠르고 정확한 KM 후보 추출 (ROI 3패스 + 텍스트 1패스) → ROI 이진화도 같이 반환
     async function multiPassKmCandidates_FAST(imgDataURL){
       const out = [];
-
-      // ROI 먼저
       const roi0 = await cropTopNumberROI(imgDataURL, 0.06, 0.30, 0.06, 2.8);
       const roi1 = await unsharp(roi0, 0.9);
-      const roi2 = await preprocessImageToDataURL(roi1, 1.0, 190); // 이진화본(5-가드에서 사용)
+      const roi2 = await preprocessImageToDataURL(roi1, 1.0, 190); // 이진화본
 
       const [rA, rB, rC] = await Promise.all([
         Tesseract.recognize(roi1, 'eng', KM_LINE_OCR_OPTS_7),
@@ -739,8 +866,6 @@
         kmCandidatesFromWords(res.data.words).forEach(o=> out.push({ ...o, src:`${tag}-words`, score:(o.score||0)+conf*12 }));
       });
 
-      // 조기 확정 체크
-      // (그대로 두고, 호출 측에서 최종 보정)
       return { cands: out, roiBin: roi2 };
     }
 
@@ -900,9 +1025,42 @@
       document.getElementById('pace').textContent = formatPaceByType();
       document.getElementById('time').textContent = formatTimeByType();
 
+      // 교차검증 배지 렌더
+      renderCVBadges();
+
       updateGridCols();
       layoutStatsGrid();
       alignStatsBaseline();
+    }
+
+    function renderCVBadges(){
+      const paceEl = document.getElementById('pace');
+      const existing = paceEl.querySelector('.badge');
+      if(existing) existing.remove();
+
+      const hint = document.getElementById('cv-hint');
+      hint.style.display = 'none';
+      hint.textContent = '';
+
+      const meta = parsedData.cv;
+      if(!meta || !meta.meta) return;
+
+      const flags = meta.meta.flags || [];
+      const hasMismatch = flags.includes('pace_mismatch');
+      const hasMatch = flags.includes('pace_matched');
+
+      if(hasMismatch || hasMatch){
+        const badge = document.createElement('span');
+        badge.className = `badge ${hasMismatch ? 'warn' : 'ok'}`;
+        badge.textContent = hasMismatch ? 'auto-correct' : 'verified';
+        paceEl.appendChild(badge);
+
+        const diffFlag = flags.find(f => String(f).startsWith('diff='));
+        if(diffFlag){
+          hint.style.display = 'block';
+          hint.textContent = `자동 보정: OCR pace와 계산 pace 차이 ${diffFlag.replace('diff=','')}`;
+        }
+      }
     }
 
     // 업로드 라벨 문구 업데이트
@@ -915,7 +1073,7 @@
     }
 
     /* =============================
-       업로드 → OCR → 병합 로직 (속도 유지 + 5-가드 적용)
+       업로드 → OCR → 병합 + 교차검증
        ============================= */
     document.getElementById("file-upload").addEventListener("change", async (e)=>{
       const file = e.target.files[0]; if(!file) return;
@@ -941,17 +1099,23 @@
           // 3) KM 고르기
           let kmBest = pickBestKm(kmCandidates);
 
-          // 4) ★ 선두 5 보정 로직
+          // 4) 보수적 선두 5 보정
           if (kmBest!=null){
             const intPart = Math.floor(kmBest);
-            // 2.x 또는 3.x 로 읽혔고, 구조적으로 '5'일 확률이 높거나
-            // 페이스/타임 추정치가 5km 근처면 5.x로 교정
             if (intPart===2 || intPart===3){
-              let looks5 = false;
-              try{ looks5 = await looksLikeLeadingFive(roiBinForFiveGuard); }catch{}
+              const { ch:leadCh, conf:leadConf } = await recognizeLeadingChar(roiBinForFiveGuard).catch(()=>({ch:'',conf:0}));
+              const looks5 = await looksLikeLeadingFive(roiBinForFiveGuard).catch(()=>false);
               const est = estimateDistanceFromPaceTime();
-              const estNear5 = (est!=null && est>=4.6 && est<=5.8);
-              if (looks5 || estNear5){
+              const estNear5 = (est!=null && est>=4.85 && est<=5.30);
+              const scores = groupScores(kmCandidates);
+              const s2 = bestScoreAround(scores, 2.0, 0.25);
+              const s3 = bestScoreAround(scores, 3.0, 0.25);
+              const s5 = bestScoreAround(scores, 5.0, 0.25);
+              const strongNotFive = (leadCh==='2' || leadCh==='3') && leadConf>=70;
+              const allowFixToFive =
+                (leadCh==='5' && leadConf>=82) ||
+                (looks5 && estNear5 && (s5 > Math.max(s2,s3) + 6));
+              if (!strongNotFive && allowFixToFive){
                 kmBest = 5 + (kmBest - intPart);
               }
             }
@@ -982,22 +1146,38 @@
           }
           const rWords = extractRunsFromWords(rFull.data.words||[]);
 
-          const pick = (a,b)=> (a!=null ? a : b);
+          // 5) 교차검증(reconcile): time & distance로 pace 재계산 후 OCR pace와 비교/보정
+          const paceOCRStr = (p.paceMin!=null && p.paceSec!=null) ? `${p.paceMin}'${String(p.paceSec).padStart(2,'0')}"` : null;
+          const distStr = (kmBest ?? p.km ?? '').toString();
+          const cv = reconcile({
+            timeStr: p.timeRaw || '',
+            distStr,
+            paceStr: paceOCRStr,
+            unit: 'km'
+          });
+
+          // 6) parsedData에 최종값 반영
+          let finalKm = isFinite(cv.distance) ? cv.distance : (kmBest ?? (p.km? parseFloat(String(p.km).replace(',','.')) : 0));
+          let finalPaceSec = isFinite(cv.pace) ? Math.round(cv.pace) : ((p.paceMin!=null&&p.paceSec!=null)? (p.paceMin*60+p.paceSec) : NaN);
+
           parsedData = {
-            km: kmBest ?? p.km ?? null,
-            paceMin: p.paceMin, paceSec: p.paceSec,
-            timeH: p.timeH, timeM: p.timeM, timeS: p.timeS, timeRaw: p.timeRaw,
-            runs: pick(p.runs, rWords)
+            km: finalKm ?? 0,
+            paceMin: isFinite(finalPaceSec) ? Math.floor(finalPaceSec/60) : null,
+            paceSec: isFinite(finalPaceSec) ? (finalPaceSec%60) : null,
+            timeH: p.timeH, timeM: p.timeM, timeS: p.timeS,
+            timeRaw: p.timeRaw || null,
+            runs: (recordType==='monthly') ? (p.runs ?? rWords ?? null) : null,
+            cv // 메타 저장(배지 표시용)
           };
 
-          // KM은 0으로 보이게 두고, 하단 정보 먼저 출력
+          // 7) 출력
           renderKm(0);
           renderStats();
 
           status.textContent = "Done";
         }catch(err){
           console.error(err);
-          status.textContent = "Upload failed";
+          document.getElementById("upload-status").textContent = "Upload failed";
         }
       };
       reader.readAsDataURL(file);
@@ -1266,7 +1446,7 @@
     fontGridEl.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-font]'); if(btn) setFont(btn.dataset.font); });
     bgRow.addEventListener('click',   (e)=>{ const btn=e.target.closest('button[data-bg]');    if(btn) setBackground(btn.dataset.bg); });
     modeRow.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-mode]');  if(btn) setRecordType(btn.dataset.mode); });
-    layoutRow.addEventListener('click',(e)=>{ const btn=e.target.closest('button[data-layout]');if(btn) setLayout(btn.dataset.layout); });
+    layoutRow.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-layout]'); if(btn) setLayout(btn.dataset.layout); });
     dateInput.addEventListener('change', setDateFromInput);
 
     function onRun(){
