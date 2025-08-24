@@ -513,7 +513,7 @@
     }
 
     /* =============================
-       이미지 전처리/ROI 헬퍼
+       이미지 전처리/ROI 헬퍼 (+선명화/감마)
        ============================= */
     async function toCanvas(imgDataURL){
       return new Promise(res=>{
@@ -546,14 +546,55 @@
       });
     }
 
-    // 상단 큰 숫자 ROI (윗 8~32% 영역, 좌우 8% 마진)
-    async function cropTopNumberROI(imgDataURL, topPct=0.08, heightPct=0.24, sidePct=0.08, scale=2.4){
+    // 간단 언샤프
+    async function unsharp(srcDataURL, amount=1.0, radius=1){
+      const {img,w,h} = await toCanvas(srcDataURL);
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      const ctx=c.getContext('2d',{willReadFrequently:true});
+      ctx.drawImage(img,0,0);
+      // blur 근사
+      for(let i=0;i<radius;i++){
+        ctx.globalAlpha=0.5; ctx.globalCompositeOperation='destination-out';
+        ctx.filter='blur(1px)'; ctx.drawImage(c,0,0); ctx.filter='none';
+        ctx.globalCompositeOperation='source-over'; ctx.globalAlpha=1;
+      }
+      const c2=document.createElement('canvas'); c2.width=w; c2.height=h;
+      const g=c2.getContext('2d'); g.drawImage(img,0,0);
+      const sharp=g.getImageData(0,0,w,h), blur=ctx.getImageData(0,0,w,h);
+      const d=sharp.data, b=blur.data;
+      for(let p=0;p<d.length;p+=4){
+        d[p]   = Math.max(0, Math.min(255, d[p]   + amount*(d[p]   - b[p])));
+        d[p+1] = Math.max(0, Math.min(255, d[p+1] + amount*(d[p+1] - b[p+1])));
+        d[p+2] = Math.max(0, Math.min(255, d[p+2] + amount*(d[p+2] - b[p+2])));
+      }
+      g.putImageData(sharp,0,0);
+      return c2.toDataURL('image/png');
+    }
+
+    // 감마 보정
+    async function gamma(srcDataURL, gamma=0.85){
+      const {img,w,h} = await toCanvas(srcDataURL);
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      const ctx=c.getContext('2d',{willReadFrequently:true});
+      ctx.drawImage(img,0,0);
+      const im=ctx.getImageData(0,0,w,h); const d=im.data;
+      const g=1/Math.max(0.01, gamma);
+      for(let i=0;i<d.length;i+=4){
+        d[i]   = 255*Math.pow(d[i]/255, g);
+        d[i+1] = 255*Math.pow(d[i+1]/255, g);
+        d[i+2] = 255*Math.pow(d[i+2]/255, g);
+      }
+      ctx.putImageData(im,0,0);
+      return c.toDataURL('image/png');
+    }
+
+    // 상단 큰 숫자 ROI
+    async function cropTopNumberROI(imgDataURL, topPct=0.06, heightPct=0.30, sidePct=0.06, scale=3.0){
       const {img, w, h} = await toCanvas(imgDataURL);
       const x = Math.round(w*sidePct);
       const y = Math.round(h*topPct);
       const cw = Math.round(w*(1-2*sidePct));
       const ch = Math.round(h*heightPct);
-
       const c = document.createElement('canvas');
       c.width = Math.round(cw*scale);
       c.height= Math.round(ch*scale);
@@ -570,7 +611,7 @@
     };
 
     /* =============================
-       파서/후보 선택 로직
+       파서/후보 선택 로직 (강화)
        ============================= */
     function numsFromText(s){
       const t = normalizeOCR(s||'');
@@ -606,58 +647,101 @@
       return out;
     }
 
+    function estimateDistanceFromPaceTime(){
+      if (parsedData.paceMin==null || parsedData.paceSec==null) return null;
+      let totalSec = null;
+      if (parsedData.timeH!=null || parsedData.timeM!=null || parsedData.timeS!=null){
+        const H = parsedData.timeH||0, M=parsedData.timeM||0, S=parsedData.timeS||0;
+        totalSec = H*3600 + M*60 + S;
+      }
+      if (!totalSec && parsedData.timeRaw){
+        const m = parsedData.timeRaw.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+        if (m){
+          totalSec = (m[3]? (+m[1]*3600 + +m[2]*60 + +m[3]) : (+m[1]*60 + +m[2]));
+        }
+      }
+      if (!totalSec) return null;
+      const paceSec = parsedData.paceMin*60 + parsedData.paceSec;
+      if (!paceSec) return null;
+      if (recordType === 'monthly') return null; // 월간은 누적치라 제외
+      return totalSec / paceSec;
+    }
+
     function pickBestKm(cands){
       if(!cands || !cands.length) return null;
+      const preferDec = (recordType==='monthly') ? 1 : 2;
+
       const groups = new Map();
       for(const c of cands){
         const key = (Math.round(c.val*100)/100).toFixed(2);
-        if(!groups.has(key)) groups.set(key, { count:0, roi:0, d2:0, sumScore:0, val:parseFloat(key) });
+        if(!groups.has(key)) groups.set(key, { val:parseFloat(key), count:0, roi:0, decHits:0, score:0 });
         const g = groups.get(key);
         g.count++;
-        if(c.src && String(c.src).includes('roi')) g.roi += 1;
-        if(c.dec === 2) g.d2 += 1;
-        g.sumScore += (c.score||0);
+        if(String(c.src||'').includes('roi')) g.roi += 1;
+        g.decHits += (c.dec===preferDec) ? 2 : 0.5;
+        g.score += (c.score||0);
       }
-      const ranked = [...groups.values()].sort((a,b)=>{
-        return (b.roi - a.roi) || (b.d2 - a.d2) || (b.count - a.count) || (b.sumScore - a.sumScore);
+      let ranked = [...groups.values()].sort((a,b)=>{
+        return (b.roi - a.roi) || (b.decHits - a.decHits) || (b.count - a.count) || (b.score - a.score);
       });
-      return ranked[0]?.val ?? null;
+
+      // Pace/Time 기반 추정치로 타이브레이커
+      const first = ranked[0], second = ranked[1];
+      const est = estimateDistanceFromPaceTime();
+      if (first && second && est!=null){
+        const d1 = Math.abs(first.val - est), d2 = Math.abs(second.val - est);
+        if (Math.abs(d1 - d2) > 0.12) {
+          return (d1 < d2) ? first.val : second.val;
+        }
+      }
+      return first?.val ?? null;
     }
 
     async function multiPassKmCandidates(imgDataURL){
       const out = [];
-
-      // 1) 원본/바이너리 전체 텍스트
       const ocrBaseOpts = { preserve_interword_spaces:'1', tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK };
+
+      // 전체 텍스트 (라벨/보조)
       const [resRaw, pre170, pre200] = await Promise.all([
         Tesseract.recognize(imgDataURL, 'eng+kor', ocrBaseOpts),
-        preprocessImageToDataURL(imgDataURL, 2.2, 170),
-        preprocessImageToDataURL(imgDataURL, 2.2, 200)
+        preprocessImageToDataURL(imgDataURL, 2.4, 170),
+        preprocessImageToDataURL(imgDataURL, 2.4, 200)
       ]);
       const [res170, res200] = await Promise.all([
         Tesseract.recognize(pre170, 'eng+kor', ocrBaseOpts),
         Tesseract.recognize(pre200, 'eng+kor', ocrBaseOpts)
       ]);
 
-      [ ['raw',resRaw], ['bin170',res170], ['bin200',res200] ].forEach(([tag,res])=>{
-        numsFromText(res.data.text).forEach(o=> out.push({ ...o, src:`${tag}-text` }));
-        kmCandidatesFromWords(res.data.words).forEach(o=> out.push({ ...o, src:`${tag}-words` }));
-      });
+      const collect = (tag,res)=>{
+        const conf = (res.data?.confidence ?? 60) / 100;
+        numsFromText(res.data.text).forEach(o=> out.push({ ...o, src:`${tag}-text`, score:(o.score||0)+conf*10 }));
+        kmCandidatesFromWords(res.data.words).forEach(o=> out.push({ ...o, src:`${tag}-words`, score:(o.score||0)+conf*10 }));
+      };
+      collect('raw',resRaw); collect('bin170',res170); collect('bin200',res200);
 
-      // 2) ROI (윗쪽 라인만 숫자 전용)
-      const roi = await cropTopNumberROI(imgDataURL, 0.08, 0.26, 0.08, 2.8);
-      const roiB170 = await preprocessImageToDataURL(roi, 1.0, 170);
-      const roiB190 = await preprocessImageToDataURL(roi, 1.0, 190);
+      // ROI 확대 + 선명화/감마 + 여러 임계값
+      const roi = await cropTopNumberROI(imgDataURL, 0.06, 0.30, 0.06, 3.0);
+      const roiSharp = await unsharp(roi, 1.2, 1);
+      const roiGamma = await gamma(roi, 0.85);
+      const roiB170  = await preprocessImageToDataURL(roiSharp, 1.0, 170);
+      const roiB190  = await preprocessImageToDataURL(roiSharp, 1.0, 190);
+      const roiB210  = await preprocessImageToDataURL(roiSharp, 1.0, 210);
 
-      const [r1, r2, r3] = await Promise.all([
-        Tesseract.recognize(roi, 'eng', KM_LINE_OCR_OPTS),
-        Tesseract.recognize(roiB170, 'eng', KM_LINE_OCR_OPTS),
-        Tesseract.recognize(roiB190, 'eng', KM_LINE_OCR_OPTS)
-      ]);
+      const opts7 = { ...KM_LINE_OCR_OPTS, tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE };
+      const opts8 = { ...KM_LINE_OCR_OPTS, tessedit_pageseg_mode: Tesseract.PSM.SINGLE_WORD };
 
-      [ ['roi',r1], ['roi170',r2], ['roi190',r3] ].forEach(([tag,res])=>{
-        numsFromText(res.data.text).forEach(o=> out.push({ ...o, src:`${tag}-text` }));
-        kmCandidatesFromWords(res.data.words).forEach(o=> out.push({ ...o, src:`${tag}-words` }));
+      const passes = [
+        ['roi', roi, opts7], ['roi8', roi, opts8],
+        ['roiG', roiGamma, opts7], ['roiG8', roiGamma, opts8],
+        ['roi170', roiB170, opts7], ['roi170w', roiB170, opts8],
+        ['roi190', roiB190, opts7], ['roi190w', roiB190, opts8],
+        ['roi210', roiB210, opts7], ['roi210w', roiB210, opts8],
+      ];
+      const results = await Promise.all(passes.map(([tag,src,opt]) => Tesseract.recognize(src,'eng',opt).then(r=>[tag,r])));
+      results.forEach(([tag,res])=>{
+        const conf = (res.data?.confidence ?? 60) / 100;
+        numsFromText(res.data.text).forEach(o=> out.push({ ...o, src:`${tag}-text`, score:(o.score||0)+conf*12 }));
+        kmCandidatesFromWords(res.data.words).forEach(o=> out.push({ ...o, src:`${tag}-words`, score:(o.score||0)+conf*12 }));
       });
 
       return out;
@@ -713,12 +797,27 @@
       })();
 
       return {
-        km: kmFromLabel, // 최종 결정은 pickBestKm()에서
+        km: kmFromLabel,
         runs,
         paceMin: paceMatch ? parseInt(paceMatch[1],10) : null,
         paceSec: paceMatch ? parseInt(paceMatch[2],10) : null,
         timeH, timeM, timeS, timeRaw
       };
+    }
+
+    /* =============================
+       월간 신호 감지 (자동 전환)
+       ============================= */
+    function shouldBeMonthly(text, words){
+      const t = (text||'').toLowerCase();
+      if (/\bruns?\b/.test(t) || /러닝/.test(t)) return true;
+      if (/\bkilometers\b/.test(t)) return true;
+      if (/\b\d{1,2}:\d{2}:\d{2}\b/.test(t)) return true;
+      if (Array.isArray(words) && words.some(w=>{
+        const s=(w.text||'').trim().toLowerCase();
+        return s==='runs' || s==='러닝';
+      })) return true;
+      return false;
     }
 
     /* =============================
@@ -851,6 +950,11 @@
           const pre = await preprocessImageToDataURL(img, 2.0, 180);
           const r2 = await Tesseract.recognize(pre, 'eng+kor', baseOpts);
 
+          // 월간 신호 감지 → UI 먼저 전환
+          if (shouldBeMonthly(r1.data.text, r1.data.words) || shouldBeMonthly(r2.data.text, r2.data.words)) {
+            setRecordType('monthly');
+          }
+
           const p1 = parseFromOCR(r1.data.text || "");
           const p2 = parseFromOCR(r2.data.text || "");
 
@@ -911,7 +1015,7 @@
             })()
           };
 
-          // ✅ 업로드 직후: km 출력은 항상 0으로, 하단 정보만 즉시 갱신
+          // 업로드 직후: km는 0으로, 하단 정보만 출력
           renderKm(0);
           renderStats();
 
