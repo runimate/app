@@ -344,7 +344,7 @@
               <path d="M12 5v12"/>
             </svg>
           </span>
-          <span id="upload-label-text">Upload your NRC record image for TODAY</span>
+          <span id="upload-label-text">Upload your NRC record for TODAY</span>
         </label>
         <input type="file" id="file-upload" accept="image/*" style="display:none;" />
         <div class="status" id="upload-status"></div>
@@ -985,8 +985,8 @@
       if(!uploadLabelText) return;
       uploadLabelText.textContent =
         recordType === 'monthly'
-          ? 'Upload your NRC image for THIS MONTH'
-          : 'Upload your NRC record image for TODAY';
+          ? 'Upload your mileage for THIS MONTH'
+          : 'Upload your NRC record for TODAY';
     }
 
     /* ===== 업로드 → OCR → 병합 (+ 선두 자리 규칙) ===== */
