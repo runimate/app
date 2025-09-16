@@ -6,8 +6,13 @@
   <title>RUNIMATE</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
 
-  <!-- Google Fonts -->
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Big+Shoulders+Inline+Text:wght@800&family=Tourney:ital,wght@1,200&family=Anta&family=Arvo:ital,wght@1,700&family=Iceberg&family=Londrina+Shadow&family=Permanent+Marker&family=Rock+Salt&display=swap" rel="stylesheet">
+  <!-- Google Fonts (FIXED: add needed variants for iOS) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Anton/Anta/Iceberg/Londrina/Permanent Marker/Rock Salt 그대로,
+       Tourney normal 800 + italic 200, Arvo normal 700 + italic 700 추가 -->
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Anta&family=Arvo:ital,wght@0,700;1,700&family=Big+Shoulders+Inline+Text:wght@800&family=Iceberg&family=Londrina+Shadow&family=Permanent+Marker&family=Rock+Salt&family=Tourney:ital,wght@0,800;1,200&display=swap" rel="stylesheet">
+
   <style>
     :root{
       --pad:16px;
@@ -90,7 +95,13 @@
 
     *{box-sizing:border-box}
     html, body { background:#fff; color:#000; min-height:100%; }
-    body{ margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; }
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
 
     /* 전체 테마 */
     html.bg-white{ background:#fff; color:#000; }
@@ -348,7 +359,8 @@
         <input type="file" id="file-upload" accept="image/*" style="display:none;" />
         <div class="status" id="upload-status"></div>
       </section>
-            <!-- 레이아웃 & BG -->
+
+      <!-- 레이아웃 & BG -->
       <div class="two-col">
         <div>
           <div class="control-title title-left">Layout</div>
@@ -375,20 +387,19 @@
       <!-- 폰트 -->
       <section class="section">
         <div class="control-title">Font</div>
-<div class="font-grid" id="font-grid">
-  <button data-font="Helvetica Neue" style="font-family:Helvetica, Arial, sans-serif;">Basic</button>
-  <button data-font="Anton" style="font-family:'Anton', sans-serif;">Anton</button>
-  <button data-font="Big Shoulders Inline Text" style="font-family:'Big Shoulders Inline Text', cursive;">Inline</button>
-  <button data-font="Tourney" style="font-family:'Tourney', cursive; font-style:italic; font-weight:200;">Tour</button>
-  <button data-font="Anta" style="font-family:'Anta', sans-serif;">Anta</button>
+        <div class="font-grid" id="font-grid">
+          <button data-font="Helvetica Neue" style="font-family:Helvetica, Arial, sans-serif;">Basic</button>
+          <button data-font="Anton" style="font-family:'Anton', sans-serif;">Anton</button>
+          <button data-font="Big Shoulders Inline Text" style="font-family:'Big Shoulders Inline Text', cursive;">Inline</button>
+          <button data-font="Tourney" style="font-family:'Tourney', cursive; font-style:italic; font-weight:200;">Tour</button>
+          <button data-font="Anta" style="font-family:'Anta', sans-serif;">Anta</button>
 
-  <button data-font="Arvo" style="font-family:'Arvo', serif; font-style:italic; font-weight:700;">Arvo</button>
-  <button data-font="Iceberg" style="font-family:'Iceberg', cursive;">Ice</button>
-  <button data-font="Permanent Marker" style="font-family:'Permanent Marker', cursive;">Marker</button>
-  <button data-font="Londrina Shadow" style="font-family:'Londrina Shadow', cursive;">Lond</button>
-  <button data-font="Rock Salt" style="font-family:'Rock Salt', cursive;">Rock</button>
-</div>
-
+          <button data-font="Arvo" style="font-family:'Arvo', serif; font-style:italic; font-weight:700;">Arvo</button>
+          <button data-font="Iceberg" style="font-family:'Iceberg', cursive;">Ice</button>
+          <button data-font="Permanent Marker" style="font-family:'Permanent Marker', cursive;">Marker</button>
+          <button data-font="Londrina Shadow" style="font-family:'Londrina Shadow', cursive;">Lond</button>
+          <button data-font="Rock Salt" style="font-family:'Rock Salt', cursive;">Rock</button>
+        </div>
       </section>
 
       <section class="section">
@@ -428,1090 +439,1081 @@
             <div class="stat" id="time">-</div>
           </div>
         </div>
-        <!-- 힌트 요소 삭제(표시 안 함) -->
         <div id="cv-hint" style="display:none;"></div>
       </div>
     </div>
   </section>
-      <script>
-    /* =============================
-       폰트/레이아웃 설정
-       ============================= */
-    const fontSettings = {
-  "Helvetica Neue": { base: 200, weight: 700, dateSize: "60px", dateGap: "10px", dateWeight: 700 },
-  "Anton": { base: 200, weight: 700, dateSize: "60px", dateGap: "10px", dateWeight: 700 },
-  "Big Shoulders Inline Text": { base: 200, weight: 800, dateSize: "40px", dateGap: "20px", dateWeight: 800, dateTranslate: "8px, 0px" },
-  "Tourney": { base: 200, weight: 800, dateSize: "40px", dateGap: "20px", dateWeight: 800, dateTranslate: "8px, 0px" },
-  "Anta": { base: 160, weight: 700, dateSize: "38px", dateGap: "10px", dateWeight: 700, dateTranslate: "10px, 20px" },
-  "Arvo": "'Arvo', serif",
-  "Iceberg": { base: 200, weight: 700, dateSize: "42px", dateGap: "10px", dateWeight: 700, dateTranslate: "7px, 20px" },
-  "Permanent Marker": { base: 190, weight: 700, dateSize: "44px", dateGap: "0px", dateWeight: 700, dateTranslate: "7px, 20px" },
-  "Londrina Shadow":{ base: 190, weight: 700, dateSize: "44px", dateGap: "0px", dateWeight: 700, dateTranslate: "7px, 20px" },
-  "Rock Salt": { base: 140, weight: 700, dateSize: "36px", dateGap: "40px", dateWeight: 600, kmWordGap: "40px", translate: "25px,-25px", dateTranslate: "20px,0px" }
-};
+  <script>
+  /* =============================
+     폰트/레이아웃 설정
+     ============================= */
+  const fontSettings = {
+    "Helvetica Neue": { base: 200, weight: 700, dateSize: "60px", dateGap: "10px", dateWeight: 700 },
+    "Anton": { base: 200, weight: 700, dateSize: "60px", dateGap: "10px", dateWeight: 700 },
+    "Big Shoulders Inline Text": { base: 200, weight: 800, dateSize: "40px", dateGap: "20px", dateWeight: 800, dateTranslate: "8px, 0px" },
+    "Tourney": { base: 200, weight: 800, dateSize: "40px", dateGap: "20px", dateWeight: 800, dateTranslate: "8px, 0px" },
+    "Anta": { base: 160, weight: 700, dateSize: "38px", dateGap: "10px", dateWeight: 700, dateTranslate: "10px, 20px" },
+    "Arvo": { base: 160, weight: 700, dateSize: "38px", dateGap: "10px", dateWeight: 700, dateTranslate: "10px, 20px" },
+    "Iceberg": { base: 200, weight: 700, dateSize: "42px", dateGap: "10px", dateWeight: 700, dateTranslate: "7px, 20px" },
+    "Permanent Marker": { base: 190, weight: 700, dateSize: "44px", dateGap: "0px", dateWeight: 700, dateTranslate: "7px, 20px" },
+    "Londrina Shadow":{ base: 190, weight: 700, dateSize: "44px", dateGap: "0px", dateWeight: 700, dateTranslate: "7px, 20px" },
+    "Rock Salt": { base: 140, weight: 700, dateSize: "36px", dateGap: "40px", dateWeight: 600, kmWordGap: "40px", translate: "25px,-25px", dateTranslate: "20px,0px" }
+  };
 
-    const fontStatsOffsetMap = {
-      "Helvetica Neue": { daily: "5px", monthly: "5px" },
-      "Anton": { daily: "5px", monthly: "5px" },
-      "Big Shoulders Inline Text": { daily: "8px", monthly: "8px" },
-      "Tourney": { daily: "4px", monthly: "6px" },
-      "Anta": { daily: "10px", monthly: "12px" },
-      "Arvo": { daily: "6px", monthly: "6px" },
-      "Iceberg": { daily: "6px", monthly: "8px" },
-      "Permanent Marker": { daily: "6px", monthly: "8px" },
-      "Londrina Shadow": { daily: "8px", monthly: "10px" },
-      "Rock Salt": { daily: "24px", monthly: "24px" }
-    };
+  const fontStatsOffsetMap = {
+    "Helvetica Neue": { daily: "5px", monthly: "5px" },
+    "Anton": { daily: "5px", monthly: "5px" },
+    "Big Shoulders Inline Text": { daily: "8px", monthly: "8px" },
+    "Tourney": { daily: "4px", monthly: "6px" },
+    "Anta": { daily: "10px", monthly: "12px" },
+    "Arvo": { daily: "6px", monthly: "6px" },
+    "Iceberg": { daily: "6px", monthly: "8px" },
+    "Permanent Marker": { daily: "6px", monthly: "8px" },
+    "Londrina Shadow": { daily: "8px", monthly: "10px" },
+    "Rock Salt": { daily: "24px", monthly: "24px" }
+  };
 
-    let parsedData = {
-      km: null,
-      runs: null,
-      paceMin: null, paceSec: null,
-      timeH: null, timeM: null, timeS: null,
-      timeRaw: null,
-      cv: null
-    };
+  let parsedData = {
+    km: null,
+    runs: null,
+    paceMin: null, paceSec: null,
+    timeH: null, timeM: null, timeS: null,
+    timeRaw: null,
+    cv: null
+  };
     let recordType = 'daily';
     let layoutType = 'type1';
     let selectedFont = 'Helvetica Neue';
     let selectedDate = new Date();
 
-    const fontGridEl  = document.getElementById('font-grid');
-    const bgRow       = document.getElementById('bg-row');
-    const modeRow     = document.getElementById('mode-row');
-    const layoutRow   = document.getElementById('layout-row');
-    const dateSection = document.getElementById('date-section');
-    const dateInput   = document.getElementById('date-input');
-    const dateDisplay = document.getElementById('date-display');
-    const statsGrid   = document.getElementById('stats-grid');
-    const runsWrap    = document.getElementById('runs-wrap');
-    const paceWrap    = document.getElementById('pace-wrap');
-    const timeWrap    = document.getElementById('time-wrap');
-    const uploadLabelText = document.getElementById('upload-label-text');
+  const fontGridEl  = document.getElementById('font-grid');
+  const bgRow       = document.getElementById('bg-row');
+  const modeRow     = document.getElementById('mode-row');
+  const layoutRow   = document.getElementById('layout-row');
+  const dateSection = document.getElementById('date-section');
+  const dateInput   = document.getElementById('date-input');
+  const dateDisplay = document.getElementById('date-display');
+  const statsGrid   = document.getElementById('stats-grid');
+  const runsWrap    = document.getElementById('runs-wrap');
+  const paceWrap    = document.getElementById('pace-wrap');
+  const timeWrap    = document.getElementById('time-wrap');
+  const uploadLabelText = document.getElementById('upload-label-text');
 
-    const MONTH_ABBR = ["JAN.","FEB.","MAR.","APR.","MAY.","JUN.","JUL.","AUG.","SEP.","OCT.","NOV.","DEC."];
+  const MONTH_ABBR = ["JAN.","FEB.","MAR.","APR.","MAY.","JUN.","JUL.","AUG.","SEP.","OCT.","NOV.","DEC."];
+  function formatDateText(d){
+    const day = String(d.getDate());
+    const yr  = d.getFullYear();
+    if (recordType === 'daily' && layoutType === 'type2') {
+      const monShort = MONTH_ABBR[d.getMonth()];
+      return `${day} ${monShort} ${yr}`;
+    }
+    if (recordType === 'monthly') {
+      const monLong = d.toLocaleString('en-US', { month: 'long' });
+      return `${monLong} ${yr}`;
+    }
+    return ``;
+  }
 
-    function formatDateText(d){
-      const day = String(d.getDate());
-      const yr  = d.getFullYear();
-      if (recordType === 'daily' && layoutType === 'type2') {
-        const monShort = MONTH_ABBR[d.getMonth()];
-        return `${day} ${monShort} ${yr}`;
-      }
-      if (recordType === 'monthly') {
-        const monLong = d.toLocaleString('en-US', { month: 'long' });
-        return `${monLong} ${yr}`;
-      }
-      return ``;
-    }
+  function zero2(n){ return String(n).padStart(2,'0'); }
 
-    function zero2(n){ return String(n).padStart(2,'0'); }
+  /* iOS/Safari 폰트 로딩 보강: 필요한 weight/size로 실제 로드 확인 */
+  function ensureFontReady(fontFamily, weight = 700, sizePx = 200, style='normal'){
+    if (!('fonts' in document) || typeof document.fonts.load !== 'function') return Promise.resolve();
+    const fam = `"${fontFamily}"`;
+    return document.fonts.load(`${style} ${weight} ${sizePx}px ${fam}`).catch(()=>{});
+  }
 
-    /* ▼▼ 정규화 강화: 콜론·따옴표·중점류 등 */
-    function normalizeOCR(s){
-      return s
-        .replace(/[\u2018\u2019\u2032\u2035]/g,"'")     // ‘ ’ ′ ‵ -> '
-        .replace(/[\u201C\u201D\u2033]/g,'"')           // “ ” ″ -> "
-        .replace(/[·•‧∙]/g,'.')                         // 중점류 -> .
-        .replace(/[︰﹕：ː]/g,':')                      // 콜론류 -> :
-        .replace(/\u200B|\u00A0/g,' ')                  // zero-space & nbsp
-        .replace(/[ ]{2,}/g,' ')
-        .trim();
-    }
+  /* ▼▼ 정규화 강화 */
+  function normalizeOCR(s){
+    return s
+      .replace(/[\u2018\u2019\u2032\u2035]/g,"'")
+      .replace(/[\u201C\u201D\u2033]/g,'"')
+      .replace(/[·•‧∙]/g,'.')
+      .replace(/[︰﹕：ː]/g,':')
+      .replace(/\u200B|\u00A0/g,' ')
+      .replace(/[ ]{2,}/g,' ')
+      .trim();
+  }
 
-    /* ===== 시간·페이스 유틸 ===== */
-    function parseTimeToSec(t){
-      if(!t) return NaN;
-      const parts = t.split(':').map(n=>parseInt(n,10));
-      if(parts.length===2) return parts[0]*60 + parts[1];
-      if(parts.length===3) return parts[0]*3600 + parts[1]*60 + parts[2];
-      return NaN;
-    }
-    function parsePaceToSecPerKm(p){
-      if(!p) return NaN;
-      const clean = p.replace(/[^\d:]/g,':');
-      const [m,s] = clean.split(':').map(n=>parseInt(n||'0',10));
-      if(Number.isNaN(m) || Number.isNaN(s)) return NaN;
-      return m*60 + (s||0);
-    }
-    function paceFrom(timeSec, distKm){
-      if(!timeSec || !distKm) return NaN;
-      return timeSec / distKm;
-    }
-    function distanceFrom(timeSec, paceSecPerKm){
-      if(!timeSec || !paceSecPerKm) return NaN;
-      return timeSec / paceSecPerKm;
-    }
+  /* ===== 시간·페이스 유틸 ===== */
+  function parseTimeToSec(t){
+    if(!t) return NaN;
+    const parts = t.split(':').map(n=>parseInt(n,10));
+    if(parts.length===2) return parts[0]*60 + parts[1];
+    if(parts.length===3) return parts[0]*3600 + parts[1]*60 + parts[2];
+    return NaN;
+  }
+  function parsePaceToSecPerKm(p){
+    if(!p) return NaN;
+    const clean = p.replace(/[^\d:]/g,':');
+    const [m,s] = clean.split(':').map(n=>parseInt(n||'0',10));
+    if(Number.isNaN(m) || Number.isNaN(s)) return NaN;
+    return m*60 + (s||0);
+  }
+  function paceFrom(timeSec, distKm){
+    if(!timeSec || !distKm) return NaN;
+    return timeSec / distKm;
+  }
+  function distanceFrom(timeSec, paceSecPerKm){
+    if(!timeSec || !paceSecPerKm) return NaN;
+    return timeSec / paceSecPerKm;
+  }
 
-    /* ===== 이미지 전처리/ROI ===== */
-    async function toCanvas(imgDataURL){
-      return new Promise(res=>{
-        const img = new Image();
-        img.onload = ()=>{ res({img, w: img.width, h: img.height}); };
-        img.src = imgDataURL;
-      });
-    }
-    async function preprocessImageToDataURL(imgDataURL, scale = 2.4, threshold = 190){
-      return new Promise(async (resolve)=>{
-        const {img, w:W, h:H} = await toCanvas(imgDataURL);
-        const w = Math.round(W * scale);
-        const h = Math.round(H * scale);
-        const c = document.createElement('canvas');
-        c.width = w; c.height = h;
-        const ctx = c.getContext('2d', { willReadFrequently:true });
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(img, 0, 0, w, h);
-        const im = ctx.getImageData(0,0,w,h);
-        const data = im.data;
-        for(let i=0;i<data.length;i+=4){
-          const r=data[i], g=data[i+1], b=data[i+2];
-          const gray = (r*0.299 + g*0.587 + b*0.114);
-          const v = gray > threshold ? 255 : 0;
-          data[i]=data[i+1]=data[i+2]=v;
-        }
-        ctx.putImageData(im,0,0);
-        resolve(c.toDataURL("image/png"));
-      });
-    }
-    async function unsharp(srcDataURL, amount=0.9){
-      const {img,w,h} = await toCanvas(srcDataURL);
-      const c=document.createElement('canvas'); c.width=w; c.height=h;
-      const ctx=c.getContext('2d',{willReadFrequently:true});
-      ctx.drawImage(img,0,0);
-      const im=ctx.getImageData(0,0,w,h);
-      const d=im.data;
-      for(let y=0;y<h;y++){
-        for(let x=1;x<w;x++){
-          const i=(y*w+x)*4, j=(y*w+x-1)*4;
-          d[i]   = Math.min(255, Math.max(0, d[i]   + amount*(d[i]   - d[j])));
-          d[i+1] = Math.min(255, Math.max(0, d[i+1] + amount*(d[i+1] - d[j+1])));
-          d[i+2] = Math.min(255, Math.max(0, d[i+2] + amount*(d[i+2] - d[j+2])));
-        }
+  /* ===== 이미지 전처리/ROI ===== */
+  async function toCanvas(imgDataURL){
+    return new Promise(res=>{
+      const img = new Image();
+      img.onload = ()=>{ res({img, w: img.width, h: img.height}); };
+      img.src = imgDataURL;
+    });
+  }
+  async function preprocessImageToDataURL(imgDataURL, scale = 2.4, threshold = 190){
+    return new Promise(async (resolve)=>{
+      const {img, w:W, h:H} = await toCanvas(imgDataURL);
+      const w = Math.round(W * scale);
+      const h = Math.round(H * scale);
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d', { willReadFrequently:true });
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(img, 0, 0, w, h);
+      const im = ctx.getImageData(0,0,w,h);
+      const data = im.data;
+      for(let i=0;i<data.length;i+=4){
+        const r=data[i], g=data[i+1], b=data[i+2];
+        const gray = (r*0.299 + g*0.587 + b*0.114);
+        const v = gray > threshold ? 255 : 0;
+        data[i]=data[i+1]=data[i+2]=v;
       }
       ctx.putImageData(im,0,0);
-      return c.toDataURL('image/png');
-    }
-    async function cropTopNumberROI(imgDataURL, topPct=0.06, heightPct=0.30, sidePct=0.06, scale=2.8){
-      const {img, w, h} = await toCanvas(imgDataURL);
-      const x = Math.round(w*sidePct);
-      const y = Math.round(h*topPct);
-      const cw = Math.round(w*(1-2*sidePct));
-      const ch = Math.round(h*heightPct);
-
-      const c = document.createElement('canvas');
-      c.width = Math.round(cw*scale);
-      c.height= Math.round(ch*scale);
-      const ctx = c.getContext('2d', { willReadFrequently:true });
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(img, x, y, cw, ch, 0, 0, c.width, c.height);
-      return c.toDataURL('image/png');
-    }
-    /* ▼▼ 추가: 하단 통계 ROI (pace/time 강화를 위해) */
-    async function cropStatsROI(imgDataURL, topPct=0.40, heightPct=0.45, sidePct=0.06, scale=2.4){
-      const {img, w, h} = await toCanvas(imgDataURL);
-      const x = Math.round(w*sidePct);
-      const y = Math.round(h*topPct);
-      const cw = Math.round(w*(1-2*sidePct));
-      const ch = Math.round(h*heightPct);
-
-      const c = document.createElement('canvas');
-      c.width = Math.round(cw*scale);
-      c.height= Math.round(ch*scale);
-      const ctx = c.getContext('2d', { willReadFrequently:true });
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(img, x, y, cw, ch, 0, 0, c.width, c.height);
-      return c.toDataURL('image/png');
-    }
-
-    const KM_LINE_OCR_OPTS_7 = {
-      tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
-      tessedit_char_whitelist: '0123456789.,',
-      classify_bln_numeric_mode: '1'
-    };
-    const KM_LINE_OCR_OPTS_8 = {
-      tessedit_pageseg_mode: Tesseract.PSM.SINGLE_WORD,
-      tessedit_char_whitelist: '0123456789.,',
-      classify_bln_numeric_mode: '1'
-    };
-
-    /* ===== 파서/후보 선택 ===== */
-    function numsFromText(s){
-      const t = normalizeOCR(s||'');
-      const m = t.match(/\b\d{1,3}[.,]\d{1,2}\b/g) || [];
-      return m.map(x => ({ val: parseFloat(x.replace(',','.')), dec: (x.split(/[.,]/)[1]||'').length }));
-    }
-    function kmCandidatesFromWords(words){
-      if(!Array.isArray(words) || !words.length) return [];
-      const lines = new Map();
-      for(const w of words){
-        const id = w.line ?? `y${Math.round(((w.bbox?.y0||0)+(w.bbox?.y1||0))/2)}`;
-        const h  = (w.bbox ? Math.max(0,(w.bbox.y1 - w.bbox.y0)) : 0);
-        const y  = (w.bbox ? (w.bbox.y0 + w.bbox.y1)/2 : 0);
-        const t  = (w.text||'').trim();
-        if(!lines.has(id)) lines.set(id, { text:[], maxH:0, y:Infinity });
-        const L = lines.get(id);
-        L.text.push(t);
-        L.maxH = Math.max(L.maxH, h);
-        L.y    = Math.min(L.y, y);
-      }
-      const arr = [...lines.values()];
-      arr.sort((a,b)=> (a.y - b.y) || (b.maxH - a.maxH));
-      const top = arr.slice(0, 4);
-      const out = [];
-      for(const L of top){
-        const joined = L.text.join(' ');
-        const onlyNum = L.text.filter(t=>/^[0-9.,]+$/.test(t)).join('');
-        const c1 = numsFromText(joined);
-        const c2 = numsFromText(onlyNum);
-        c1.concat(c2).forEach(o=> out.push({ ...o, src:'word-top', score:L.maxH }));
-      }
-      return out;
-    }
-
-    function estimateDistanceFromPaceTime(){
-      if (parsedData.paceMin==null || parsedData.paceSec==null) return null;
-      let totalSec = null;
-      if (parsedData.timeH!=null || parsedData.timeM!=null || parsedData.timeS!=null){
-        const H = parsedData.timeH||0, M=parsedData.timeM||0, S=parsedData.timeS||0;
-        totalSec = H*3600 + M*60 + S;
-      }
-      if (!totalSec && parsedData.timeRaw){
-        const m = parsedData.timeRaw.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
-        if (m){ totalSec = (m[3]? (+m[1]*3600 + +m[2]*60 + +m[3]) : (+m[1]*60 + +m[2])); }
-      }
-      if (!totalSec) return null;
-      const paceSec = parsedData.paceMin*60 + parsedData.paceSec;
-      if (!paceSec) return null;
-      if (recordType === 'monthly') return null;
-      return totalSec / paceSec;
-    }
-
-    function pickBestKm(cands){
-      if(!cands || !cands.length) return null;
-      const preferDec = (recordType==='monthly') ? 1 : 2;
-
-      const groups = new Map();
-      for(const c of cands){
-        const key = (Math.round(c.val*100)/100).toFixed(2);
-        if(!groups.has(key)) groups.set(key, { val:parseFloat(key), count:0, roi:0, decHits:0, score:0 });
-        const g = groups.get(key);
-        g.count++;
-        if(String(c.src||'').includes('roi')) g.roi += 1;
-        g.decHits += (c.dec===preferDec) ? 2 : 0.5;
-        g.score += (c.score||0);
-      }
-      const ranked = [...groups.values()].sort((a,b)=>{
-        return (b.roi - a.roi) || (b.decHits - a.decHits) || (b.count - a.count) || (b.score - a.score);
-      });
-
-      const est = estimateDistanceFromPaceTime();
-      if (ranked.length >= 2 && est!=null){
-        const [a,b] = ranked;
-        const d1 = Math.abs(a.val - est), d2 = Math.abs(b.val - est);
-        if (Math.abs(d1 - d2) > 0.12) return d1 < d2 ? a.val : b.val;
-      }
-      return ranked[0]?.val ?? null;
-    }
-
-    async function recognizeLeadingChar(roiBinDataURL){
-      const {img,w,h} = await toCanvas(roiBinDataURL);
-      const c=document.createElement('canvas'); c.width=w; c.height=h;
-      const ctx=c.getContext('2d',{willReadFrequently:true});
-      ctx.drawImage(img,0,0);
-      function colBlackCount(x){ let s=0; for(let y=0;y<h;y++){ if(ctx.getImageData(x,y,1,1).data[0]<128) s++; } return s; }
-      let L=0; const need = Math.max(3, Math.floor(h*0.12));
-      for(let x=0;x>w;x++){ if(colBlackCount(x)>need){ L=x; break; } }
-      const digitW = Math.max(8, Math.floor(w*0.18));
-      const R = Math.min(w-1, L+digitW);
-
-      const cc=document.createElement('canvas');
-      cc.width = R-L+1; cc.height = h;
-      cc.getContext('2d').drawImage(c, L, 0, R-L+1, h, 0, 0, R-L+1, h);
-      const cropURL = cc.toDataURL('image/png');
-
-      const charRes = await Tesseract.recognize(cropURL, 'eng', {
-        tessedit_pageseg_mode: Tesseract.PSM.SINGLE_CHAR,
-        tessedit_char_whitelist: '235',
-        classify_bln_numeric_mode: '1'
-      });
-      const ch = (charRes.data.text||'').trim().charAt(0) || '';
-      const conf = Number(charRes.data.confidence ?? 0);
-      return { ch, conf };
-    }
-    async function looksLikeLeadingFive(roiBinDataURL){
-      const {img,w,h} = await toCanvas(roiBinDataURL);
-      const c=document.createElement('canvas'); c.width=w; c.height=h;
-      const ctx=c.getContext('2d',{willReadFrequently:true});
-      ctx.drawImage(img,0,0);
-      const im=ctx.getImageData(0,0,w,h).data;
-
-      function colBlackCount(x){ let s=0; for(let y=0;y<h;y++){ if(im[(y*w+x)*4]<128) s++; } return s; }
-      let L=0; const need = Math.max(3, Math.floor(h*0.12));
-      for(let x=0;x>w;x++){ if(colBlackCount(x)>need){ L=x; break; } }
-      const digitW = Math.max(8, Math.floor(w*0.18));
-      const R = Math.min(w-1, L+digitW);
-
-      function bandDensity(y0,y1){
-        let black=0; const total=(y1-y0)*(R-L+1);
-        for(let y=y0; y<y1; y++){
-          for(let x=L; x<=R; x++){ if(im[(y*w+x)*4]<128) black++; }
-        }
-        return black/Math.max(1,total);
-      }
-      const topDensity = bandDensity(0, Math.floor(h*0.14));
-      const midDensity = bandDensity(Math.floor(h*0.47), Math.floor(h*0.62));
-
-      let leftVert=0, total=0;
-      const vx0 = Math.min(R, L + Math.max(2, Math.floor(digitW*0.18)));
-      for(let y=Math.floor(h*0.35); y<Math.floor(h*0.85); y++){
-        total++;
-        if(im[(y*w+vx0)*4] < 128) leftVert++;
-      }
-      const leftVertRatio = leftVert/Math.max(1,total);
-
-      return (topDensity>0.62 && midDensity>0.46 && leftVertRatio>0.32);
-    }
-    function groupScores(cands){
-      const m=new Map();
-      for(const c of cands){
-        const key=(Math.round(c.val*100)/100).toFixed(2);
-        const s=(c.score||0)+ (String(c.src||'').includes('roi')?4:0);
-        m.set(key,(m.get(key)||0)+s);
-      }
-      return m;
-    }
-    function bestScoreAround(scoresMap, center, tol=0.25){
-      let best=0;
-      for(const [k,v] of scoresMap){
-        const x=parseFloat(k); if(Math.abs(x-center)<=tol) best=Math.max(best,v);
-      }
-      return best;
-    }
-    async function multiPassKmCandidates_FAST(imgDataURL){
-      const out = [];
-      const roi0 = await cropTopNumberROI(imgDataURL, 0.06, 0.30, 0.06, 2.8);
-      const roi1 = await unsharp(roi0, 0.9);
-      const roi2 = await preprocessImageToDataURL(roi1, 1.0, 190);
-
-      const [rA, rB, rC] = await Promise.all([
-        Tesseract.recognize(roi1, 'eng', KM_LINE_OCR_OPTS_7),
-        Tesseract.recognize(roi2, 'eng', KM_LINE_OCR_OPTS_7),
-        Tesseract.recognize(roi2, 'eng', KM_LINE_OCR_OPTS_8)
-      ]);
-
-      [['roiA',rA],['roiB',rB],['roiC',rC]].forEach(([tag,res])=>{
-        const conf = (res.data?.confidence ?? 60)/100;
-        numsFromText(res.data.text).forEach(o=> out.push({ ...o, src:`${tag}-text`, score:(o.score||0)+conf*12 }));
-        kmCandidatesFromWords(res.data.words).forEach(o=> out.push({ ...o, src:`${tag}-words`, score:(o.score||0)+conf*12 }));
-      });
-
-      return { cands: out, roiBin: roi2 };
-    }
-
-    /* ===== Pace/Time 파서 보강 ===== */
-    function extractPace(text){
-      const T = normalizeOCR(text);
-      // 라벨 근방 우선: Avg. Pace / Average Pace / Pace / 평균 페이스 / 페이스
-      const labelIdx = (() => {
-        const patterns = [/avg\.?\s*pace/i, /average\s*pace/i, /\bpace\b/i, /평균\s*페이스/i, /\b페이스\b/i];
-        for (const re of patterns){
-          const m = T.match(re);
-          if (m) return m.index;
-        }
-        // /km 앞쪽 범위
-        const kmPos = T.indexOf('/km');
-        if (kmPos>-1) return Math.max(0, kmPos-40);
-        const korKmPos = T.indexOf('분/km');
-        if (korKmPos>-1) return Math.max(0, korKmPos-40);
-        return -1;
-      })();
-
-      const scope = labelIdx>-1 ? T.slice(Math.max(0,labelIdx-20), labelIdx+120) : T;
-
-      // ① m'ss" ② mm:ss ③ mm분 ss초 ④ mm:ss/km 변형
-      const patterns = [
-        /(\d{1,2})\s*'\s*(\d{2})\s*"?/,            // 5'27"
-        /(\d{1,2})\s*:\s*(\d{2})(?=\s*\/?\s*km|\b)/, // 5:27 [/km]
-        /(\d{1,2})\s*분\s*(\d{1,2})\s*초/,          // 5분 27초
-      ];
-      for (const re of patterns){
-        const m = scope.match(re);
-        if (m){
-          const mm = parseInt(m[1],10);
-          const ss = parseInt(m[2],10);
-          if (!Number.isNaN(mm) && !Number.isNaN(ss)) return {min:mm, sec:ss};
-        }
-      }
-      return {min:null, sec:null};
-    }
-
-    function extractTime(text){
-      const T = normalizeOCR(text);
-      // 라벨 근방: Time, Elapsed, Duration, 시간, 총 시간
-      const idx = (() => {
-        const patterns = [/time\b/i, /elapsed/i, /duration/i, /총?\s*시간/, /\b시간\b/];
-        for (const re of patterns){ const m=T.match(re); if(m) return m.index; }
-        return -1;
-      })();
-      const scope = idx>-1 ? T.slice(Math.max(0, idx-20), idx+120) : T;
-
-      // hh:mm:ss 우선, 다음 mm:ss
-      let m = scope.match(/\b(\d{1,2})\D{0,2}(\d{2})\D{0,2}(\d{2})\b/);
-      if(m){ return {raw:`${zero2(m[1])}:${zero2(m[2])}:${zero2(m[3])}`, H:+m[1], M:+m[2], S:+m[3]}; }
-      m = scope.match(/\b(\d{1,2})\D{0,2}(\d{2})\b/);
-      if(m){ return {raw:`${zero2(m[1])}:${zero2(m[2])}`, H:null, M:+m[1], S:+m[2]}; }
-      return {raw:null, H:null, M:null, S:null};
-    }
-
-    /* ===== OCR 파서 (runs/pace/time) - 통합 ===== */
-    function parseFromOCR(textRaw){
-      const text = normalizeOCR(textRaw);
-
-      // Pace/Time 보강
-      const {min:paceMin, sec:paceSec} = extractPace(text);
-      const T = extractTime(text);
-
-      // Runs (월간용)
-      const runs = (() => {
-        const lines = text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
-        for(let i=0;i<lines.length;i++){
-          const L = lines[i];
-          if (/^(Runs?|러닝)\b/i.test(L)){
-            const prev = lines[i-1]||"", next = lines[i+1]||"";
-            let mm;
-            if ((mm = prev.match(/^\s*(\d{1,3})\s*$/))) return +mm[1];
-            if ((mm = next.match(/^\s*(\d{1,3})\s*$/))) return +mm[1];
-            if ((mm = L.match(/\b(\d{1,3})\b/)))       return +mm[1];
-          }
-        }
-        // 라벨 못 찾으면 pace 앞의 숫자들 중 마지막을 힌트로
-        const pacePos = text.search(/\d{1,2}\s*[:'분]\s*\d{2}/);
-        const scope2 = pacePos>0 ? text.slice(0, pacePos) : text;
-        const cands = (scope2.match(/\b\d{1,3}\b/g) || []).map(s=>+s).filter(n=>n>=0 && n<=999);
-        return cands.length ? cands[cands.length-1] : null;
-      })();
-
-      // 거리(라벨 근방) 후보
-      const re2dec  = /(\d{1,3})\s*[.,]\s*(\d{2})\b/;
-      const re1dec  = /(\d{1,3})\s*[.,]\s*(\d{1})\b/;
-      const reInt   = /\b(\d{1,3})\b/;
-
-      function first2Dec(s){ const mm = s.match(re2dec); return mm ? `${mm[1]}.${mm[2]}` : null; }
-      function first1Dec(s){ const mm = s.match(re1dec); return mm ? `${mm[1]}.${mm[2]}` : null; }
-      function firstInt (s){ const mm = s.match(reInt ); return mm ? mm[1] : null; }
-
-      let kmFromLabel = null;
-      {
-        const idx = text.search(/킬로미터|kilometer|distance|거리/i);
-        if (idx !== -1) {
-          const before = text.slice(Math.max(0, idx - 60), idx);
-          kmFromLabel = first2Dec(before) || first1Dec(before) || firstInt(before);
-        }
-      }
-
-      return {
-        km: kmFromLabel,
-        runs,
-        paceMin: (paceMin??null), paceSec: (paceSec??null),
-        timeH: T.H, timeM: T.M, timeS: T.S, timeRaw: T.raw
-      };
-    }
-
-    /* ===== 표기 유틸 (절사) ===== */
-    function truncate(value, digits){
-      const f = Math.pow(10, digits);
-      return Math.floor((Number(value)||0) * f) / f;
-    }
-    function formatKm(value){
-      const v = Math.max(0, Number(value) || 0);
-      if (recordType === 'monthly') return truncate(v, 1).toFixed(1);
-      return truncate(v, 2).toFixed(2);
-    }
-    function renderKm(value){
-      document.getElementById('km').textContent = formatKm(value);
-    }
-
-    function updateGridCols(){
-      const cols = (layoutType==='type1') ? 1 : (recordType==='monthly' ? 3 : 2);
-      statsGrid.style.setProperty('--cols', cols);
-    }
-    function layoutStatsGrid(){
-      if (layoutType === 'type1'){
-        [runsWrap, paceWrap, timeWrap].forEach(el=>{
-          el.style.gridColumn = '';
-          el.style.transform = '';
-          el.style.marginLeft = '';
-        });
-        return;
-      }
-      if (recordType === 'daily'){
-        paceWrap.style.gridColumn = '1 / 2';
-        timeWrap.style.gridColumn = '2 / 3';
-        paceWrap.style.transform = 'translateX(0)';
-        timeWrap.style.transform = `translateX(${getComputedStyle(document.documentElement).getPropertyValue('--statPull').trim()})`;
-        paceWrap.style.marginLeft = '0';
-        timeWrap.style.marginLeft = '0';
-      } else {
-        runsWrap.style.gridColumn = '1 / 2';
-        paceWrap.style.gridColumn = '2 / 3';
-        timeWrap.style.gridColumn = '3 / 4';
-        runsWrap.style.transform = 'translateX(0)';
-        paceWrap.style.transform = `translateX(${getComputedStyle(document.documentElement).getPropertyValue('--statPull').trim()})`;
-        timeWrap.style.transform = `translateX(${getComputedStyle(document.documentElement).getPropertyValue('--statPull2').trim()})`;
-        runsWrap.style.marginLeft = '0';
-        paceWrap.style.marginLeft = '0';
-        timeWrap.style.marginLeft = '0';
+      resolve(c.toDataURL("image/png"));
+    });
+  }
+  async function unsharp(srcDataURL, amount=0.9){
+    const {img,w,h} = await toCanvas(srcDataURL);
+    const c=document.createElement('canvas'); c.width=w; c.height=h;
+    const ctx=c.getContext('2d',{willReadFrequently:true});
+    ctx.drawImage(img,0,0);
+    const im=ctx.getImageData(0,0,w,h);
+    const d=im.data;
+    for(let y=0;y<h;y++){
+      for(let x=1;x<w;x++){
+        const i=(y*w+x)*4, j=(y*w+x-1)*4;
+        d[i]   = Math.min(255, Math.max(0, d[i]   + amount*(d[i]   - d[j])));
+        d[i+1] = Math.min(255, Math.max(0, d[i+1] + amount*(d[i+1] - d[j+1])));
+        d[i+2] = Math.min(255, Math.max(0, d[i+2] + amount*(d[i+2] - d[j+2])));
       }
     }
-    function zero2txt(n){ return String(n).padStart(2,'0'); }
-    function formatPaceByType(){
-      if(parsedData.paceMin==null || parsedData.paceSec==null){
-        return (layoutType==='type1') ? '0:00 /km' : '0:00';
-      }
-      const mm = String(parsedData.paceMin);
-      const ss = zero2txt(parsedData.paceSec);
-      return (layoutType==='type1') ? `${mm}:${ss} /km` : `${mm}:${ss}`;
+    ctx.putImageData(im,0,0);
+    return c.toDataURL('image/png');
+  }
+  async function cropTopNumberROI(imgDataURL, topPct=0.06, heightPct=0.30, sidePct=0.06, scale=2.8){
+    const {img, w, h} = await toCanvas(imgDataURL);
+    const x = Math.round(w*sidePct);
+    const y = Math.round(h*topPct);
+    const cw = Math.round(w*(1-2*sidePct));
+    const ch = Math.round(h*heightPct);
+
+    const c = document.createElement('canvas');
+    c.width = Math.round(cw*scale);
+    c.height= Math.round(ch*scale);
+    const ctx = c.getContext('2d', { willReadFrequently:true });
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, x, y, cw, ch, 0, 0, c.width, c.height);
+    return c.toDataURL('image/png');
+  }
+  async function cropStatsROI(imgDataURL, topPct=0.40, heightPct=0.45, sidePct=0.06, scale=2.4){
+    const {img, w, h} = await toCanvas(imgDataURL);
+    const x = Math.round(w*sidePct);
+    const y = Math.round(h*topPct);
+    const cw = Math.round(w*(1-2*sidePct));
+    const ch = Math.round(h*heightPct);
+
+    const c = document.createElement('canvas');
+    c.width = Math.round(cw*scale);
+    c.height= Math.round(ch*scale);
+    const ctx = c.getContext('2d', { willReadFrequently:true });
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, x, y, cw, ch, 0, 0, c.width, c.height);
+    return c.toDataURL('image/png');
+  }
+      const KM_LINE_OCR_OPTS_7 = {
+    tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
+    tessedit_char_whitelist: '0123456789.,',
+    classify_bln_numeric_mode: '1'
+  };
+  const KM_LINE_OCR_OPTS_8 = {
+    tessedit_pageseg_mode: Tesseract.PSM.SINGLE_WORD,
+    tessedit_char_whitelist: '0123456789.,',
+    classify_bln_numeric_mode: '1'
+  };
+
+  /* ===== 파서/후보 선택 ===== */
+  function numsFromText(s){
+    const t = normalizeOCR(s||'');
+    const m = t.match(/\b\d{1,3}[.,]\d{1,2}\b/g) || [];
+    return m.map(x => ({ val: parseFloat(x.replace(',','.')), dec: (x.split(/[.,]/)[1]||'').length }));
+  }
+  function kmCandidatesFromWords(words){
+    if(!Array.isArray(words) || !words.length) return [];
+    const lines = new Map();
+    for(const w of words){
+      const id = w.line ?? `y${Math.round(((w.bbox?.y0||0)+(w.bbox?.y1||0))/2)}`;
+      const h  = (w.bbox ? Math.max(0,(w.bbox.y1 - w.bbox.y0)) : 0);
+      const y  = (w.bbox ? (w.bbox.y0 + w.bbox.y1)/2 : 0);
+      const t  = (w.text||'').trim();
+      if(!lines.has(id)) lines.set(id, { text:[], maxH:0, y:Infinity });
+      const L = lines.get(id);
+      L.text.push(t);
+      L.maxH = Math.max(L.maxH, h);
+      L.y    = Math.min(L.y, y);
     }
-    function formatTimeByType(){
-      if(layoutType==='type2') return parsedData.timeRaw ? parsedData.timeRaw : '00:00';
-      const H = parsedData.timeH ?? 0, M = parsedData.timeM ?? 0, S = parsedData.timeS ?? 0;
-      if (H > 0) return `${H}h ${zero2txt(M)}m ${zero2txt(S)}s`;
-      return `${String(M)}m ${zero2txt(S)}s`;
+    const arr = [...lines.values()];
+    arr.sort((a,b)=> (a.y - b.y) || (b.maxH - a.maxH));
+    const top = arr.slice(0, 4);
+    const out = [];
+    for(const L of top){
+      const joined = L.text.join(' ');
+      const onlyNum = L.text.filter(t=>/^[0-9.,]+$/.test(t)).join('');
+      const c1 = numsFromText(joined);
+      const c2 = numsFromText(onlyNum);
+      c1.concat(c2).forEach(o=> out.push({ ...o, src:'word-top', score:L.maxH }));
     }
-    function alignStatsBaseline(){
-      if(layoutType !== 'type2') return;
-      const stats = [];
-      const addIfVisible = (id)=>{
-        const wrap = document.getElementById(id+'-wrap');
-        if(getComputedStyle(wrap).display!=='none'){
-          stats.push(document.getElementById(id));
-        }
-      };
-      addIfVisible('runs'); addIfVisible('pace'); addIfVisible('time');
-      stats.forEach(el=>{ el.style.transform = ''; });
-      const bottoms = stats.map(el=>el.getBoundingClientRect().bottom);
-      const maxBottom = Math.max(...bottoms);
-      stats.forEach((el,i)=>{
-        const dy = Math.round(maxBottom - bottoms[i]);
-        if (dy) el.style.transform = `translateY(${dy}px)`;
-      });
+    return out;
+  }
+
+  function estimateDistanceFromPaceTime(){
+    if (parsedData.paceMin==null || parsedData.paceSec==null) return null;
+    let totalSec = null;
+    if (parsedData.timeH!=null || parsedData.timeM!=null || parsedData.timeS!=null){
+      const H = parsedData.timeH||0, M=parsedData.timeM||0, S=parsedData.timeS||0;
+      totalSec = H*3600 + M*60 + S;
     }
-    function renderStats(){
-      document.getElementById('pace-label').textContent = 'Avg. Pace';
-      document.getElementById('time-label').textContent = 'Time';
-      runsWrap.style.display = (recordType === 'monthly') ? 'block' : 'none';
-      if (recordType === 'monthly') {
-        const runsVal = (parsedData.runs == null || Number.isNaN(parsedData.runs)) ? '--' : parsedData.runs;
-        document.getElementById('runs').textContent = String(runsVal);
-      }
-      document.getElementById('pace').textContent = formatPaceByType();
-      document.getElementById('time').textContent = formatTimeByType();
-
-      const hint = document.getElementById('cv-hint');
-      hint.style.display = 'none';
-      hint.textContent = '';
-
-      updateGridCols();
-      layoutStatsGrid();
-      alignStatsBaseline();
+    if (!totalSec && parsedData.timeRaw){
+      const m = parsedData.timeRaw.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+      if (m){ totalSec = (m[3]? (+m[1]*3600 + +m[2]*60 + +m[3]) : (+m[1]*60 + +m[2])); }
     }
+    if (!totalSec) return null;
+    const paceSec = parsedData.paceMin*60 + parsedData.paceSec;
+    if (!paceSec) return null;
+    if (recordType === 'monthly') return null;
+    return totalSec / paceSec;
+  }
 
-    function updateUploadLabel(){
-      if(!uploadLabelText) return;
-      uploadLabelText.textContent =
-        recordType === 'monthly'
-          ? 'Upload your mileage for THIS MONTH'
-          : 'Upload your NRC record for TODAY';
+  function pickBestKm(cands){
+    if(!cands || !cands.length) return null;
+    const preferDec = (recordType==='monthly') ? 1 : 2;
+
+    const groups = new Map();
+    for(const c of cands){
+      const key = (Math.round(c.val*100)/100).toFixed(2);
+      if(!groups.has(key)) groups.set(key, { val:parseFloat(key), count:0, roi:0, decHits:0, score:0 });
+      const g = groups.get(key);
+      g.count++;
+      if(String(c.src||'').includes('roi')) g.roi += 1;
+      g.decHits += (c.dec===preferDec) ? 2 : 0.5;
+      g.score += (c.score||0);
     }
-
-    /* ===== 업로드 → OCR → 병합 (+ 선두 자리 규칙) ===== */
-    function leadingDigit(n){
-      if(!isFinite(n)) return null;
-      const s = Math.floor(Math.abs(n)).toString();
-      return s.length ? s[0] : null;
-    }
-
-    document.getElementById("file-upload").addEventListener("change", async (e)=>{
-      const file = e.target.files[0]; if(!file) return;
-      const status = document.getElementById("upload-status");
-      status.textContent = "Processing…";
-
-      const reader = new FileReader();
-      reader.onload = async () => {
-        try{
-          const img = reader.result;
-
-          // 상단 대형 숫자(KM) 멀티패스
-          const fast = await multiPassKmCandidates_FAST(img);
-          let kmCandidates = fast.cands;
-          const roiBinForFiveGuard = fast.roiBin;
-
-          // ▼▼ 하단 통계 ROI OCR (pace/time 강화를 위해 추가)
-          const statsROI = await cropStatsROI(img, 0.40, 0.45, 0.06, 2.2);
-          const statsROIBin = await preprocessImageToDataURL(statsROI, 1.0, 190);
-          const [rFull, rStats] = await Promise.all([
-            Tesseract.recognize(img, 'eng+kor', { preserve_interword_spaces: '1', tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK }),
-            Tesseract.recognize(statsROIBin, 'eng+kor', { preserve_interword_spaces: '1', tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT })
-          ]);
-          const mergedText = (rFull.data.text || "") + "\n" + (rStats.data.text || "");
-
-          const p = parseFromOCR(mergedText);
-
-          // 라벨 근방에서 보인 km 후보 보강
-          if(p.km){
-            const val = parseFloat(String(p.km).replace(',','.'));
-            if (isFinite(val)) kmCandidates.push({ val, dec: (String(p.km).split(/[.,]/)[1]||'').length, src:'aux-label' });
-          }
-
-          let kmBest = pickBestKm(kmCandidates);
-
-          // 5-가드 (2.x/3.x ↔ 5.x 오인 방지)
-          if (kmBest!=null){
-            const intPart = Math.floor(kmBest);
-            if (intPart===2 || intPart===3){
-              const { ch:leadCh, conf:leadConf } = await recognizeLeadingChar(roiBinForFiveGuard).catch(()=>({ch:'',conf:0}));
-              const looks5 = await looksLikeLeadingFive(roiBinForFiveGuard).catch(()=>false);
-              const est = estimateDistanceFromPaceTime();
-              const estNear5 = (est!=null && est>=4.85 && est<=5.30);
-              const scores = groupScores(kmCandidates);
-              const s2 = bestScoreAround(scores, 2.0, 0.25);
-              const s3 = bestScoreAround(scores, 3.0, 0.25);
-              const s5 = bestScoreAround(scores, 5.0, 0.25);
-              const strongNotFive = (leadCh==='2' || leadCh==='3') && leadConf>=70;
-              const allowFixToFive =
-                (leadCh==='5' && leadConf>=82) ||
-                (looks5 && estNear5 && (s5 > Math.max(s2,s3) + 6));
-              if (!strongNotFive && allowFixToFive){
-                kmBest = 5 + (kmBest - intPart);
-              }
-            }
-          }
-
-          // 월간 runs 워드 기반 추출(보정)
-          function extractRunsFromWords(words){
-            if(!Array.isArray(words) || !words.length) return null;
-            const anchors = words.filter(w => {
-              const t = (w.text||"").trim().toLowerCase();
-              return t === 'runs' || t === '러닝';
-            });
-            const sameLineNear = (anchor)=>{
-              const same = words.filter(w => w.line === anchor.line);
-              const nums = same
-                .filter(w => /^\d{1,3}$/.test((w.text||'').trim()))
-                .map(w => ({
-                  n: +w.text.trim(),
-                  dx: Math.abs(((w.bbox&&w.bbox.x0)||0) - ((anchor.bbox&&anchor.bbox.x1)||0))
-                }));
-              if(nums.length){ nums.sort((a,b)=>a.dx-b.dx); return nums[0].n; }
-              return null;
-            };
-            const picks = anchors.map(a=>sameLineNear(a)).filter(v=>Number.isInteger(v));
-            if(!picks.length) return null;
-            picks.sort((a,b)=>a-b);
-            return picks[Math.floor(picks.length/2)];
-          }
-          const rWords = extractRunsFromWords(rFull.data.words||[]);
-
-          // pace/time 계산·병합
-          const paceOCRStr = (p.paceMin!=null && p.paceSec!=null) ? `${p.paceMin}:${String(p.paceSec).padStart(2,'0')}` : null;
-
-          const toKm = (d)=>parseFloat(String(d).replace(',','.'));
-
-          // 계산 보조(월간에만 유의미, 일간은 거리 계산 금지 정책)
-          const timeSecForCalc = parseTimeToSec(p.timeRaw || '');
-          const paceSecOCR = (p.paceMin!=null && p.paceSec!=null) ? (p.paceMin*60 + p.paceSec) : NaN;
-          const calcKmCandidate = (recordType==='monthly' && isFinite(timeSecForCalc) && isFinite(paceSecOCR))
-            ? (timeSecForCalc / paceSecOCR)
-            : NaN;
-
-          const ocrKmRaw = (kmBest ?? (p.km ? toKm(p.km) : NaN));
-          const hasOCRkm = isFinite(ocrKmRaw);
-
-          // ▼▼ 거리 최종 결정
-          // 정책: DAILY는 '무조건 OCR만' 사용. OCR 없으면 0.
-          //       MONTHLY는 기존 로직 유지(ocr 우선, 필요시 calc 허용)
-          let finalKm = 0;
-          if (recordType === 'daily'){
-            finalKm = hasOCRkm ? ocrKmRaw : 0;
-          } else {
-            const cvpace = (isFinite(timeSecForCalc) && isFinite(ocrKmRaw)) ? (timeSecForCalc / ocrKmRaw) : NaN;
-            let cv = { distance: isFinite(ocrKmRaw)? ocrKmRaw : (isFinite(calcKmCandidate)? calcKmCandidate : NaN),
-                       pace: isFinite(cvpace)? cvpace : (isFinite(paceSecOCR)? paceSecOCR : NaN) };
-            finalKm = isFinite(cv.distance) ? cv.distance : 0;
-          }
-
-          // 최종 pace (없으면 time & distance로 보조, daily에서도 pace 계산은 허용)
-          let finalPaceSec = (isFinite(paceSecOCR)) ? paceSecOCR
-                            : (isFinite(timeSecForCalc) && isFinite(finalKm) && finalKm>0 ? Math.round(timeSecForCalc / finalKm) : NaN);
-
-          parsedData = {
-            km: finalKm ?? 0,
-            paceMin: isFinite(finalPaceSec) ? Math.floor(finalPaceSec/60) : null,
-            paceSec: isFinite(finalPaceSec) ? (finalPaceSec%60) : null,
-            timeH: p.timeH, timeM: p.timeM, timeS: p.timeS,
-            timeRaw: p.timeRaw || null,
-            runs: (recordType==='monthly') ? (p.runs ?? rWords ?? null) : null
-          };
-
-          renderKm(0);
-          renderStats();
-          status.textContent = "Done";
-        }catch(err){
-          console.error(err);
-          document.getElementById("upload-status").textContent = "Upload failed";
-        }
-      };
-      reader.readAsDataURL(file);
+    const ranked = [...groups.values()].sort((a,b)=>{
+      return (b.roi - a.roi) || (b.decHits - a.decHits) || (b.count - a.count) || (b.score - a.score);
     });
 
-    /* ===== 애니메이션/스케일 ===== */
-    const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
-    function animateNumber(id,start,end,duration){
-      return new Promise(resolve=>{
-        const kmEl = document.getElementById(id);
-        let startTime;
-        function update(now){
-          if(!startTime) startTime = now;
-          const raw = Math.min((now - startTime)/duration,1);
-          const eased = easeOutCubic(raw);
-          const val = (start + (end-start)*eased);
-          kmEl.textContent = formatKm(val);
-          raw < 1 ? requestAnimationFrame(update) : resolve();
+    const est = estimateDistanceFromPaceTime();
+    if (ranked.length >= 2 && est!=null){
+      const [a,b] = ranked;
+      const d1 = Math.abs(a.val - est), d2 = Math.abs(b.val - est);
+      if (Math.abs(d1 - d2) > 0.12) return d1 < d2 ? a.val : b.val;
+    }
+    return ranked[0]?.val ?? null;
+  }
+
+  async function recognizeLeadingChar(roiBinDataURL){
+    const {img,w,h} = await toCanvas(roiBinDataURL);
+    const c=document.createElement('canvas'); c.width=w; c.height=h;
+    const ctx=c.getContext('2d',{willReadFrequently:true});
+    ctx.drawImage(img,0,0);
+    function colBlackCount(x){ let s=0; for(let y=0;y<h;y++){ if(ctx.getImageData(x,y,1,1).data[0]<128) s++; } return s; }
+    let L=0; const need = Math.max(3, Math.floor(h*0.12));
+    for(let x=0;x>w;x++){ if(colBlackCount(x)>need){ L=x; break; } }
+    const digitW = Math.max(8, Math.floor(w*0.18));
+    const R = Math.min(w-1, L+digitW);
+
+    const cc=document.createElement('canvas');
+    cc.width = R-L+1; cc.height = h;
+    cc.getContext('2d').drawImage(c, L, 0, R-L+1, h, 0, 0, R-L+1, h);
+    const cropURL = cc.toDataURL('image/png');
+
+    const charRes = await Tesseract.recognize(cropURL, 'eng', {
+      tessedit_pageseg_mode: Tesseract.PSM.SINGLE_CHAR,
+      tessedit_char_whitelist: '235',
+      classify_bln_numeric_mode: '1'
+    });
+    const ch = (charRes.data.text||'').trim().charAt(0) || '';
+    const conf = Number(charRes.data.confidence ?? 0);
+    return { ch, conf };
+  }
+  async function looksLikeLeadingFive(roiBinDataURL){
+    const {img,w,h} = await toCanvas(roiBinDataURL);
+    const c=document.createElement('canvas'); c.width=w; c.height=h;
+    const ctx=c.getContext('2d',{willReadFrequently:true});
+    ctx.drawImage(img,0,0);
+    const im=ctx.getImageData(0,0,w,h).data;
+
+    function colBlackCount(x){ let s=0; for(let y=0;y<h;y++){ if(im[(y*w+x)*4]<128) s++; } return s; }
+    let L=0; const need = Math.max(3, Math.floor(h*0.12));
+    for(let x=0;x>w;x++){ if(colBlackCount(x)>need){ L=x; break; } }
+    const digitW = Math.max(8, Math.floor(w*0.18));
+    const R = Math.min(w-1, L+digitW);
+
+    function bandDensity(y0,y1){
+      let black=0; const total=(y1-y0)*(R-L+1);
+      for(let y=y0; y<y1; y++){
+        for(let x=L; x<=R; x++){ if(im[(y*w+x)*4]<128) black++; }
+      }
+      return black/Math.max(1,total);
+    }
+    const topDensity = bandDensity(0, Math.floor(h*0.14));
+    const midDensity = bandDensity(Math.floor(h*0.47), Math.floor(h*0.62));
+
+    let leftVert=0, total=0;
+    const vx0 = Math.min(R, L + Math.max(2, Math.floor(digitW*0.18)));
+    for(let y=Math.floor(h*0.35); y<Math.floor(h*0.85); y++){
+      total++;
+      if(im[(y*w+vx0)*4] < 128) leftVert++;
+    }
+    const leftVertRatio = leftVert/Math.max(1,total);
+
+    return (topDensity>0.62 && midDensity>0.46 && leftVertRatio>0.32);
+  }
+  function groupScores(cands){
+    const m=new Map();
+    for(const c of cands){
+      const key=(Math.round(c.val*100)/100).toFixed(2);
+      const s=(c.score||0)+ (String(c.src||'').includes('roi')?4:0);
+      m.set(key,(m.get(key)||0)+s);
+    }
+    return m;
+  }
+  function bestScoreAround(scoresMap, center, tol=0.25){
+    let best=0;
+    for(const [k,v] of scoresMap){
+      const x=parseFloat(k); if(Math.abs(x-center)<=tol) best=Math.max(best,v);
+    }
+    return best;
+  }
+  async function multiPassKmCandidates_FAST(imgDataURL){
+    const out = [];
+    const roi0 = await cropTopNumberROI(imgDataURL, 0.06, 0.30, 0.06, 2.8);
+    const roi1 = await unsharp(roi0, 0.9);
+    const roi2 = await preprocessImageToDataURL(roi1, 1.0, 190);
+
+    const [rA, rB, rC] = await Promise.all([
+      Tesseract.recognize(roi1, 'eng', KM_LINE_OCR_OPTS_7),
+      Tesseract.recognize(roi2, 'eng', KM_LINE_OCR_OPTS_7),
+      Tesseract.recognize(roi2, 'eng', KM_LINE_OCR_OPTS_8)
+    ]);
+
+    [['roiA',rA],['roiB',rB],['roiC',rC]].forEach(([tag,res])=>{
+      const conf = (res.data?.confidence ?? 60)/100;
+      numsFromText(res.data.text).forEach(o=> out.push({ ...o, src:`${tag}-text`, score:(o.score||0)+conf*12 }));
+      kmCandidatesFromWords(res.data.words).forEach(o=> out.push({ ...o, src:`${tag}-words`, score:(o.score||0)+conf*12 }));
+    });
+
+    return { cands: out, roiBin: roi2 };
+  }
+      /* ===== Pace/Time 파서 보강 ===== */
+  function extractPace(text){
+    const T = normalizeOCR(text);
+    const labelIdx = (() => {
+      const patterns = [/avg\.?\s*pace/i, /average\s*pace/i, /\bpace\b/i, /평균\s*페이스/i, /\b페이스\b/i];
+      for (const re of patterns){
+        const m = T.match(re);
+        if (m) return m.index;
+      }
+      const kmPos = T.indexOf('/km');
+      if (kmPos>-1) return Math.max(0, kmPos-40);
+      const korKmPos = T.indexOf('분/km');
+      if (korKmPos>-1) return Math.max(0, korKmPos-40);
+      return -1;
+    })();
+
+    const scope = labelIdx>-1 ? T.slice(Math.max(0,labelIdx-20), labelIdx+120) : T;
+    const patterns = [
+      /(\d{1,2})\s*'\s*(\d{2})\s*"?/,
+      /(\d{1,2})\s*:\s*(\d{2})(?=\s*\/?\s*km|\b)/,
+      /(\d{1,2})\s*분\s*(\d{1,2})\s*초/,
+    ];
+    for (const re of patterns){
+      const m = scope.match(re);
+      if (m){
+        const mm = parseInt(m[1],10);
+        const ss = parseInt(m[2],10);
+        if (!Number.isNaN(mm) && !Number.isNaN(ss)) return {min:mm, sec:ss};
+      }
+    }
+    return {min:null, sec:null};
+  }
+
+  function extractTime(text){
+    const T = normalizeOCR(text);
+    const idx = (() => {
+      const patterns = [/time\b/i, /elapsed/i, /duration/i, /총?\s*시간/, /\b시간\b/];
+      for (const re of patterns){ const m=T.match(re); if(m) return m.index; }
+      return -1;
+    })();
+    const scope = idx>-1 ? T.slice(Math.max(0, idx-20), idx+120) : T;
+
+    let m = scope.match(/\b(\d{1,2})\D{0,2}(\d{2})\D{0,2}(\d{2})\b/);
+    if(m){ return {raw:`${zero2(m[1])}:${zero2(m[2])}:${zero2(m[3])}`, H:+m[1], M:+m[2], S:+m[3]}; }
+    m = scope.match(/\b(\d{1,2})\D{0,2}(\d{2})\b/);
+    if(m){ return {raw:`${zero2(m[1])}:${zero2(m[2])}`, H:null, M:+m[1], S:+m[2]}; }
+    return {raw:null, H:null, M:null, S:null};
+  }
+
+  /* ===== OCR 파서 (runs/pace/time) - 통합 ===== */
+  function parseFromOCR(textRaw){
+    const text = normalizeOCR(textRaw);
+
+    const {min:paceMin, sec:paceSec} = extractPace(text);
+    const T = extractTime(text);
+
+    const runs = (() => {
+      const lines = text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+      for(let i=0;i<lines.length;i++){
+        const L = lines[i];
+        if (/^(Runs?|러닝)\b/i.test(L)){
+          const prev = lines[i-1]||"", next = lines[i+1]||"";
+          let mm;
+          if ((mm = prev.match(/^\s*(\d{1,3})\s*$/))) return +mm[1];
+          if ((mm = next.match(/^\s*(\d{1,3})\s*$/))) return +mm[1];
+          if ((mm = L.match(/\b(\d{1,3})\b/)))       return +mm[1];
         }
-        requestAnimationFrame(update);
+      }
+      const pacePos = text.search(/\d{1,2}\s*[:'분]\s*\d{2}/);
+      const scope2 = pacePos>0 ? text.slice(0, pacePos) : text;
+      const cands = (scope2.match(/\b\d{1,3}\b/g) || []).map(s=>+s).filter(n=>n>=0 && n<=999);
+      return cands.length ? cands[cands.length-1] : null;
+    })();
+
+    const re2dec  = /(\d{1,3})\s*[.,]\s*(\d{2})\b/;
+    const re1dec  = /(\d{1,3})\s*[.,]\s*(\d{1})\b/;
+    const reInt   = /\b(\d{1,3})\b/;
+
+    function first2Dec(s){ const mm = s.match(re2dec); return mm ? `${mm[1]}.${mm[2]}` : null; }
+    function first1Dec(s){ const mm = s.match(re1dec); return mm ? `${mm[1]}.${mm[2]}` : null; }
+    function firstInt (s){ const mm = s.match(reInt ); return mm ? mm[1] : null; }
+
+    let kmFromLabel = null;
+    {
+      const idx = text.search(/킬로미터|kilometer|distance|거리/i);
+      if (idx !== -1) {
+        const before = text.slice(Math.max(0, idx - 60), idx);
+        kmFromLabel = first2Dec(before) || first1Dec(before) || firstInt(before);
+      }
+    }
+
+    return {
+      km: kmFromLabel,
+      runs,
+      paceMin: (paceMin??null), paceSec: (paceSec??null),
+      timeH: T.H, timeM: T.M, timeS: T.S, timeRaw: T.raw
+    };
+  }
+
+  /* ===== 표기 유틸 (절사) ===== */
+  function truncate(value, digits){
+    const f = Math.pow(10, digits);
+    return Math.floor((Number(value)||0) * f) / f;
+  }
+  function formatKm(value){
+    const v = Math.max(0, Number(value) || 0);
+    if (recordType === 'monthly') return truncate(v, 1).toFixed(1);
+    return truncate(v, 2).toFixed(2);
+  }
+  function renderKm(value){
+    document.getElementById('km').textContent = formatKm(value);
+  }
+
+  function updateGridCols(){
+    const cols = (layoutType==='type1') ? 1 : (recordType==='monthly' ? 3 : 2);
+    statsGrid.style.setProperty('--cols', cols);
+  }
+  function layoutStatsGrid(){
+    if (layoutType === 'type1'){
+      [runsWrap, paceWrap, timeWrap].forEach(el=>{
+        el.style.gridColumn = '';
+        el.style.transform = '';
+        el.style.marginLeft = '';
       });
+      return;
     }
-    function scaleStageCanvas(){
-      const canvas = document.getElementById('stage-canvas');
-      if(!canvas) return;
-      const vw = window.innerWidth;
-      const logicalWidth = (vw < 430) ? 540 : 720;
-      const scale = Math.min(vw / logicalWidth, 1);
-      canvas.style.transform = `scale(${scale})`;
+    if (recordType === 'daily'){
+      paceWrap.style.gridColumn = '1 / 2';
+      timeWrap.style.gridColumn = '2 / 3';
+      paceWrap.style.transform = 'translateX(0)';
+      timeWrap.style.transform = `translateX(${getComputedStyle(document.documentElement).getPropertyValue('--statPull').trim()})`;
+      paceWrap.style.marginLeft = '0';
+      timeWrap.style.marginLeft = '0';
+    } else {
+      runsWrap.style.gridColumn = '1 / 2';
+      paceWrap.style.gridColumn = '2 / 3';
+      timeWrap.style.gridColumn = '3 / 4';
+      runsWrap.style.transform = 'translateX(0)';
+      paceWrap.style.transform = `translateX(${getComputedStyle(document.documentElement).getPropertyValue('--statPull').trim()})`;
+      timeWrap.style.transform = `translateX(${getComputedStyle(document.documentElement).getPropertyValue('--statPull2').trim()})`;
+      runsWrap.style.marginLeft = '0';
+      paceWrap.style.marginLeft = '0';
+      timeWrap.style.marginLeft = '0';
     }
-
-    const kmFontScale = {
-      "Helvetica Neue": { type1: 0.90, type2: 1.00 },
-      "Anton": { type1: 0.90, type2: 1.00 },
-      "Big Shoulders Inline Text": { type1: 0.95, type2: 1.10 },
-      "Tourney": { type1: 0.85, type2: 0.89 },
-      "Anta": { type1: 0.93, type2: 0.98 },
-      "Arvo": { type1: 0.80, type2: 0.85 },
-      "Iceberg": { type1: 0.85, type2: 0.90 },
-      "Permanent Marker": { type1: 0.85, type2: 0.90 },
-      "Londrina Shadow": { type1: 0.85, type2: 0.90 },
-      "Rock Salt": { type1: 0.85, type2: 0.94 }
+  }
+  function zero2txt(n){ return String(n).padStart(2,'0'); }
+  function formatPaceByType(){
+    if(parsedData.paceMin==null || parsedData.paceSec==null){
+      return (layoutType==='type1') ? '0:00 /km' : '0:00';
+    }
+    const mm = String(parsedData.paceMin);
+    const ss = zero2txt(parsedData.paceSec);
+    return (layoutType==='type1') ? `${mm}:${ss} /km` : `${mm}:${ss}`;
+  }
+  function formatTimeByType(){
+    if(layoutType==='type2') return parsedData.timeRaw ? parsedData.timeRaw : '00:00';
+    const H = parsedData.timeH ?? 0, M = parsedData.timeM ?? 0, S = parsedData.timeS ?? 0;
+    if (H > 0) return `${H}h ${zero2txt(M)}m ${zero2txt(S)}s`;
+    return `${String(M)}m ${zero2txt(S)}s`;
+  }
+  function alignStatsBaseline(){
+    if(layoutType !== 'type2') return;
+    const stats = [];
+    const addIfVisible = (id)=>{
+      const wrap = document.getElementById(id+'-wrap');
+      if(getComputedStyle(wrap).display!=='none'){
+        stats.push(document.getElementById(id));
+      }
     };
-    function setFontKmScale(font, type, scale){
-      if(!kmFontScale[font]) kmFontScale[font] = { type1:1, type2:1 };
-      kmFontScale[font][type] = Number(scale) || 1;
-      fitKmRow();
+    addIfVisible('runs'); addIfVisible('pace'); addIfVisible('time');
+    stats.forEach(el=>{ el.style.transform = ''; });
+    const bottoms = stats.map(el=>el.getBoundingClientRect().bottom);
+    const maxBottom = Math.max(...bottoms);
+    stats.forEach((el,i)=>{
+      const dy = Math.round(maxBottom - bottoms[i]);
+      if (dy) el.style.transform = `translateY(${dy}px)`;
+    });
+  }
+  function renderStats(){
+    document.getElementById('pace-label').textContent = 'Avg. Pace';
+    document.getElementById('time-label').textContent = 'Time';
+    runsWrap.style.display = (recordType === 'monthly') ? 'block' : 'none';
+    if (recordType === 'monthly') {
+      const runsVal = (parsedData.runs == null || Number.isNaN(parsedData.runs)) ? '--' : parsedData.runs;
+      document.getElementById('runs').textContent = String(runsVal);
     }
-    const fontIndentMap = {
-      "Helvetica Neue": { type1: { grid: 5,  kmWord: 0 },  type2: { grid: 5,  kmWord: 0 } },
-      "Anton": { type1: { grid: 5,  kmWord: 0 },  type2: { grid: 5,  kmWord: 0 } },
-      "Big Shoulders Inline Text": { type1: { grid: 8,  kmWord: 3 },  type2: { grid: 8,  kmWord: 3 } },
-      "Tourney": { type1: { grid: 6,  kmWord: 2 },  type2: { grid: 6,  kmWord: 2 } },
-      "Anta": { type1: { grid: 8,  kmWord: 0 },  type2: { grid: 6,  kmWord: 0 } },
-      "Arvo": { type1: { grid: 4,  kmWord: 0 },  type2: { grid: 4,  kmWord: 0 } },
-      "Iceberg": { type1: { grid: 8,  kmWord: 1 },  type2: { grid: 8,  kmWord: 1 } },
-      "Permanent Marker": { type1: { grid: 8,  kmWord: 1 },  type2: { grid: 8,  kmWord: 1 } },
-      "Londrina Shadow": { type1: { grid: 5,  kmWord: 2 },  type2: { grid: 5,  kmWord: 2 } },
-      "Rock Salt": { type1: { grid: 25, kmWord: 0 },  type2: { grid: 25, kmWord: 0 } }
+    document.getElementById('pace').textContent = formatPaceByType();
+    document.getElementById('time').textContent = formatTimeByType();
+
+    const hint = document.getElementById('cv-hint');
+    hint.style.display = 'none';
+    hint.textContent = '';
+
+    updateGridCols();
+    layoutStatsGrid();
+    alignStatsBaseline();
+  }
+
+  function updateUploadLabel(){
+    if(!uploadLabelText) return;
+    uploadLabelText.textContent =
+      recordType === 'monthly'
+        ? 'Upload your mileage for THIS MONTH'
+        : 'Upload your NRC record for TODAY';
+  }
+
+  /* ===== 업로드 → OCR → 병합 (+ 선두 자리 규칙) ===== */
+  function leadingDigit(n){
+    if(!isFinite(n)) return null;
+    const s = Math.floor(Math.abs(n)).toString();
+    return s.length ? s[0] : null;
+  }
+
+  document.getElementById("file-upload").addEventListener("change", async (e)=>{
+    const file = e.target.files[0]; if(!file) return;
+    const status = document.getElementById("upload-status");
+    status.textContent = "Processing…";
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try{
+        const img = reader.result;
+
+        const fast = await multiPassKmCandidates_FAST(img);
+        let kmCandidates = fast.cands;
+        const roiBinForFiveGuard = fast.roiBin;
+
+        const statsROI = await cropStatsROI(img, 0.40, 0.45, 0.06, 2.2);
+        const statsROIBin = await preprocessImageToDataURL(statsROI, 1.0, 190);
+        const [rFull, rStats] = await Promise.all([
+          Tesseract.recognize(img, 'eng+kor', { preserve_interword_spaces: '1', tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK }),
+          Tesseract.recognize(statsROIBin, 'eng+kor', { preserve_interword_spaces: '1', tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT })
+        ]);
+        const mergedText = (rFull.data.text || "") + "\n" + (rStats.data.text || "");
+
+        const p = parseFromOCR(mergedText);
+
+        if(p.km){
+          const val = parseFloat(String(p.km).replace(',','.'));
+          if (isFinite(val)) kmCandidates.push({ val, dec: (String(p.km).split(/[.,]/)[1]||'').length, src:'aux-label' });
+        }
+
+        let kmBest = pickBestKm(kmCandidates);
+
+        if (kmBest!=null){
+          const intPart = Math.floor(kmBest);
+          if (intPart===2 || intPart===3){
+            const { ch:leadCh, conf:leadConf } = await recognizeLeadingChar(roiBinForFiveGuard).catch(()=>({ch:'',conf:0}));
+            const looks5 = await looksLikeLeadingFive(roiBinForFiveGuard).catch(()=>false);
+            const est = estimateDistanceFromPaceTime();
+            const estNear5 = (est!=null && est>=4.85 && est<=5.30);
+            const scores = groupScores(kmCandidates);
+            const s2 = bestScoreAround(scores, 2.0, 0.25);
+            const s3 = bestScoreAround(scores, 3.0, 0.25);
+            const s5 = bestScoreAround(scores, 5.0, 0.25);
+            const strongNotFive = (leadCh==='2' || leadCh==='3') && leadConf>=70;
+            const allowFixToFive =
+              (leadCh==='5' && leadConf>=82) ||
+              (looks5 && estNear5 && (s5 > Math.max(s2,s3) + 6));
+            if (!strongNotFive && allowFixToFive){
+              kmBest = 5 + (kmBest - intPart);
+            }
+          }
+        }
+
+        function extractRunsFromWords(words){
+          if(!Array.isArray(words) || !words.length) return null;
+          const anchors = words.filter(w => {
+            const t = (w.text||"").trim().toLowerCase();
+            return t === 'runs' || t === '러닝';
+          });
+          const sameLineNear = (anchor)=>{
+            const same = words.filter(w => w.line === anchor.line);
+            const nums = same
+              .filter(w => /^\d{1,3}$/.test((w.text||'').trim()))
+              .map(w => ({
+                n: +w.text.trim(),
+                dx: Math.abs(((w.bbox&&w.bbox.x0)||0) - ((anchor.bbox&&anchor.bbox.x1)||0))
+              }));
+            if(nums.length){ nums.sort((a,b)=>a.dx-b.dx); return nums[0].n; }
+            return null;
+          };
+          const picks = anchors.map(a=>sameLineNear(a)).filter(v=>Number.isInteger(v));
+          if(!picks.length) return null;
+          picks.sort((a,b)=>a-b);
+          return picks[Math.floor(picks.length/2)];
+        }
+        const rWords = extractRunsFromWords(rFull.data.words||[]);
+
+        const paceOCRStr = (p.paceMin!=null && p.paceSec!=null) ? `${p.paceMin}:${String(p.paceSec).padStart(2,'0')}` : null;
+        const toKm = (d)=>parseFloat(String(d).replace(',','.'));
+
+        const timeSecForCalc = parseTimeToSec(p.timeRaw || '');
+        const paceSecOCR = (p.paceMin!=null && p.paceSec!=null) ? (p.paceMin*60 + p.paceSec) : NaN;
+        const calcKmCandidate = (recordType==='monthly' && isFinite(timeSecForCalc) && isFinite(paceSecOCR))
+          ? (timeSecForCalc / paceSecOCR)
+          : NaN;
+
+        const ocrKmRaw = (kmBest ?? (p.km ? toKm(p.km) : NaN));
+        const hasOCRkm = isFinite(ocrKmRaw);
+
+        let finalKm = 0;
+        if (recordType === 'daily'){
+          finalKm = hasOCRkm ? ocrKmRaw : 0;
+        } else {
+          const cvpace = (isFinite(timeSecForCalc) && isFinite(ocrKmRaw)) ? (timeSecForCalc / ocrKmRaw) : NaN;
+          let cv = { distance: isFinite(ocrKmRaw)? ocrKmRaw : (isFinite(calcKmCandidate)? calcKmCandidate : NaN),
+                     pace: isFinite(cvpace)? cvpace : (isFinite(paceSecOCR)? paceSecOCR : NaN) };
+          finalKm = isFinite(cv.distance) ? cv.distance : 0;
+        }
+
+        let finalPaceSec = (isFinite(paceSecOCR)) ? paceSecOCR
+                          : (isFinite(timeSecForCalc) && isFinite(finalKm) && finalKm>0 ? Math.round(timeSecForCalc / finalKm) : NaN);
+
+        parsedData = {
+          km: finalKm ?? 0,
+          paceMin: isFinite(finalPaceSec) ? Math.floor(finalPaceSec/60) : null,
+          paceSec: isFinite(finalPaceSec) ? (finalPaceSec%60) : null,
+          timeH: p.timeH, timeM: p.timeM, timeS: p.timeS,
+          timeRaw: p.timeRaw || null,
+          runs: (recordType==='monthly') ? (p.runs ?? rWords ?? null) : null
+        };
+
+        renderKm(0);
+        renderStats();
+        status.textContent = "Done";
+      }catch(err){
+        console.error(err);
+        document.getElementById("upload-status").textContent = "Upload failed";
+      }
     };
-    function applyFontIndents(font, type){
-      const defaults = { grid: 5, kmWord: 0 };
-      const conf = (fontIndentMap[font] && fontIndentMap[font][type]) || defaults;
-      document.documentElement.style.setProperty('--gridFirstColIndent', `${conf.grid}px`);
-      document.documentElement.style.setProperty('--kmWordIndent', `${conf.kmWord}px`);
-    }
-    function applyFontStatsOffset(font){
-      if (layoutType !== 'type2') {
-        document.documentElement.style.setProperty('--statsLeftOffset', '0px');
-        return;
+    reader.readAsDataURL(file);
+  });
+      /* ===== 애니메이션/스케일 ===== */
+  const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+  function animateNumber(id,start,end,duration){
+    return new Promise(resolve=>{
+      const kmEl = document.getElementById(id);
+      let startTime;
+      function update(now){
+        if(!startTime) startTime = now;
+        const raw = Math.min((now - startTime)/duration,1);
+        const eased = easeOutCubic(raw);
+        const val = (start + (end-start)*eased);
+        kmEl.textContent = formatKm(val);
+        raw < 1 ? requestAnimationFrame(update) : resolve();
       }
-      const map = fontStatsOffsetMap[font] || { daily:"0px", monthly:"0px" };
-      const val = (recordType === 'daily') ? map.daily : map.monthly;
-      document.documentElement.style.setProperty('--statsLeftOffset', val || '0px');
+      requestAnimationFrame(update);
+    });
+  }
+  function scaleStageCanvas(){
+    const canvas = document.getElementById('stage-canvas');
+    if(!canvas) return;
+    const vw = window.innerWidth;
+    const logicalWidth = (vw < 430) ? 540 : 720;
+    const scale = Math.min(vw / logicalWidth, 1);
+    canvas.style.transform = `scale(${scale})`;
+  }
+
+  const kmFontScale = {
+    "Helvetica Neue": { type1: 0.90, type2: 1.00 },
+    "Anton": { type1: 0.90, type2: 1.00 },
+    "Big Shoulders Inline Text": { type1: 0.95, type2: 1.10 },
+    "Tourney": { type1: 0.85, type2: 0.89 },
+    "Anta": { type1: 0.93, type2: 0.98 },
+    "Arvo": { type1: 0.80, type2: 0.85 },
+    "Iceberg": { type1: 0.85, type2: 0.90 },
+    "Permanent Marker": { type1: 0.85, type2: 0.90 },
+    "Londrina Shadow": { type1: 0.85, type2: 0.90 },
+    "Rock Salt": { type1: 0.85, type2: 0.94 }
+  };
+  function setFontKmScale(font, type, scale){
+    if(!kmFontScale[font]) kmFontScale[font] = { type1:1, type2:1 };
+    kmFontScale[font][type] = Number(scale) || 1;
+    fitKmRow();
+  }
+  const fontIndentMap = {
+    "Helvetica Neue": { type1: { grid: 5,  kmWord: 0 },  type2: { grid: 5,  kmWord: 0 } },
+    "Anton": { type1: { grid: 5,  kmWord: 0 },  type2: { grid: 5,  kmWord: 0 } },
+    "Big Shoulders Inline Text": { type1: { grid: 8,  kmWord: 3 },  type2: { grid: 8,  kmWord: 3 } },
+    "Tourney": { type1: { grid: 6,  kmWord: 2 },  type2: { grid: 6,  kmWord: 2 } },
+    "Anta": { type1: { grid: 8,  kmWord: 0 },  type2: { grid: 6,  kmWord: 0 } },
+    "Arvo": { type1: { grid: 4,  kmWord: 0 },  type2: { grid: 4,  kmWord: 0 } },
+    "Iceberg": { type1: { grid: 8,  kmWord: 1 },  type2: { grid: 8,  kmWord: 1 } },
+    "Permanent Marker": { type1: { grid: 8,  kmWord: 1 },  type2: { grid: 8,  kmWord: 1 } },
+    "Londrina Shadow": { type1: { grid: 5,  kmWord: 2 },  type2: { grid: 5,  kmWord: 2 } },
+    "Rock Salt": { type1: { grid: 25, kmWord: 0 },  type2: { grid: 25, kmWord: 0 } }
+  };
+  function applyFontIndents(font, type){
+    const defaults = { grid: 5, kmWord: 0 };
+    const conf = (fontIndentMap[font] && fontIndentMap[font][type]) || defaults;
+    document.documentElement.style.setProperty('--gridFirstColIndent', `${conf.grid}px`);
+    document.documentElement.style.setProperty('--kmWordIndent', `${conf.kmWord}px`);
+  }
+  function applyFontStatsOffset(font){
+    if (layoutType !== 'type2') {
+      document.documentElement.style.setProperty('--statsLeftOffset', '0px');
+      return;
     }
-    function fitKmRow(){
-      const stage   = document.getElementById('stage');
-      const row     = document.getElementById('km-row');
-      const measure = document.getElementById('km-measure');
-      const kmEl    = document.getElementById('km');
+    const map = fontStatsOffsetMap[font] || { daily:"0px", monthly:"0px" };
+    const val = (recordType === 'daily') ? map.daily : map.monthly;
+    document.documentElement.style.setProperty('--statsLeftOffset', val || '0px');
+  }
+  function fitKmRow(){
+    const stage   = document.getElementById('stage');
+    const row     = document.getElementById('km-row');
+    const measure = document.getElementById('km-measure');
+    const kmEl    = document.getElementById('km');
 
-      const kmCS = window.getComputedStyle(kmEl);
-      measure.style.fontFamily = kmCS.fontFamily;
-      measure.style.fontSize   = kmCS.fontSize;
-      measure.style.fontStyle  = kmCS.fontStyle;
-      measure.style.fontWeight = kmCS.fontWeight;
+    const kmCS = window.getComputedStyle(kmEl);
+    measure.style.fontFamily = kmCS.fontFamily;
+    measure.style.fontSize   = kmCS.fontSize;
+    measure.style.fontStyle  = kmCS.fontStyle;
+    measure.style.fontWeight = kmCS.fontWeight;
 
-      measure.textContent = kmEl.textContent;
+    measure.textContent = kmEl.textContent;
 
-      const stCS = window.getComputedStyle(stage);
-      const padL = parseFloat(stCS.paddingLeft)  || 0;
-      const padR = parseFloat(stCS.paddingRight) || 0;
-      const avail = stage.clientWidth - (padL + padR);
+    const stCS = window.getComputedStyle(stage);
+    const padL = parseFloat(stCS.paddingLeft)  || 0;
+    const padR = parseFloat(stCS.paddingRight) || 0;
+    const avail = stage.clientWidth - (padL + padR);
 
-      const safe  = 0.98;
-      const need  = measure.scrollWidth;
-      const baseFit  = need ? Math.min(1, (avail * safe) / need) : 1;
+    const safe  = 0.98;
+    const need  = measure.scrollWidth;
+    const baseFit  = need ? Math.min(1, (avail * safe) / need) : 1;
 
-      const css = getComputedStyle(document.body);
-      const typeScale = parseFloat(css.getPropertyValue('--kmScale')) || 1;
-      const modeScale = parseFloat(css.getPropertyValue('--modeKmScale')) || 1;
-      const fontScale = (kmFontScale[selectedFont] && kmFontScale[selectedFont][layoutType]) ? kmFontScale[selectedFont][layoutType] : 1;
+    const css = getComputedStyle(document.body);
+    const typeScale = parseFloat(css.getPropertyValue('--kmScale')) || 1;
+    const modeScale = parseFloat(css.getPropertyValue('--modeKmScale')) || 1;
+    const fontScale = (kmFontScale[selectedFont] && kmFontScale[selectedFont][layoutType]) ? kmFontScale[selectedFont][layoutType] : 1;
 
-      row.style.transform = `scale(${baseFit * typeScale * fontScale * modeScale})`;
-      syncDateWidth();
+    row.style.transform = `scale(${baseFit * typeScale * fontScale * modeScale})`;
+    syncDateWidth();
+  }
+  function syncDateWidth(){
+    if (layoutType !== 'type2') return;
+    const row = document.getElementById('km-row');
+    const width = row.getBoundingClientRect().width;
+    dateDisplay.style.width = width + 'px';
+  }
+  async function runAnimation(){
+    fitKmRow();
+    await new Promise(r=>setTimeout(r, 500));
+    const endVal = parseFloat(parsedData.km || 0);
+    await animateNumber("km", 0, isNaN(endVal)?0:endVal, 2200);
+    fitKmRow();
+  }
+  function updateActive(groupEl, targetBtn){
+    [...groupEl.querySelectorAll('button')].forEach(b=>b.classList.remove('is-active'));
+    if(targetBtn) targetBtn.classList.add('is-active');
+  }
+
+  /* iOS 대응 포함: 폰트 세팅 */
+  function setFont(font){
+    selectedFont = font;
+
+    const km       = document.getElementById("km");
+    const dateDisp = document.getElementById("date-display");
+    const fs = fontSettings[font] || {};
+
+    // 따옴표 포함으로 패밀리 지정 (공백/특수문자 안전) + 사파리 가짜볼드 방지 시도
+    km.style.fontFamily = `"${font}", sans-serif`;
+    km.style.fontSize   = ((fs.base ?? 200)) + "px";
+    km.style.fontWeight = (fs.weight ?? 700);
+    km.style.transform  = fs.translate ? `translate(${fs.translate})` : "translate(0,0)";
+    km.style.fontSynthesis = 'none'; // 지원 브라우저에서만 동작
+
+    const dateFontWhitelist = new Set([
+      "Helvetica Neue","Anton","Anta","Arvo","Iceberg"
+    ]);
+    if (dateFontWhitelist.has(font)) {
+      dateDisp.style.fontFamily = `"${font}", sans-serif`;
+      dateDisp.style.fontWeight = (fs.dateWeight ?? 700);
+      dateDisp.style.fontSynthesis = 'none';
+    } else {
+      dateDisp.style.fontFamily = "";
+      dateDisp.style.fontWeight = 700;
     }
-    function syncDateWidth(){
-      if (layoutType !== 'type2') return;
-      const row = document.getElementById('km-row');
-      const width = row.getBoundingClientRect().width;
-      dateDisplay.style.width = width + 'px';
-    }
-    async function runAnimation(){
+
+    const root = document.documentElement.style;
+    const dSize = fs.dateSize || "50px";
+    const dGap  = fs.dateGap  || "10px";
+    const dTrans= fs.dateTranslate || "0px,0px";
+    root.setProperty("--d2-dateSize", dSize);
+    root.setProperty("--d2-dateGap", dGap);
+    root.setProperty("--d2-dateTranslate", dTrans);
+    root.setProperty("--m1-dateSize", dSize);
+    root.setProperty("--m1-dateGap", dGap);
+    root.setProperty("--m1-dateTranslate", dTrans);
+    root.setProperty("--m2-dateSize", dSize);
+    root.setProperty("--m2-dateGap", dGap);
+    root.setProperty("--m2-dateTranslate", dTrans);
+
+    if (fs.kmWordGap) document.documentElement.style.setProperty('--kmWordGap', fs.kmWordGap);
+
+    const targetBtn = fontGridEl.querySelector(`button[data-font="${CSS.escape(font)}"]`);
+    updateActive(fontGridEl, targetBtn);
+
+    applyFontIndents(selectedFont, layoutType);
+    applyFontStatsOffset(selectedFont);
+
+    // 폰트 실제 로딩 확인 (Tourney 800, Arvo 700 등) 후 한번 더 맞춤
+    ensureFontReady(font, fs.weight ?? 700, fs.base ?? 200).then(()=>{
       fitKmRow();
-      await new Promise(r=>setTimeout(r, 500));
-      const endVal = parseFloat(parsedData.km || 0);
-      await animateNumber("km", 0, isNaN(endVal)?0:endVal, 2200);
-      fitKmRow();
-    }
-    function updateActive(groupEl, targetBtn){
-      [...groupEl.querySelectorAll('button')].forEach(b=>b.classList.remove('is-active'));
-      if(targetBtn) targetBtn.classList.add('is-active');
-    }
-    function setFont(font){
-      selectedFont = font;
+    });
 
-      const km       = document.getElementById("km");
-      const dateDisp = document.getElementById("date-display");
-      const fs = fontSettings[font] || {};
+    fitKmRow();
+    renderStats();
+    renderDateDisplay();
+  }
 
-      km.style.fontFamily = font + ", sans-serif";
-      km.style.fontSize   = ((fs.base ?? 200)) + "px";
-      km.style.fontWeight = (fs.weight ?? 700);
-      km.style.transform  = fs.translate ? `translate(${fs.translate})` : "translate(0,0)";
+  function setBackground(color){
+    const htmlEl = document.documentElement, bodyEl = document.body;
+    if(color==='black'){ htmlEl.classList.replace('bg-white','bg-black'); bodyEl.classList.replace('bg-white','bg-black'); }
+    else { htmlEl.classList.replace('bg-black','bg-white'); bodyEl.classList.replace('bg-black','bg-white'); }
+    const targetBtn = bgRow.querySelector(`button[data-bg="${CSS.escape(color)}"]`);
+    updateActive(bgRow, targetBtn);
+  }
+  function setRecordType(mode){
+    recordType = mode;
+    document.body.classList.toggle('mode-daily', mode==='daily');
+    document.body.classList.toggle('mode-monthly', mode==='monthly');
+    updateActive(modeRow, modeRow.querySelector(`button[data-mode="${CSS.escape(mode)}"]`));
+    runsWrap.style.display = (mode==='monthly') ? 'block' : 'none';
+    renderKm(document.getElementById('km').textContent.replace(/[^\d.]/g,'') || 0);
+    renderStats();
+    updateGridCols();
+    fitKmRow();
+    applyLayoutVisual();
+    applyFontStatsOffset(selectedFont);
+    updateUploadLabel();
+  }
+  function setDateFromInput(){
+    const val = dateInput.value; if(!val) return;
+    const [y,m,d] = val.split('-').map(Number);
+    selectedDate = new Date(y, m-1, d);
+    renderDateDisplay(); syncDateWidth();
+  }
+  function renderDateDisplay(){
+    dateDisplay.textContent = formatDateText(selectedDate);
+  }
+  function applyLayoutVisual(){
+    const word = document.getElementById('km-word');
 
-      const dateFontWhitelist = new Set([
-        "Helvetica Neue","Anton","Anta","Arvo","Iceberg"
-      ]);
-      if (dateFontWhitelist.has(font)) {
-        dateDisp.style.fontFamily = font + ", sans-serif";
-        dateDisp.style.fontWeight = (fs.dateWeight ?? 700);
-      } else {
-        dateDisp.style.fontFamily = "";
-        dateDisp.style.fontWeight = 700;
-      }
-
-      const root = document.documentElement.style;
-      const dSize = fs.dateSize || "50px";
-      const dGap  = fs.dateGap  || "10px";
-      const dTrans= fs.dateTranslate || "0px,0px";
-      root.setProperty("--d2-dateSize", dSize);
-      root.setProperty("--d2-dateGap", dGap);
-      root.setProperty("--d2-dateTranslate", dTrans);
-      root.setProperty("--m1-dateSize", dSize);
-      root.setProperty("--m1-dateGap", dGap);
-      root.setProperty("--m1-dateTranslate", dTrans);
-      root.setProperty("--m2-dateSize", dSize);
-      root.setProperty("--m2-dateGap", dGap);
-      root.setProperty("--m2-dateTranslate", dTrans);
-
-      if (fs.kmWordGap) document.documentElement.style.setProperty('--kmWordGap', fs.kmWordGap);
-
-      const targetBtn = fontGridEl.querySelector(`button[data-font="${CSS.escape(font)}"]`);
-      updateActive(fontGridEl, targetBtn);
-
-      applyFontIndents(selectedFont, layoutType);
-      applyFontStatsOffset(selectedFont);
-      fitKmRow();
-      renderStats();
-      renderDateDisplay();
-    }
-    function setBackground(color){
-      const htmlEl = document.documentElement, bodyEl = document.body;
-      if(color==='black'){ htmlEl.classList.replace('bg-white','bg-black'); bodyEl.classList.replace('bg-white','bg-black'); }
-      else { htmlEl.classList.replace('bg-black','bg-white'); bodyEl.classList.replace('bg-black','bg-white'); }
-      const targetBtn = bgRow.querySelector(`button[data-bg="${CSS.escape(color)}"]`);
-      updateActive(bgRow, targetBtn);
-    }
-    function setRecordType(mode){
-      recordType = mode;
-      document.body.classList.toggle('mode-daily', mode==='daily');
-      document.body.classList.toggle('mode-monthly', mode==='monthly');
-      updateActive(modeRow, modeRow.querySelector(`button[data-mode="${CSS.escape(mode)}"]`));
-      runsWrap.style.display = (mode==='monthly') ? 'block' : 'none';
-      renderKm(document.getElementById('km').textContent.replace(/[^\d.]/g,'') || 0);
-      renderStats();
-      updateGridCols();
-      fitKmRow();
-      applyLayoutVisual();
-      applyFontStatsOffset(selectedFont);
-      updateUploadLabel();
-    }
-    function setDateFromInput(){
-      const val = dateInput.value; if(!val) return;
-      const [y,m,d] = val.split('-').map(Number);
-      selectedDate = new Date(y, m-1, d);
-      renderDateDisplay(); syncDateWidth();
-    }
-    function renderDateDisplay(){
-      dateDisplay.textContent = formatDateText(selectedDate);
-    }
-    function applyLayoutVisual(){
-      const word = document.getElementById('km-word');
-
-      if(layoutType==='type1'){
-        dateSection.style.display = (recordType==='monthly') ? 'grid' : 'none';
-      }else{
-        dateSection.style.display = 'grid';
-      }
-
-      if (layoutType==='type2' || (layoutType==='type1' && recordType==='monthly')) {
-        dateDisplay.style.display = 'block';
-      } else {
-        dateDisplay.style.display = 'none';
-      }
-
-      word.style.display = 'block';
-
-      if(!dateInput.value){
-        const today = new Date();
-        const yyyy = today.getFullYear(), mm = String(today.getMonth()+1).padStart(2,'0'), dd = String(today.getDate()).padStart(2,'0');
-        dateInput.value = `${yyyy}-${mm}-${dd}`;
-        selectedDate = today;
-      }
-      renderDateDisplay();
-
-      document.body.classList.remove('type1','type2');
-      document.body.classList.add(layoutType);
-
-      setFont(selectedFont);
-      applyFontIndents(selectedFont, layoutType);
-      applyFontStatsOffset(selectedFont);
-
-      renderStats();
-      updateGridCols();
-      layoutStatsGrid();
-      fitKmRow();
-      alignStatsBaseline();
-    }
-    function setLayout(type){
-      layoutType = type;
-      updateActive(layoutRow, layoutRow.querySelector(`button[data-layout="${CSS.escape(type)}"]`));
-      applyLayoutVisual();
-    }
-    function setDateStyle(which, { size, gap, translate } = {}){
-      const root = document.documentElement.style;
-      if(which==='d2'){ if(size) root.setProperty('--d2-dateSize', size); if(gap) root.setProperty('--d2-dateGap', gap); if(translate) root.setProperty('--d2-dateTranslate', translate); }
-      else if(which==='m1'){ if(size) root.setProperty('--m1-dateSize', size); if(gap) root.setProperty('--m1-dateGap', gap); if(translate) root.setProperty('--m1-dateTranslate', translate); }
-      else if(which==='m2'){ if(size) root.setProperty('--m2-dateSize', size); if(gap) root.setProperty('--m2-dateGap', gap); if(translate) root.setProperty('--m2-dateTranslate', translate); }
-      renderDateDisplay();
+    if(layoutType==='type1'){
+      dateSection.style.display = (recordType==='monthly') ? 'grid' : 'none';
+    }else{
+      dateSection.style.display = 'grid';
     }
 
-    fontGridEl.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-font]'); if(btn) setFont(btn.dataset.font); });
-    bgRow.addEventListener('click',   (e)=>{ const btn=e.target.closest('button[data-bg]');    if(btn) setBackground(btn.dataset.bg); });
-    modeRow.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-mode]');  if(btn) setRecordType(btn.dataset.mode); });
-    layoutRow.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-layout]'); if(btn) setLayout(btn.dataset.layout); });
-    dateInput.addEventListener('change', setDateFromInput);
-
-    function onRun(){
-      document.body.classList.add('focus');
-      document.getElementById('stage-canvas').scrollIntoView({behavior:'smooth', block:'start'});
-      runAnimation();
-    }
-    function exitFocus(){
-      document.body.classList.remove('focus');
-      window.scrollTo({top:0, behavior:'smooth'});
-      document.getElementById('km').textContent = recordType==='monthly' ? "0.0" : "0.00";
+    if (layoutType==='type2' || (layoutType==='type1' && recordType==='monthly')) {
+      dateDisplay.style.display = 'block';
+    } else {
+      dateDisplay.style.display = 'none';
     }
 
-    window.addEventListener('resize', ()=>{ scaleStageCanvas(); fitKmRow(); alignStatsBaseline(); });
-    window.addEventListener('orientationchange', ()=> { setTimeout(()=>{ scaleStageCanvas(); fitKmRow(); alignStatsBaseline(); }, 50); });
+    word.style.display = 'block';
 
-    function setTypeStatsStyle(type, { size, labelSize, gap, pull, pull2 } = {}){
-      const root = document.documentElement.style;
-      if(type==='type1'){
-        if (size)      root.setProperty('--t1-statSize', size);
-        if (labelSize) root.setProperty('--t1-labelSize', labelSize);
-        if (gap!=null) root.setProperty('--t1-statGap', gap);
-        if (pull!=null)root.setProperty('--t1-statPull', pull);
-        if (pull2!=null)root.setProperty('--t1-statPull2', pull2);
-      }else{
-        if (size)      root.setProperty('--t2-statSize', size);
-        if (labelSize) root.setProperty('--t2-labelSize', labelSize);
-        if (gap!=null) root.setProperty('--t2-statGap', gap);
-        if (pull!=null) root.setProperty('--t2-statPull', pull);
-        if (pull2!=null)root.setProperty('--t2-statPull2', pull2);
-      }
-      renderStats();
+    if(!dateInput.value){
+      const today = new Date();
+      const yyyy = today.getFullYear(), mm = String(today.getMonth()+1).padStart(2,'0'), dd = String(today.getDate()).padStart(2,'0');
+      dateInput.value = `${yyyy}-${mm}-${dd}`;
+      selectedDate = today;
     }
-    function setTypeKmWordStyle(type, { size, gap } = {}){
-      const root = document.documentElement.style;
-      if(type==='type1'){
-        if (size) root.setProperty('--t1-kmWordSize', size);
-        if (gap)  root.setProperty('--t1-kmWordGap', gap);
-      }else{
-        if (size) root.setProperty('--t2-kmWordSize', size);
-        if (gap)  root.setProperty('--t2-kmWordGap', gap);
-      }
+    renderDateDisplay();
+
+    document.body.classList.remove('type1','type2');
+    document.body.classList.add(layoutType);
+
+    setFont(selectedFont);
+    applyFontIndents(selectedFont, layoutType);
+    applyFontStatsOffset(selectedFont);
+
+    renderStats();
+    updateGridCols();
+    layoutStatsGrid();
+    fitKmRow();
+    alignStatsBaseline();
+  }
+  function setLayout(type){
+    layoutType = type;
+    updateActive(layoutRow, layoutRow.querySelector(`button[data-layout="${CSS.escape(type)}"]`));
+    applyLayoutVisual();
+  }
+  function setDateStyle(which, { size, gap, translate } = {}){
+    const root = document.documentElement.style;
+    if(which==='d2'){ if(size) root.setProperty('--d2-dateSize', size); if(gap) root.setProperty('--d2-dateGap', gap); if(translate) root.setProperty('--d2-dateTranslate', translate); }
+    else if(which==='m1'){ if(size) root.setProperty('--m1-dateSize', size); if(gap) root.setProperty('--m1-dateGap', gap); if(translate) root.setProperty('--m1-dateTranslate', translate); }
+    else if(which==='m2'){ if(size) root.setProperty('--m2-dateSize', size); if(gap) root.setProperty('--m2-dateGap', gap); if(translate) root.setProperty('--m2-dateTranslate', translate); }
+    renderDateDisplay();
+  }
+
+  fontGridEl.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-font]'); if(btn) setFont(btn.dataset.font); });
+  bgRow.addEventListener('click',   (e)=>{ const btn=e.target.closest('button[data-bg]');    if(btn) setBackground(btn.dataset.bg); });
+  modeRow.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-mode]');  if(btn) setRecordType(btn.dataset.mode); });
+  layoutRow.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-layout]'); if(btn) setLayout(btn.dataset.layout); });
+  dateInput.addEventListener('change', setDateFromInput);
+
+  function onRun(){
+    document.body.classList.add('focus');
+    document.getElementById('stage-canvas').scrollIntoView({behavior:'smooth', block:'start'});
+    runAnimation();
+  }
+  function exitFocus(){
+    document.body.classList.remove('focus');
+    window.scrollTo({top:0, behavior:'smooth'});
+    document.getElementById('km').textContent = recordType==='monthly' ? "0.0" : "0.00";
+  }
+
+  window.addEventListener('resize', ()=>{ scaleStageCanvas(); fitKmRow(); alignStatsBaseline(); });
+  window.addEventListener('orientationchange', ()=> { setTimeout(()=>{ scaleStageCanvas(); fitKmRow(); alignStatsBaseline(); }, 50); });
+
+  function setTypeStatsStyle(type, { size, labelSize, gap, pull, pull2 } = {}){
+    const root = document.documentElement.style;
+    if(type==='type1'){
+      if (size)      root.setProperty('--t1-statSize', size);
+      if (labelSize) root.setProperty('--t1-labelSize', labelSize);
+      if (gap!=null) root.setProperty('--t1-statGap', gap);
+      if (pull!=null)root.setProperty('--t1-statPull', pull);
+      if (pull2!=null)root.setProperty('--t1-statPull2', pull2);
+    }else{
+      if (size)      root.setProperty('--t2-statSize', size);
+      if (labelSize) root.setProperty('--t2-labelSize', labelSize);
+      if (gap!=null) root.setProperty('--t2-statGap', gap);
+      if (pull!=null) root.setProperty('--t2-statPull', pull);
+      if (pull2!=null)root.setProperty('--t2-statPull2', pull2);
     }
-    function setTypeKmScale(type, scale){
-      const root = document.documentElement.style;
-      const val = String(scale);
-      if(type==='type1') root.setProperty('--t1-kmScale', val);
-      else               root.setProperty('--t2-kmScale', val);
-      fitKmRow();
+    renderStats();
+  }
+  function setTypeKmWordStyle(type, { size, gap } = {}){
+    const root = document.documentElement.style;
+    if(type==='type1'){
+      if (size) root.setProperty('--t1-kmWordSize', size);
+      if (gap)  root.setProperty('--t1-kmWordGap', gap);
+    }else{
+      if (size) root.setProperty('--t2-kmWordSize', size);
+      if (gap)  root.setProperty('--t2-kmWordGap', gap);
     }
-    function setModeStyle(mode, { kmScale, statGap, kmWordBottomGap } = {}){
-      const root = document.documentElement.style;
-      if(mode==='daily'){
-        if (kmScale!=null) root.setProperty('--d-kmScale', String(kmScale));
-        if (statGap!=null) root.setProperty('--d-statGap', String(statGap));
-        if (kmWordBottomGap!=null) root.setProperty('--d-kmWordBottomGap', String(kmWordBottomGap));
-      }else{
-        if (kmScale!=null) root.setProperty('--m-kmScale', String(kmScale));
-        if (statGap!=null) root.setProperty('--m-statGap', String(statGap));
-        if (kmWordBottomGap!=null) root.setProperty('--m-kmWordBottomGap', String(kmWordBottomGap));
-      }
-      fitKmRow();
+  }
+  function setTypeKmScale(type, scale){
+    const root = document.documentElement.style;
+    const val = String(scale);
+    if(type==='type1') root.setProperty('--t1-kmScale', val);
+    else               root.setProperty('--t2-kmScale', val);
+    fitKmRow();
+  }
+  function setModeStyle(mode, { kmScale, statGap, kmWordBottomGap } = {}){
+    const root = document.documentElement.style;
+    if(mode==='daily'){
+      if (kmScale!=null) root.setProperty('--d-kmScale', String(kmScale));
+      if (statGap!=null) root.setProperty('--d-statGap', String(statGap));
+      if (kmWordBottomGap!=null) root.setProperty('--d-kmWordBottomGap', String(kmWordBottomGap));
+    }else{
+      if (kmScale!=null) root.setProperty('--m-kmScale', String(kmScale));
+      if (statGap!=null) root.setProperty('--m-statGap', String(statGap));
+      if (kmWordBottomGap!=null) root.setProperty('--m-kmWordBottomGap', String(kmWordBottomGap));
     }
+    fitKmRow();
+  }
 
-    // 초기화
-    window.onload = ()=>{
-      setRecordType('daily');
-      setLayout('type1');
-      setBackground('white');
-      setFont('Helvetica Neue');
+  // 초기화
+  window.onload = ()=>{
+    setRecordType('daily');
+    setLayout('type1');
+    setBackground('white');
+    setFont('Helvetica Neue');
 
-      setTypeStatsStyle('type1', { size:'40px', labelSize:'18px', gap:'24px', pull:'0px' });
-      setTypeKmWordStyle('type1', { size:'36px', gap:'16px' });
-      setTypeKmScale('type1', 1.00);
+    setTypeStatsStyle('type1', { size:'40px', labelSize:'18px', gap:'24px', pull:'0px' });
+    setTypeKmWordStyle('type1', { size:'36px', gap:'16px' });
+    setTypeKmScale('type1', 1.00);
 
-      setTypeStatsStyle('type2', { size:'40px', labelSize:'20px', gap:'16px', pull:'50px', pull2:'40px' });
-      setTypeKmWordStyle('type2', { size:'36px', gap:'16px' });
-      setTypeKmScale('type2', 1.00);
+    setTypeStatsStyle('type2', { size:'40px', labelSize:'20px', gap:'16px', pull:'50px', pull2:'40px' });
+    setTypeKmWordStyle('type2', { size:'36px', gap:'16px' });
+    setTypeKmScale('type2', 1.00);
 
-      setModeStyle('daily',   { kmScale:1.0 });
-      setModeStyle('monthly', { kmScale:1.0 });
+    setModeStyle('daily',   { kmScale:1.0 });
+    setModeStyle('monthly', { kmScale:1.0 });
 
-      const t=new Date();
-      document.getElementById('date-input').value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
-      selectedDate = t;
+    const t=new Date();
+    document.getElementById('date-input').value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+    selectedDate = t;
 
-      scaleStageCanvas();
-      applyLayoutVisual();
+    scaleStageCanvas();
+    applyLayoutVisual();
 
-      renderKm(0);
-      applyFontIndents(selectedFont, layoutType);
-      applyFontStatsOffset(selectedFont);
+    renderKm(0);
+    applyFontIndents(selectedFont, layoutType);
+    applyFontStatsOffset(selectedFont);
 
-      fitKmRow();
-      renderStats();
-      updateUploadLabel();
-    };
-  </script>
+    fitKmRow();
+    renderStats();
+    updateUploadLabel();
+  };
+</script>
 </body>
 </html>
