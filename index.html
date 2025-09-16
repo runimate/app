@@ -8,8 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
 
   <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Anton:wght@400&family=Big+Shoulders+Inline+Text:wght@800&family=Alfa+Slab+One&family=Orbitron:wght@700&family=Special+Gothic+Expanded+One&family=Graduate&family=Gloria+Hallelujah&family=Rock+Salt&display=swap" rel="stylesheet">
-
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Big+Shoulders+Inline+Text:wght@800&family=Tourney:ital,wght@1,200&family=Anta&family=Arvo:ital,wght@1,700&family=Iceberg&family=Londrina+Shadow&family=Permanent+Marker&family=Rock+Salt&display=swap" rel="stylesheet">
   <style>
     :root{
       --pad:16px;
@@ -181,10 +180,10 @@
 
     .control-title{ font-size:13px; font-weight:800; margin:14px 0 8px; }
 
-    .font-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+    .font-grid{ display:grid; grid-template-columns:repeat(5,1fr); gap:10px; }
     .font-grid button{
-      height:48px; border-radius:var(--radius); border:3px solid var(--fg);
-      background:transparent; color:var(--fg); font-size:16px; font-weight:800; cursor:pointer;
+      height:44px; border-radius:var(--radius); border:3px solid var(--fg);
+      background:transparent; color:var(--fg); font-size:13px; font-weight:800; cursor:pointer;
       transition:transform .04s ease, background .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease;
     }
     .font-grid button:active{ transform:scale(0.99); }
@@ -378,16 +377,20 @@
       <!-- 폰트 -->
       <section class="section">
         <div class="control-title">Font</div>
-        <div class="font-grid" id="font-grid">
-          <button data-font="Anton" style="font-family:'Anton', sans-serif;">Anton</button>
-          <button data-font="Big Shoulders Inline Text" style="font-family:'Big Shoulders Inline Text', cursive;">Inline</button>
-          <button data-font="Alfa Slab One" style="font-family:'Alfa Slab One', cursive;">Alfa</button>
-          <button data-font="Orbitron" style="font-family:'Orbitron', sans-serif;">Tron</button>
-          <button data-font="Special Gothic Expanded One" style="font-family:'Special Gothic Expanded One', sans-serif;">Gothic</button>
-          <button data-font="Graduate" style="font-family:'Graduate', serif;">School</button>
-          <button data-font="Gloria Hallelujah" style="font-family:'Gloria Hallelujah', cursive;">Gloria</button>
-          <button data-font="Rock Salt" style="font-family:'Rock Salt', cursive;">Rock</button>
-        </div>
+<div class="font-grid" id="font-grid">
+  <button data-font="Helvetica Neue" style="font-family:Helvetica, Arial, sans-serif;">Helvetica</button>
+  <button data-font="Anton" style="font-family:'Anton', sans-serif;">Anton</button>
+  <button data-font="Big Shoulders Inline Text" style="font-family:'Big Shoulders Inline Text', cursive;">Inline</button>
+  <button data-font="Tourney" style="font-family:'Tourney', cursive; font-style:italic; font-weight:200;">Tourney</button>
+  <button data-font="Anta" style="font-family:'Anta', sans-serif;">Tron</button>
+
+  <button data-font="Arvo" style="font-family:'Arvo', serif; font-style:italic; font-weight:700;">Arvo</button>
+  <button data-font="Iceberg" style="font-family:'Iceberg', cursive;">School</button>
+  <button data-font="Permanent Marker" style="font-family:'Permanent Marker', cursive;">Marker</button>
+  <button data-font="Londrina Shadow" style="font-family:'Londrina Shadow', cursive;">Londrina</button>
+  <button data-font="Rock Salt" style="font-family:'Rock Salt', cursive;">Rock</button>
+</div>
+
       </section>
 
       <section class="section">
@@ -437,24 +440,29 @@
        폰트/레이아웃 설정
        ============================= */
     const fontSettings = {
-      "Anton": { base: 200, weight: 700, dateSize: "60px", dateGap: "10px", dateWeight: 700 },
-      "Big Shoulders Inline Text": { base: 200, weight: 800, dateSize: "40px", dateGap: "20px", dateWeight: 800, dateTranslate: "8px, 0px" },
-      "Alfa Slab One": { base: 180, weight: 700, dateSize: "45px", dateGap: "15px", dateWeight: 900, dateTranslate: "0px, 20px" },
-      "Orbitron": { base: 160, weight: 700, dateSize: "38px", dateGap: "10px", dateWeight: 700, dateTranslate: "10px, 20px" },
-      "Special Gothic Expanded One": { base: 160, weight: 700, dateSize: "36px", dateGap: "0px", dateWeight: 700, dateTranslate: "0px, 20px" },
-      "Graduate": { base: 200, weight: 700, dateSize: "42px", dateGap: "10px", dateWeight: 700, dateTranslate: "7px, 20px" },
-      "Gloria Hallelujah": { base: 190, weight: 700, dateSize: "44px", dateGap: "0px", dateWeight: 700, dateTranslate: "7px, 20px" },
-      "Rock Salt": { base: 140, weight: 700, dateSize: "36px", dateGap: "40px", dateWeight: 600, kmWordGap: "40px", translate: "25px,-25px", dateTranslate: "20px,0px" }
-    };
+  "Helvetica Neue": { base: 200, weight: 700, dateSize: "60px", dateGap: "10px", dateWeight: 700 } "Helvetica, Arial, sans-serif",
+  "Anton": { base: 200, weight: 700, dateSize: "60px", dateGap: "10px", dateWeight: 700 },
+  "Big Shoulders Inline Text": { base: 200, weight: 800, dateSize: "40px", dateGap: "20px", dateWeight: 800, dateTranslate: "8px, 0px" },
+  "Tourney": { base: 200, weight: 800, dateSize: "40px", dateGap: "20px", dateWeight: 800, dateTranslate: "8px, 0px" },
+  "Anta": { base: 160, weight: 700, dateSize: "38px", dateGap: "10px", dateWeight: 700, dateTranslate: "10px, 20px" },
+  "Arvo": "'Arvo', serif",
+  "Iceberg": { base: 200, weight: 700, dateSize: "42px", dateGap: "10px", dateWeight: 700, dateTranslate: "7px, 20px" },
+  "Permanent Marker": { base: 190, weight: 700, dateSize: "44px", dateGap: "0px", dateWeight: 700, dateTranslate: "7px, 20px" },
+  "Londrina Shadow":{ base: 190, weight: 700, dateSize: "44px", dateGap: "0px", dateWeight: 700, dateTranslate: "7px, 20px" },
+  "Rock Salt": { base: 140, weight: 700, dateSize: "36px", dateGap: "40px", dateWeight: 600, kmWordGap: "40px", translate: "25px,-25px", dateTranslate: "20px,0px" }
+};
+
 
     const fontStatsOffsetMap = {
+      "Helvetica Neue": { daily: "5px", monthly: "5px" },
       "Anton": { daily: "5px", monthly: "5px" },
       "Big Shoulders Inline Text": { daily: "8px", monthly: "8px" },
-      "Alfa Slab One": { daily: "4px", monthly: "6px" },
-      "Orbitron": { daily: "10px", monthly: "12px" },
-      "Special Gothic Expanded One": { daily: "6px", monthly: "6px" },
-      "Graduate": { daily: "6px", monthly: "8px" },
-      "Gloria Hallelujah": { daily: "8px", monthly: "10px" },
+      "Tourney": { daily: "4px", monthly: "6px" },
+      "Anta": { daily: "10px", monthly: "12px" },
+      "Arvo": { daily: "6px", monthly: "6px" },
+      "Iceberg": { daily: "6px", monthly: "8px" },
+      "Permanent Marker": { daily: "6px", monthly: "8px" },
+      "Londrina Shadow": { daily: "8px", monthly: "10px" },
       "Rock Salt": { daily: "24px", monthly: "24px" }
     };
 
@@ -1172,13 +1180,15 @@
     }
 
     const kmFontScale = {
+      "Helvetica Neue": { type1: 0.90, type2: 1.00 },
       "Anton": { type1: 0.90, type2: 1.00 },
       "Big Shoulders Inline Text": { type1: 0.95, type2: 1.10 },
-      "Alfa Slab One": { type1: 0.85, type2: 0.89 },
-      "Orbitron": { type1: 0.93, type2: 0.98 },
-      "Special Gothic Expanded One": { type1: 0.80, type2: 0.85 },
-      "Graduate": { type1: 0.85, type2: 0.90 },
-      "Gloria Hallelujah": { type1: 0.85, type2: 0.90 },
+      "Tourney": { type1: 0.85, type2: 0.89 },
+      "Anta": { type1: 0.93, type2: 0.98 },
+      "Arvo": { type1: 0.80, type2: 0.85 },
+      "Iceberg": { type1: 0.85, type2: 0.90 },
+      "Permanent Marker": { type1: 0.85, type2: 0.90 },
+      "Londrina Shadow": { type1: 0.85, type2: 0.90 },
       "Rock Salt": { type1: 0.85, type2: 0.94 }
     };
     function setFontKmScale(font, type, scale){
@@ -1187,13 +1197,15 @@
       fitKmRow();
     }
     const fontIndentMap = {
+      "Helvetica Neue": : { type1: { grid: 5,  kmWord: 0 },  type2: { grid: 5,  kmWord: 0 } },
       "Anton": { type1: { grid: 5,  kmWord: 0 },  type2: { grid: 5,  kmWord: 0 } },
       "Big Shoulders Inline Text": { type1: { grid: 8,  kmWord: 3 },  type2: { grid: 8,  kmWord: 3 } },
-      "Alfa Slab One": { type1: { grid: 6,  kmWord: 2 },  type2: { grid: 6,  kmWord: 2 } },
-      "Orbitron": { type1: { grid: 8,  kmWord: 0 },  type2: { grid: 6,  kmWord: 0 } },
-      "Special Gothic Expanded One": { type1: { grid: 4,  kmWord: 0 },  type2: { grid: 4,  kmWord: 0 } },
-      "Graduate": { type1: { grid: 8,  kmWord: 1 },  type2: { grid: 8,  kmWord: 1 } },
-      "Gloria Hallelujah": { type1: { grid: 5,  kmWord: 2 },  type2: { grid: 5,  kmWord: 2 } },
+      "Tourney": { type1: { grid: 6,  kmWord: 2 },  type2: { grid: 6,  kmWord: 2 } },
+      "Anta": { type1: { grid: 8,  kmWord: 0 },  type2: { grid: 6,  kmWord: 0 } },
+      "Arvo": { type1: { grid: 4,  kmWord: 0 },  type2: { grid: 4,  kmWord: 0 } },
+      "Iceberg": { type1: { grid: 8,  kmWord: 1 },  type2: { grid: 8,  kmWord: 1 } },
+      "Permanent Marker": { type1: { grid: 8,  kmWord: 1 },  type2: { grid: 8,  kmWord: 1 } },
+      "Londrina Shadow": { type1: { grid: 5,  kmWord: 2 },  type2: { grid: 5,  kmWord: 2 } },
       "Rock Salt": { type1: { grid: 25, kmWord: 0 },  type2: { grid: 25, kmWord: 0 } }
     };
     function applyFontIndents(font, type){
@@ -1272,7 +1284,7 @@
       km.style.transform  = fs.translate ? `translate(${fs.translate})` : "translate(0,0)";
 
       const dateFontWhitelist = new Set([
-        "Anton","Orbitron","Special Gothic Expanded One","Graduate","Gloria Hallelujah"
+        "Helvetica Neue","Anton","Anta","Arvo","Iceberg"
       ]);
       if (dateFontWhitelist.has(font)) {
         dateDisp.style.fontFamily = font + ", sans-serif";
