@@ -310,3 +310,19 @@ body.focus .stage-outer{
   padding-bottom:0;
 }
 body.focus .stage-canvas{ margin-left:0; margin-right:0; }
+
+/* 보정 힌트 */
+#cv-hint{
+  display:none;                 /* JS가 보일 때 block으로 바꿈 */
+  margin-top: var(--hintGap);   /* 위 데이터(그리드)와 큰 간격 */
+  font-size: 12px;
+  line-height: 1.5;
+  opacity: .6;
+  user-select: none;            /* 드래그 방지 */
+  pointer-events: none;         /* 클릭/터치 영향 없음 */
+}
+
+/* 모바일에선 살짝 줄여도 됨 */
+@media (max-width: 480px){
+  #cv-hint{ margin-top: 64px; }
+}
