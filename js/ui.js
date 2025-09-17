@@ -173,10 +173,6 @@ function renderStats(){
   document.getElementById('pace').textContent = formatPaceByType();
   document.getElementById('time').textContent = formatTimeByType();
 
-  const hint = document.getElementById('cv-hint');
-  hint.style.display = 'none';
-  hint.textContent = '';
-
   updateGridCols();
   layoutStatsGrid();
   alignStatsBaseline();
