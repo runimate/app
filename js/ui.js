@@ -33,6 +33,29 @@ function ensureFontReady(fontFamily, weight = 700, sizePx = 200, style='normal')
   return document.fonts.load(`${style} ${weight} ${sizePx}px ${fam}`).catch(()=>{});
 }
 
+// 추가: 다양한 포맷의 시간 파서 (H:MM:SS / MM:SS)
+function parseTimeToSecFlexible(raw){
+  if(!raw) return NaN;
+  const t = String(raw).trim().replace(/[’'′]/g,':').replace(/[″"]/g,':').replace(/：/g,':');
+  const m3 = t.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
+  if (m3) return (+m3[1])*3600 + (+m3[2])*60 + (+m3[3]);
+  const m2 = t.match(/^(\d{1,2}):(\d{2})$/);
+  if (m2) return (+m2[1])*60 + (+m2[2]);
+  return NaN;
+}
+function getTimeSecFromParsed(pd){
+  if (pd.timeH!=null || pd.timeM!=null || pd.timeS!=null){
+    const H = pd.timeH||0, M=pd.timeM||0, S=pd.timeS||0;
+    const sec = H*3600 + M*60 + S;
+    if (sec>0) return sec;
+  }
+  if (pd.timeRaw){
+    const sec = parseTimeToSecFlexible(pd.timeRaw);
+    if (isFinite(sec) && sec>0) return sec;
+  }
+  return NaN;
+}
+
 // ===== 날짜/표시 =====
 function formatDateText(d){
   const day = String(d.getDate());
@@ -86,20 +109,41 @@ function layoutStatsGrid(){
     timeWrap.style.marginLeft = '0';
   }
 }
+
+// ===== 표기 포맷(폴백 포함) =====
 function formatPaceByType(){
-  if(parsedData.paceMin==null || parsedData.paceSec==null){
-    return (layoutType==='type1') ? '0:00 /km' : '0:00';
+  // OCR 결과가 0:00 또는 null이면 폴백: time/km
+  const hasValidOcrPace = (
+    parsedData.paceMin!=null && parsedData.paceSec!=null &&
+    (parsedData.paceMin + parsedData.paceSec) > 0
+  );
+
+  let mm, ss;
+  if (hasValidOcrPace){
+    mm = String(parsedData.paceMin);
+    ss = zero2txt(parsedData.paceSec);
+  } else {
+    const tsec = getTimeSecFromParsed(parsedData);
+    const km = parseFloat(parsedData.km);
+    if (isFinite(tsec) && tsec>0 && isFinite(km) && km>0){
+      const psec = Math.max(0, Math.round(tsec / km));
+      mm = String(Math.floor(psec/60));
+      ss = zero2txt(psec%60);
+    } else {
+      // 계산 불가 → 플레이스홀더
+      return (layoutType==='type1') ? '--:-- /km' : '--:--';
+    }
   }
-  const mm = String(parsedData.paceMin);
-  const ss = zero2txt(parsedData.paceSec);
   return (layoutType==='type1') ? `${mm}:${ss} /km` : `${mm}:${ss}`;
 }
+
 function formatTimeByType(){
   if(layoutType==='type2') return parsedData.timeRaw ? parsedData.timeRaw : '00:00';
   const H = parsedData.timeH ?? 0, M = parsedData.timeM ?? 0, S = parsedData.timeS ?? 0;
   if (H > 0) return `${H}h ${zero2txt(M)}m ${zero2txt(S)}s`;
   return `${String(M)}m ${zero2txt(S)}s`;
 }
+
 function alignStatsBaseline(){
   if(layoutType !== 'type2') return;
   const stats = [];
@@ -408,7 +452,6 @@ window.exitFocus = function exitFocus(){
 
 // ===== OCR 파이프라인: 필요 시 지연 로드 =====
 async function runOcrPipeline(imgDataURL){
-  // import 경로를 안전하게 계산 + 재시도
   const primary = new URL('./ocr.js', import.meta.url).href;
   let OCR;
   try {
@@ -416,16 +459,12 @@ async function runOcrPipeline(imgDataURL){
     OCR = await import(primary);
   } catch (e1) {
     console.warn('[OCR] primary import failed:', e1);
-    // 흔한 배포 구조: /js/ocr.js
     try {
       OCR = await import('/js/ocr.js');
       console.info('[OCR] fallback import:/js/ocr.js success');
     } catch (e2) {
       console.error('[OCR] fallback import failed:', e2);
-      // 오류 원인 안내
-      const hint = (location.protocol === 'file:')
-        ? ' (Run this over http://, not file://)'
-        : '';
+      const hint = (location.protocol === 'file:') ? ' (Run this over http://, not file://)' : '';
       throw new Error(`Failed to load OCR module${hint}`);
     }
   }
