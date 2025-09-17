@@ -1,221 +1,266 @@
 // js/ocr.js
-// 단순·안정 OCR: 라벨 근처에서만 값 추출
+// 단순+튼튼 OCR 파이프라인: 라벨 앵커 → ROI → 숫자 인식 (eng+kor 대응)
 
-const TESS_URL = "https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js";
-
-async function ensureTesseract() {
-  if (window.Tesseract) return;
-  await new Promise((res, rej) => {
-    const s = document.createElement("script");
-    s.src = TESS_URL;
-    s.onload = res;
-    s.onerror = () => rej(new Error("Failed to load Tesseract"));
-    document.head.appendChild(s);
-  });
+let T = null;
+async function loadTesseract() {
+  if (T) return T;
+  // tesseract.js v2가 window.Tesseract로 로드되어 있다면 그걸 사용
+  // (별도 CDN 스크립트를 index에 두지 않았다면 dynamic import)
+  if (typeof window !== 'undefined' && window.Tesseract) {
+    T = window.Tesseract;
+  } else {
+    T = await import('https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js');
+    T = T.default || T;
+  }
+  return T;
 }
 
-const re = {
-  dist: /\b\d{1,3}[.,]\d{1,2}\b/,
-  pace: /\b(\d{1,2})[:'′](\d{2})\b/,
-  time: /\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b/,
-  kmUnit: /^\/?km$/i
-};
+// -------- 이미지 유틸 --------
+function loadImage(dataURL) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => res(img);
+    img.onerror = rej;
+    img.src = dataURL;
+  });
+}
+function toCanvas(img, w = img.width, h = img.height) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  c.getContext('2d', { willReadFrequently:true }).drawImage(img, 0, 0, w, h);
+  return c;
+}
+function getImageData(canvas) {
+  const ctx = canvas.getContext('2d', { willReadFrequently:true });
+  return ctx.getImageData(0,0,canvas.width, canvas.height);
+}
+function putImageData(canvas, im) {
+  canvas.getContext('2d').putImageData(im,0,0);
+  return canvas;
+}
 
-const KOREAN = {
-  kilometers: "킬로미터",
-  pace: "페이스",
-  time: "시간"
-};
+// Otsu 동적 이진화
+function otsuBinarize(canvas) {
+  const im = getImageData(canvas);
+  const d = im.data, N = d.length / 4;
 
-function norm(s="") {
-  return s
-    .replace(/[’′]/g, "'")
-    .replace(/[“”]/g, '"')
-    .replace(/[：]/g, ':')
-    .replace(/\s+/g, ' ')
+  // 그레이스케일 & 히스토그램
+  const hist = new Uint32Array(256);
+  for (let i=0;i<N;i++){
+    const r=d[i*4], g=d[i*4+1], b=d[i*4+2];
+    const y = (r*0.299 + g*0.587 + b*0.114) | 0;
+    hist[y]++; d[i*4]=d[i*4+1]=d[i*4+2]=y;
+  }
+  // Otsu
+  let sum=0; for(let i=0;i<256;i++) sum += i*hist[i];
+  let sumB=0, wB=0, wF=0, varMax=-1, thr=128;
+  for(let t=0;t<256;t++){
+    wB += hist[t]; if(!wB) continue;
+    wF = N - wB; if(!wF) break;
+    sumB += t*hist[t];
+    const mB = sumB / wB, mF = (sum - sumB) / wF;
+    const between = wB*wF*(mB-mF)*(mB-mF);
+    if (between > varMax){ varMax = between; thr = t; }
+  }
+  // 임계값 적용
+  for (let i=0;i<N;i++){
+    const y = d[i*4]; const v = (y>thr)?255:0;
+    d[i*4]=d[i*4+1]=d[i*4+2]=v;
+  }
+  return putImageData(canvas, im).toDataURL('image/png');
+}
+
+// -------- 텍스트 정규화/파서 --------
+function norm(s){ 
+  return (s||'')
+    .replace(/[\u2018\u2019\u2032\u2035‘’′]/g,"'")   // prime
+    .replace(/[\u201C\u201D\u2033\u3011\u3010“”″]/g,'"') // double prime
+    .replace(/[：﹕:]/g,':')
+    .replace(/\s+/g,' ')
     .trim();
 }
-
-function parseTimeToken(txt) {
-  const m = norm(txt).match(re.time);
-  if (!m) return null;
-  const H = m[3] ? parseInt(m[1],10) : 0;
-  const M = parseInt(m[3] ? m[2] : m[1], 10);
-  const S = parseInt(m[3] ? m[3] : m[2], 10);
-  return { H, M, S, raw: m[3] ? `${H}:${String(M).padStart(2,'0')}:${String(S).padStart(2,'0')}`
-                             : `${M}:${String(S).padStart(2,'0')}` };
+function parsePace(text){
+  const t = norm(text).toLowerCase();
+  // 6'22", 6:22, 6’22″
+  const m1 = t.match(/(\d{1,2})\s*[:'"]\s*(\d{2})/);
+  if (m1) return {min:+m1[1], sec:+m1[2]};
+  // 6분22초 (한글)
+  const m2 = t.match(/(\d{1,2})\s*분\s*(\d{1,2})\s*초/);
+  if (m2) return {min:+m2[1], sec:+m2[2]};
+  return {min:null, sec:null};
 }
-
-function toSecs({H=0,M=0,S=0}) { return (H*3600 + M*60 + S); }
-
-function fromSecs(sec) {
-  const H = Math.floor(sec/3600);
-  const M = Math.floor((sec%3600)/60);
-  const S = Math.floor(sec%60);
-  return { H, M, S, raw: H>0 ? `${H}:${String(M).padStart(2,'0')}:${String(S).padStart(2,'0')}`
-                             : `${M}:${String(S).padStart(2,'0')}` };
+function parseTime(text){
+  const t = norm(text).toLowerCase();
+  // h m s 패턴 (콜론 오인식 보호)
+  let m = t.match(/(\d{1,2})\s*h\s*(\d{1,2})\s*m\s*(\d{1,2})\s*s/);
+  if (m) return {raw:`${+m[1]}:${String(+m[2]).padStart(2,'0')}:${String(+m[3]).padStart(2,'0')}`, H:+m[1], M:+m[2], S:+m[3]};
+  // mm:ss
+  m = t.match(/(\d{1,2})\s*:\s*(\d{2})\b/);
+  if (m) return {raw:`${+m[1]}:${m[2]}`, H:null, M:+m[1], S:+m[2]};
+  // hh:mm:ss
+  m = t.match(/(\d{1,2})\s*:\s*(\d{2})\s*:\s*(\d{2})/);
+  if (m) return {raw:`${+m[1]}:${m[2]}:${m[3]}`, H:+m[1], M:+m[2], S:+m[3]};
+  return {raw:null, H:null, M:null, S:null};
 }
+const secOf = (H,M,S)=> (H||0)*3600 + (M||0)*60 + (S||0);
 
-function boxCenter(w){ return { x:(w.x0+w.x1)/2, y:(w.y0+w.y1)/2 }; }
-function dist(a,b){ const dx=a.x-b.x, dy=a.y-b.y; return Math.hypot(dx,dy); }
-
-function wordsFrom(data){
-  return (data.words||[]).map(w=>({
-    text:(w.text||"").trim(),
-    x0: w.bbox?.x0 ?? 0, y0: w.bbox?.y0 ?? 0,
-    x1: w.bbox?.x1 ?? 0, y1: w.bbox?.y1 ?? 0,
-    h: (w.bbox?.y1 ?? 0) - (w.bbox?.y0 ?? 0),
-    conf: Number(w.confidence ?? 0)
-  })).filter(w=>w.text);
-}
-
-function pickDistance(all){
-  // 1) 'Kilometers/킬로미터' 라벨 근처의 가장 큰 숫자
-  const anchor = all.filter(w => /kilometers/i.test(w.text) || w.text === KOREAN.kilometers);
-  const nums   = all.filter(w => re.dist.test(w.text));
-  if (anchor.length && nums.length){
-    const A = anchor[0];
-    const Ac = boxCenter(A);
-    // 앵커 기준 위쪽 200px 이내 & 수직 정렬 점수
-    const cand = nums
-      .map(n => ({ w:n, c:boxCenter(n), score: (n.h*2) - Math.abs(n.y1 - A.y0) - dist(boxCenter(n), Ac)/5 }))
-      .sort((a,b)=>b.score-a.score)[0];
-    if (cand) return parseFloat(cand.w.text.replace(',','.'));
-  }
-  // 2) 최상단 40% 영역에서 글자 크기(h)가 가장 큰 숫자
-  const maxY = Math.min(...all.map(w=>w.y0)) + (Math.max(...all.map(w=>w.y1)) - Math.min(...all.map(w=>w.y0))) * 0.4;
-  const topNums = all.filter(w => re.dist.test(w.text) && w.y0 < maxY);
-  if (topNums.length){
-    const big = topNums.sort((a,b)=>b.h-a.h)[0];
-    return parseFloat(big.text.replace(',','.'));
-  }
-  return null;
-}
-
-function pickPace(all){
-  const paceLabel = all.filter(w=> /avg\.*\s*pace/i.test(w.text) || w.text.includes(KOREAN.pace));
-  const kmTokens  = all.filter(w=> re.kmUnit.test(w.text));
-  const paceNums  = all.filter(w=> re.pace.test(w.text.replace(/\s/g,'')));
-
-  // /km 근접한 mm:ss
-  if (kmTokens.length && paceNums.length){
-    const out = paceNums
-      .map(p => {
-        const pc = boxCenter(p);
-        const nearestKm = kmTokens.map(k => ({ d: dist(pc, boxCenter(k)), k })).sort((a,b)=>a.d-b.d)[0];
-        return { w:p, d: nearestKm ? nearestKm.d : 1e9, h:p.h };
-      })
-      .sort((a,b)=> (a.d-b.d) || (b.h-a.h))[0];
-    if (out) {
-      const m = re.pace.exec(out.w.text.replace(/\s/g,''));
-      return { min: +m[1], sec:+m[2] };
-    }
-  }
-  // 라벨 근처
-  if (paceLabel.length && paceNums.length){
-    const A = paceLabel[0];
-    const out = paceNums
-      .map(p => ({ w:p, d: dist(boxCenter(A), boxCenter(p)), h:p.h }))
-      .sort((a,b)=> (a.d-b.d) || (b.h-a.h))[0];
-    if (out){
-      const m = re.pace.exec(out.w.text.replace(/\s/g,''));
-      return { min: +m[1], sec:+m[2] };
-    }
-  }
-  // 마지막 보루: 모든 paceNums 중 글자 큰 것
-  if (paceNums.length){
-    const p = paceNums.sort((a,b)=>b.h-a.h)[0];
-    const m = re.pace.exec(p.text.replace(/\s/g,''));
-    return { min:+m[1], sec:+m[2] };
-  }
-  return null;
-}
-
-function pickTime(all){
-  const timeLabel = all.filter(w => /^time$/i.test(w.text) || w.text === KOREAN.time);
-  const timeNums  = all.filter(w => re.time.test(w.text));
-  if (!timeNums.length) return null;
-
-  if (timeLabel.length){
-    const A = timeLabel[0];
-    const best = timeNums
-      .map(t => ({ w:t, d: dist(boxCenter(A), boxCenter(t)), h:t.h }))
-      .sort((a,b)=> (a.d-b.d) || (b.h-a.h))[0];
-    if (best) return parseTimeToken(best.w.text);
-  }
-  // 라벨이 없으면 'Kilometers' 아래쪽에서 가장 큰 시간값
-  const kilo = all.find(w => /kilometers/i.test(w.text) || w.text === KOREAN.kilometers);
-  const pool = kilo ? timeNums.filter(t => t.y0 > kilo.y0) : timeNums;
-  const best = pool.sort((a,b)=>b.h-a.h)[0] || timeNums[0];
-  return parseTimeToken(best.text);
-}
-
-function sanity({ km, pace, time }) {
-  // pace 범위: 3:00~12:00
-  if (pace && (pace.min<3 || pace.min>12 || pace.sec>=60)) pace = null;
-
-  // time이 6시간 초과면 의심
-  if (time && toSecs(time) > 6*3600) time = null;
-
-  // 일관성 검사: time ≈ pace * km
-  if (km && pace && time){
-    const pred = (pace.min*60 + pace.sec) * km;
-    const delta = Math.abs(pred - toSecs(time));
-    if (delta > Math.max(90, pred*0.25)) {
-      // 2파트로 재해석( mm:ss ) 시도
-      const m = re.time.exec(time.raw);
-      if (m && !m[3]) {
-        time = null;
-      } else {
-        // 3파트였다면 H가 말이 안 되는 경우 버림
-        if (time.H >= 5 && km < 21) time = null;
-      }
-    }
-  }
-
-  // 보정: time이 없고 km+pace가 있으면 계산
-  if (!time && km && pace){
-    const sec = Math.round((pace.min*60 + pace.sec) * km);
-    time = fromSecs(sec);
-  }
-
-  // 보정: pace가 없고 km+time이 있으면 역산
-  if (!pace && km && time){
-    const s = toSecs(time);
-    const spk = Math.round(s / Math.max(0.1, km));
-    const min = Math.floor(spk/60), sec = spk%60;
-    if (min>=3 && min<=12) pace = { min, sec };
-  }
-
-  return { km, pace, time };
-}
-
-export async function extractAll(imgDataURL, { recordType='daily' } = {}) {
-  await ensureTesseract();
-
-  const { data } = await window.Tesseract.recognize(imgDataURL, 'eng', {
-    tessedit_pageseg_mode: window.Tesseract.PSM.SPARSE_TEXT,
+// -------- OCR 헬퍼 --------
+async function ocrWords(dataURL, psm='SPARSE_TEXT'){
+  const TT = await loadTesseract();
+  const res = await TT.recognize(dataURL, 'eng+kor', {
+    tessedit_pageseg_mode: TT.PSM[psm] ?? TT.PSM.SPARSE_TEXT,
     preserve_interword_spaces: '1'
   });
-
-  const all = wordsFrom(data);
-
-  // 1) 기본 추출
-  let km   = pickDistance(all);
-  let pace = pickPace(all);
-  let time = pickTime(all);
-
-  // 2) 정합성 체크/보정
-  ({ km, pace, time } = sanity({ km, pace, time }));
-
-  return {
-    km: km ?? 0,
-    runs: null, // 월간용은 별도 필요 시 추가
-    paceMin: pace ? pace.min : null,
-    paceSec: pace ? pace.sec : null,
-    timeH: time ? time.H : null,
-    timeM: time ? time.M : null,
-    timeS: time ? time.S : null,
-    timeRaw: time ? time.raw : null
-  };
+  return res.data.words || [];
 }
+async function ocrLineDigits(dataURL, whitelist="0123456789:'″\" ", psm='SINGLE_LINE'){
+  const TT = await loadTesseract();
+  const res = await TT.recognize(dataURL, 'eng+kor', {
+    tessedit_pageseg_mode: TT.PSM[psm] ?? TT.PSM.SINGLE_LINE,
+    tessedit_char_whitelist: whitelist,
+    preserve_interword_spaces: '1',
+    classify_bln_numeric_mode: '1'
+  });
+  return (res.data.text || '').trim();
+}
+
+// 단어 배열에서 앵커 찾기
+function findAnchor(words, patterns){
+  const rx = new RegExp(patterns.join('|'), 'i');
+  const hits = words.filter(w => rx.test((w.text||'').trim()));
+  if (!hits.length) return null;
+  // 가장 큰 폰트/가장 높은 confidence 우선
+  hits.sort((a,b)=>{
+    const ha = (a.bbox ? (a.bbox.y1 - a.bbox.y0) : 0);
+    const hb = (b.bbox ? (b.bbox.y1 - b.bbox.y0) : 0);
+    return (hb - ha) || ((b.confidence||0)-(a.confidence||0));
+  });
+  return hits[0];
+}
+function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
+
+// 앵커 기준 ROI 계산 (앵커 "아래 라벨" 가정: 숫자는 라벨의 위쪽 큰 텍스트)
+function roiAbove(anchor, padX, padY, canvasW, canvasH, heightMul=1.4){
+  if (!anchor || !anchor.bbox) return null;
+  const {x0,x1,y0,y1} = anchor.bbox;
+  const w = x1 - x0;
+  const h = y1 - y0;
+  const cx0 = clamp(x0 - padX, 0, canvasW-1);
+  const cx1 = clamp(x1 + padX, 0, canvasW-1);
+  const cy1 = clamp(y0 - padY, 0, canvasH-1);
+  const cy0 = clamp(cy1 - Math.max(h*heightMul, h*1.0), 0, canvasH-1);
+  return {x:cx0, y:cy0, w:(cx1-cx0), h:(cy1-cy0)};
+}
+function cropCanvas(canvas, box){
+  if (!box) return null;
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.floor(box.w)); 
+  c.height= Math.max(1, Math.floor(box.h));
+  const ctx = c.getContext('2d', { willReadFrequently:true });
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(canvas, box.x, box.y, box.w, box.h, 0, 0, c.width, c.height);
+  return c;
+}
+
+// 최상단 큰 거리 숫자: 상단 45% 영역에서 가장 큰 숫자 라인 추출(앵커 실패 시)
+async function fallbackTopDistance(canvas){
+  const hCut = Math.floor(canvas.height * 0.45);
+  const c = cropCanvas(canvas, {x: Math.floor(canvas.width*0.06), y: Math.floor(canvas.height*0.06), w: Math.floor(canvas.width*0.88), h: hCut});
+  if (!c) return null;
+  const binURL = otsuBinarize(c);
+  const text = await ocrLineDigits(binURL, "0123456789.,", 'SINGLE_LINE');
+  const m = text.match(/\b\d{1,3}[.,]\d{1,2}\b/);
+  return m ? parseFloat(m[0].replace(',','.')) : null;
+}
+
+// -------- 메인: 추출 --------
+export async function extractAll(imgDataURL, {recordType} = {recordType:'daily'}){
+  await loadTesseract();
+
+  const img = await loadImage(imgDataURL);
+  const base = toCanvas(img);
+  const W = base.width, H = base.height;
+
+  // 1) 전체에서 단어 인식(원본, Otsu 두 번)
+  const wordsRaw = await ocrWords(base.toDataURL(), 'SPARSE_TEXT');
+  const wordsBin = await ocrWords(otsuBinarize(toCanvas(img)), 'SPARSE_TEXT');
+  const words = [...wordsRaw, ...wordsBin];
+
+  // 2) 앵커 찾기
+  const aKM   = findAnchor(words, ['Kilometers','Kilometer','킬로미터']);
+  const aPACE = findAnchor(words, ['Avg\\.\\s*Pace','Pace','페이스','평균\\s*페이스','/km']);
+  const aTIME = findAnchor(words, ['Time','시간']);
+
+  // 3) 각 ROI를 앵커 기준으로 자르기 (위쪽 큰 숫자 라인)
+  const padX = Math.round(W*0.02), padY = Math.round(H*0.01);
+  const rKm  = roiAbove(aKM,   padX, padY, W, H, 1.6);
+  const rPac = roiAbove(aPACE, padX, padY, W, H, 1.4);
+  const rTim = roiAbove(aTIME, padX, padY, W, H, 1.4);
+
+  const getTextFromROI = async (roi, whitelist) => {
+    if (!roi) return '';
+    const c = cropCanvas(base, roi);
+    const binURL = otsuBinarize(c);
+    // 원본/이진 2 패스로 시도
+    const t1 = await ocrLineDigits(c.toDataURL(), whitelist);
+    const t2 = await ocrLineDigits(binURL, whitelist);
+    return (t1 && t1.length >= t2.length) ? t1 : t2;
+  };
+
+  // 4) km / pace / time 인식
+  let kmText = await getTextFromROI(rKm, "0123456789.,");
+  let km = null;
+  const mkm = (kmText||'').match(/\b\d{1,3}[.,]\d{1,2}\b/);
+  if (mkm) km = parseFloat(mkm[0].replace(',','.'));
+  if (km==null){ km = await fallbackTopDistance(base); }
+
+  const paceText = await getTextFromROI(rPac, "0123456789:'″\" ");
+  const {min:paceMin_raw, sec:paceSec_raw} = parsePace(paceText);
+  let paceMin = paceMin_raw, paceSec = paceSec_raw;
+
+  const timeText = await getTextFromROI(rTim, "0123456789: hms");
+  let Tm = parseTime(timeText);
+  // 짧은 러닝인데 h가 들어간 경우 mm:ss로 재해석
+  if (Tm.H!=null && km!=null && km < 20 && Tm.H >= 3){
+    const fixed = timeText.replace(/[hms]/g, ':').replace(/::+/g,':');
+    const alt = parseTime(fixed);
+    if (alt.raw) Tm = alt;
+  }
+
+  // 5) 일관성 체크(±20%): time ≈ pace × km
+  const paceSec = (paceMin!=null && paceSec!=null) ? (paceMin*60 + paceSec) : null;
+  const timeSec = (Tm.raw ? secOf(Tm.H, Tm.M, Tm.S) : null);
+  if (km!=null && paceSec && timeSec){
+    const expect = km * paceSec;
+    const tol = Math.max(30, expect*0.2);
+    const err = Math.abs(timeSec - expect);
+    if (err > tol){
+      // 시간 재시도(다른 PSM)
+      const timeText2 = await getTextFromROI(rTim, "0123456789: ", 'SINGLE_WORD');
+      const tAlt = parseTime(timeText2);
+      const altSec = tAlt.raw ? secOf(tAlt.H, tAlt.M, tAlt.S) : null;
+      if (altSec && Math.abs(altSec - expect) < err){ Tm = tAlt; }
+    }
+  }
+
+  // 6) 결과 조립
+  const out = {
+    km: km || 0,
+    paceMin: paceMin ?? null,
+    paceSec: paceSec ?? null,
+    timeH: Tm.H, timeM: Tm.M, timeS: Tm.S, timeRaw: Tm.raw || null,
+    runs: null
+  };
+
+  // 디버깅 힌트(선택): #cv-hint에 표기
+  const hintEl = document.getElementById('cv-hint');
+  if (hintEl) {
+    const p = (out.paceMin!=null && out.paceSec!=null) ? `${out.paceMin}:${String(out.paceSec).padStart(2,'0')}` : '--';
+    hintEl.style.display = 'block';
+    hintEl.textContent = `OCR km=${out.km ?? '--'} pace=${p} time=${out.timeRaw ?? '--'}`;
+  }
+
+  return out;
+}
+
+export default { extractAll };
