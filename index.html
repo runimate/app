@@ -6,11 +6,9 @@
   <title>RUNIMATE</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
 
-  <!-- Google Fonts (FIXED: add needed variants for iOS) -->
+  <!-- Google Fonts (iOS용 variant 포함) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- Anton/Anta/Iceberg/Londrina/Permanent Marker/Rock Salt 그대로,
-       Tourney normal 800 + italic 200, Arvo normal 700 + italic 700 추가 -->
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Anta&family=Arvo:ital,wght@0,700;1,700&family=Big+Shoulders+Inline+Text:wght@800&family=Iceberg&family=Londrina+Shadow&family=Permanent+Marker&family=Rock+Salt&family=Tourney:ital,wght@0,800;1,200&display=swap" rel="stylesheet">
 
   <style>
@@ -443,7 +441,7 @@
       </div>
     </div>
   </section>
-  <script>
+    <script>
   /* =============================
      폰트/레이아웃 설정
      ============================= */
@@ -481,10 +479,10 @@
     timeRaw: null,
     cv: null
   };
-    let recordType = 'daily';
-    let layoutType = 'type1';
-    let selectedFont = 'Helvetica Neue';
-    let selectedDate = new Date();
+  let recordType = 'daily';
+  let layoutType = 'type1';
+  let selectedFont = 'Helvetica Neue';
+  let selectedDate = new Date();
 
   const fontGridEl  = document.getElementById('font-grid');
   const bgRow       = document.getElementById('bg-row');
@@ -516,7 +514,7 @@
 
   function zero2(n){ return String(n).padStart(2,'0'); }
 
-  /* iOS/Safari 폰트 로딩 보강: 필요한 weight/size로 실제 로드 확인 */
+  /* iOS/Safari 폰트 로딩 보강 */
   function ensureFontReady(fontFamily, weight = 700, sizePx = 200, style='normal'){
     if (!('fonts' in document) || typeof document.fonts.load !== 'function') return Promise.resolve();
     const fam = `"${fontFamily}"`;
@@ -607,6 +605,8 @@
     ctx.putImageData(im,0,0);
     return c.toDataURL('image/png');
   }
+
+  /* 상단 큰 거리 숫자 ROI */
   async function cropTopNumberROI(imgDataURL, topPct=0.06, heightPct=0.30, sidePct=0.06, scale=2.8){
     const {img, w, h} = await toCanvas(imgDataURL);
     const x = Math.round(w*sidePct);
@@ -622,6 +622,8 @@
     ctx.drawImage(img, x, y, cw, ch, 0, 0, c.width, c.height);
     return c.toDataURL('image/png');
   }
+
+  /* 하단 3열 전체 + 개별 칸(페이스/시간) ROI */
   async function cropStatsROI(imgDataURL, topPct=0.40, heightPct=0.45, sidePct=0.06, scale=2.4){
     const {img, w, h} = await toCanvas(imgDataURL);
     const x = Math.round(w*sidePct);
@@ -637,7 +639,26 @@
     ctx.drawImage(img, x, y, cw, ch, 0, 0, c.width, c.height);
     return c.toDataURL('image/png');
   }
-      const KM_LINE_OCR_OPTS_7 = {
+  /* ▼ 새로 추가: 칸별(0=페이스,1=시간,2=우측) 정밀 ROI */
+  async function cropStatsCellROI(imgDataURL, colIndex=0, topPct=0.52, heightPct=0.14, sidePct=0.06, scale=2.6){
+    const {img, w, h} = await toCanvas(imgDataURL);
+    const x0 = Math.round(w*sidePct);
+    const y  = Math.round(h*topPct);
+    const cw = Math.round(w*(1-2*sidePct));
+    const ch = Math.round(h*heightPct);
+    const cellW = Math.round(cw/3);
+    const x = x0 + cellW*colIndex;
+
+    const c = document.createElement('canvas');
+    c.width = Math.round(cellW*scale);
+    c.height= Math.round(ch*scale);
+    const ctx = c.getContext('2d', { willReadFrequently:true });
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, x, y, cellW, ch, 0, 0, c.width, c.height);
+    return c.toDataURL('image/png');
+  }
+
+  const KM_LINE_OCR_OPTS_7 = {
     tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
     tessedit_char_whitelist: '0123456789.,',
     classify_bln_numeric_mode: '1'
@@ -734,7 +755,7 @@
     ctx.drawImage(img,0,0);
     function colBlackCount(x){ let s=0; for(let y=0;y<h;y++){ if(ctx.getImageData(x,y,1,1).data[0]<128) s++; } return s; }
     let L=0; const need = Math.max(3, Math.floor(h*0.12));
-    for(let x=0;x>w;x++){ if(colBlackCount(x)>need){ L=x; break; } }
+    for(let x=0;x<w;x++){ if(colBlackCount(x)>need){ L=x; break; } }
     const digitW = Math.max(8, Math.floor(w*0.18));
     const R = Math.min(w-1, L+digitW);
 
@@ -761,7 +782,7 @@
 
     function colBlackCount(x){ let s=0; for(let y=0;y<h;y++){ if(im[(y*w+x)*4]<128) s++; } return s; }
     let L=0; const need = Math.max(3, Math.floor(h*0.12));
-    for(let x=0;x>w;x++){ if(colBlackCount(x)>need){ L=x; break; } }
+    for(let x=0;x<w;x++){ if(colBlackCount(x)>need){ L=x; break; } }
     const digitW = Math.max(8, Math.floor(w*0.18));
     const R = Math.min(w-1, L+digitW);
 
@@ -801,6 +822,7 @@
     }
     return best;
   }
+
   async function multiPassKmCandidates_FAST(imgDataURL){
     const out = [];
     const roi0 = await cropTopNumberROI(imgDataURL, 0.06, 0.30, 0.06, 2.8);
@@ -821,7 +843,8 @@
 
     return { cands: out, roiBin: roi2 };
   }
-      /* ===== Pace/Time 파서 보강 ===== */
+
+  /* ===== Pace/Time 파서 (텍스트 기반) ===== */
   function extractPace(text){
     const T = normalizeOCR(text);
     const labelIdx = (() => {
@@ -870,7 +893,7 @@
     return {raw:null, H:null, M:null, S:null};
   }
 
-  /* ===== OCR 파서 (runs/pace/time) - 통합 ===== */
+  /* ===== OCR 파서 (runs/pace/time) - 통합 텍스트 기반 ===== */
   function parseFromOCR(textRaw){
     const text = normalizeOCR(textRaw);
 
@@ -919,8 +942,7 @@
       timeH: T.H, timeM: T.M, timeS: T.S, timeRaw: T.raw
     };
   }
-
-  /* ===== 표기 유틸 (절사) ===== */
+        /* ===== 표시 유틸 ===== */
   function truncate(value, digits){
     const f = Math.pow(10, digits);
     return Math.floor((Number(value)||0) * f) / f;
@@ -1027,13 +1049,63 @@
         : 'Upload your NRC record for TODAY';
   }
 
-  /* ===== 업로드 → OCR → 병합 (+ 선두 자리 규칙) ===== */
-  function leadingDigit(n){
-    if(!isFinite(n)) return null;
-    const s = Math.floor(Math.abs(n)).toString();
-    return s.length ? s[0] : null;
+  /* ===== 새로 추가: 페이스/시간 전용 OCR (칸별 ROI) ===== */
+  function normColon(s){
+    return (s||'')
+      .replace(/[’'′]/g, ':')
+      .replace(/[″"]/g, ':')
+      .replace(/：/g, ':')
+      .replace(/\s+/g,'')
+      .trim();
+  }
+  function parseTimeLike(s){
+    const t = normColon(s);
+    const m3 = t.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
+    if(m3) return {h:+m3[1], m:+m3[2], s:+m3[3]};
+    const m2 = t.match(/^(\d{1,2}):(\d{2})$/);
+    if(m2) return {h:0, m:+m2[1], s:+m2[2]};
+    return null;
+  }
+  async function ocrPaceTimePrecise(imgDataURL){
+    // pace = 좌측 하단 칸(0), time = 중앙 하단 칸(1)
+    const [paceROI, timeROI] = await Promise.all([
+      cropStatsCellROI(imgDataURL, 0, 0.52, 0.14, 0.06, 2.6),
+      cropStatsCellROI(imgDataURL, 1, 0.52, 0.14, 0.06, 2.6)
+    ]);
+    const [paceBin, timeBin] = await Promise.all([
+      preprocessImageToDataURL(paceROI, 1.0, 190),
+      preprocessImageToDataURL(timeROI, 1.0, 190)
+    ]);
+
+    // pace 읽기: '6'22"' / '6:22' 모두 허용
+    const paceRes = await Tesseract.recognize(paceBin, 'eng', {
+      tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
+      tessedit_char_whitelist: "0123456789:'″\" ",
+      preserve_interword_spaces: '1'
+    });
+    const pTxt = paceRes.data.text || '';
+    const pT = parseTimeLike(pTxt.replace(/'/g,':').replace(/″|"/g,':'));
+    const paceSec = pT ? (pT.m*60 + pT.s) : NaN;
+
+    // time 읽기: 콜론만
+    const timeRes = await Tesseract.recognize(timeBin, 'eng', {
+      tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
+      tessedit_char_whitelist: "0123456789: ",
+      preserve_interword_spaces: '1'
+    });
+    const tTxt = timeRes.data.text || '';
+    const tT = parseTimeLike(tTxt);
+    const timeSec = tT ? (tT.h*3600 + tT.m*60 + tT.s) : NaN;
+
+    return {
+      pace: isFinite(paceSec) ? paceSec : NaN,
+      time: isFinite(timeSec) ? timeSec : NaN,
+      paceRaw: pT ? `${pT.m}:${zero2txt(pT.s)}` : null,
+      timeRaw: tT ? (tT.h>0 ? `${tT.h}:${zero2txt(tT.m)}:${zero2txt(tT.s)}` : `${tT.m}:${zero2txt(tT.s)}`) : null
+    };
   }
 
+  /* ===== 업로드 → OCR 파이프라인 ===== */
   document.getElementById("file-upload").addEventListener("change", async (e)=>{
     const file = e.target.files[0]; if(!file) return;
     const status = document.getElementById("upload-status");
@@ -1044,33 +1116,47 @@
       try{
         const img = reader.result;
 
+        // 상단 거리: 멀티패스 후보
         const fast = await multiPassKmCandidates_FAST(img);
         let kmCandidates = fast.cands;
         const roiBinForFiveGuard = fast.roiBin;
 
+        // 하단 전체/부분 ROI
         const statsROI = await cropStatsROI(img, 0.40, 0.45, 0.06, 2.2);
         const statsROIBin = await preprocessImageToDataURL(statsROI, 1.0, 190);
+
+        // ▼▼ 핵심: 칸별 ROI 기반으로 Pace/Time을 먼저 뽑는다
+        const precise = await ocrPaceTimePrecise(img);
+
+        // 백업: 전체텍스트(영+한)로도 파싱
         const [rFull, rStats] = await Promise.all([
           Tesseract.recognize(img, 'eng+kor', { preserve_interword_spaces: '1', tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK }),
           Tesseract.recognize(statsROIBin, 'eng+kor', { preserve_interword_spaces: '1', tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT })
         ]);
         const mergedText = (rFull.data.text || "") + "\n" + (rStats.data.text || "");
-
         const p = parseFromOCR(mergedText);
 
+        // 레이블 근처에서 잡힌 km도 후보에 추가
         if(p.km){
           const val = parseFloat(String(p.km).replace(',','.'));
           if (isFinite(val)) kmCandidates.push({ val, dec: (String(p.km).split(/[.,]/)[1]||'').length, src:'aux-label' });
         }
 
+        // km 최적 선택
         let kmBest = pickBestKm(kmCandidates);
 
+        // 2/3 → 5 오인식 가드
         if (kmBest!=null){
           const intPart = Math.floor(kmBest);
           if (intPart===2 || intPart===3){
             const { ch:leadCh, conf:leadConf } = await recognizeLeadingChar(roiBinForFiveGuard).catch(()=>({ch:'',conf:0}));
             const looks5 = await looksLikeLeadingFive(roiBinForFiveGuard).catch(()=>false);
-            const est = estimateDistanceFromPaceTime();
+            const est = (() => {
+              if (isFinite(precise.pace) && isFinite(precise.time)) return precise.time / precise.pace;
+              const ps = (p.paceMin!=null && p.paceSec!=null) ? (p.paceMin*60 + p.paceSec) : NaN;
+              const ts = p.timeRaw ? parseTimeToSec(p.timeRaw) : NaN;
+              return (isFinite(ps) && isFinite(ts)) ? (ts/ps) : null;
+            })();
             const estNear5 = (est!=null && est>=4.85 && est<=5.30);
             const scores = groupScores(kmCandidates);
             const s2 = bestScoreAround(scores, 2.0, 0.25);
@@ -1086,6 +1172,7 @@
           }
         }
 
+        // Runs(월간) 보조 추출
         function extractRunsFromWords(words){
           if(!Array.isArray(words) || !words.length) return null;
           const anchors = words.filter(w => {
@@ -1110,37 +1197,49 @@
         }
         const rWords = extractRunsFromWords(rFull.data.words||[]);
 
-        const paceOCRStr = (p.paceMin!=null && p.paceSec!=null) ? `${p.paceMin}:${String(p.paceSec).padStart(2,'0')}` : null;
-        const toKm = (d)=>parseFloat(String(d).replace(',','.'));
+        // 최종 Pace/Time 선택: ROI 우선, 없으면 텍스트
+        const paceSecROI = precise.pace;
+        const timeSecROI = precise.time;
 
-        const timeSecForCalc = parseTimeToSec(p.timeRaw || '');
-        const paceSecOCR = (p.paceMin!=null && p.paceSec!=null) ? (p.paceMin*60 + p.paceSec) : NaN;
-        const calcKmCandidate = (recordType==='monthly' && isFinite(timeSecForCalc) && isFinite(paceSecOCR))
-          ? (timeSecForCalc / paceSecOCR)
-          : NaN;
+        const paceFromText = (p.paceMin!=null && p.paceSec!=null) ? (p.paceMin*60 + p.paceSec) : NaN;
+        const timeFromText = p.timeRaw ? parseTimeToSec(p.timeRaw) : NaN;
 
-        const ocrKmRaw = (kmBest ?? (p.km ? toKm(p.km) : NaN));
+        const paceSec = isFinite(paceSecROI) ? paceSecROI : paceFromText;
+        const timeSec = isFinite(timeSecROI) ? timeSecROI : timeFromText;
+
+        const ocrKmRaw = (kmBest ?? (p.km ? parseFloat(String(p.km).replace(',','.')) : NaN));
         const hasOCRkm = isFinite(ocrKmRaw);
 
+        // 데일리 정책: 거리=OCR 고정. 월간은 보정 허용.
         let finalKm = 0;
         if (recordType === 'daily'){
           finalKm = hasOCRkm ? ocrKmRaw : 0;
         } else {
-          const cvpace = (isFinite(timeSecForCalc) && isFinite(ocrKmRaw)) ? (timeSecForCalc / ocrKmRaw) : NaN;
-          let cv = { distance: isFinite(ocrKmRaw)? ocrKmRaw : (isFinite(calcKmCandidate)? calcKmCandidate : NaN),
-                     pace: isFinite(cvpace)? cvpace : (isFinite(paceSecOCR)? paceSecOCR : NaN) };
-          finalKm = isFinite(cv.distance) ? cv.distance : 0;
+          const calcKmCandidate = (isFinite(timeSec) && isFinite(paceSec)) ? (timeSec/paceSec) : NaN;
+          finalKm = hasOCRkm ? ocrKmRaw : (isFinite(calcKmCandidate) ? calcKmCandidate : 0);
         }
 
-        let finalPaceSec = (isFinite(paceSecOCR)) ? paceSecOCR
-                          : (isFinite(timeSecForCalc) && isFinite(finalKm) && finalKm>0 ? Math.round(timeSecForCalc / finalKm) : NaN);
+        let finalPaceSec = isFinite(paceSec) ? paceSec
+                          : (isFinite(timeSec) && finalKm>0 ? Math.round(timeSec / finalKm) : NaN);
+
+        // 표시용 시간 문자열
+        let showTimeRaw = null, tH=null, tM=null, tS=null;
+        if (isFinite(timeSec)) {
+          const H = Math.floor(timeSec/3600);
+          const M = Math.floor((timeSec%3600)/60);
+          const S = Math.floor(timeSec%60);
+          showTimeRaw = H>0 ? `${H}:${zero2txt(M)}:${zero2txt(S)}` : `${M}:${zero2txt(S)}`;
+          tH=H; tM=M; tS=S;
+        } else if (p.timeRaw) {
+          showTimeRaw = p.timeRaw; tH=p.timeH; tM=p.timeM; tS=p.timeS;
+        }
 
         parsedData = {
           km: finalKm ?? 0,
           paceMin: isFinite(finalPaceSec) ? Math.floor(finalPaceSec/60) : null,
           paceSec: isFinite(finalPaceSec) ? (finalPaceSec%60) : null,
-          timeH: p.timeH, timeM: p.timeM, timeS: p.timeS,
-          timeRaw: p.timeRaw || null,
+          timeH: tH, timeM: tM, timeS: tS,
+          timeRaw: showTimeRaw || null,
           runs: (recordType==='monthly') ? (p.runs ?? rWords ?? null) : null
         };
 
@@ -1154,7 +1253,8 @@
     };
     reader.readAsDataURL(file);
   });
-      /* ===== 애니메이션/스케일 ===== */
+
+  /* ===== 애니메이션/스케일 ===== */
   const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
   function animateNumber(id,start,end,duration){
     return new Promise(resolve=>{
@@ -1281,12 +1381,11 @@
     const dateDisp = document.getElementById("date-display");
     const fs = fontSettings[font] || {};
 
-    // 따옴표 포함으로 패밀리 지정 (공백/특수문자 안전) + 사파리 가짜볼드 방지 시도
     km.style.fontFamily = `"${font}", sans-serif`;
     km.style.fontSize   = ((fs.base ?? 200)) + "px";
     km.style.fontWeight = (fs.weight ?? 700);
     km.style.transform  = fs.translate ? `translate(${fs.translate})` : "translate(0,0)";
-    km.style.fontSynthesis = 'none'; // 지원 브라우저에서만 동작
+    km.style.fontSynthesis = 'none';
 
     const dateFontWhitelist = new Set([
       "Helvetica Neue","Anton","Anta","Arvo","Iceberg"
@@ -1322,7 +1421,6 @@
     applyFontIndents(selectedFont, layoutType);
     applyFontStatsOffset(selectedFont);
 
-    // 폰트 실제 로딩 확인 (Tourney 800, Arvo 700 등) 후 한번 더 맞춤
     ensureFontReady(font, fs.weight ?? 700, fs.base ?? 200).then(()=>{
       fitKmRow();
     });
@@ -1514,6 +1612,6 @@
     renderStats();
     updateUploadLabel();
   };
-</script>
+  </script>
 </body>
 </html>
