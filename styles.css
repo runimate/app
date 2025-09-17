@@ -70,7 +70,9 @@
   --m2-dateSize: 50px;
   --m2-dateGap: 10px;
   --m2-dateTranslate: 0px, 0px;
-
+  /* 힌트 표시 간격 */
+  --hintGap: 100px; /* 필요하면 60~120px로 조절 */ 
+  
   /* 현재 활성 조합 매핑 */
   --dateSize: 42px;
   --dateGap: 12px;
