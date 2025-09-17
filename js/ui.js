@@ -1,3 +1,4 @@
+// ui.js
 // 화면/이벤트/애니메이션 컨트롤러
 import { fontSettings, kmFontScale, fontIndentMap, applyFontIndents, applyFontStatsOffset } from './fonts.js';
 
@@ -466,12 +467,11 @@ window.onload = ()=>{
   setTypeKmWordStyle('type2', { size:'36px', gap:'16px' });
   setTypeKmScale('type2', 1.00);
 
-    setModeStyle('daily',   { kmScale: 1.0 });
-  setModeStyle('monthly', { kmScale: 1.0 });
+  setModeStyle('daily',   { kmScale:1.0 });
+  setModeStyle('monthly', { kmScale:1.0 });
 
-  const t = new Date();
-  document.getElementById('date-input').value =
-    `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+  const t=new Date();
+  document.getElementById('date-input').value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
   selectedDate = t;
 
   scaleStageCanvas();
@@ -486,16 +486,5 @@ window.onload = ()=>{
   updateUploadLabel();
 };
 
-// ===== 반응형 처리 =====
-window.addEventListener('resize', () => {
-  scaleStageCanvas();
-  fitKmRow();
-  alignStatsBaseline();
-});
-window.addEventListener('orientationchange', () => {
-  setTimeout(() => {
-    scaleStageCanvas();
-    fitKmRow();
-    alignStatsBaseline();
-  }, 50);
-});
+window.addEventListener('resize', ()=>{ scaleStageCanvas(); fitKmRow(); alignStatsBaseline(); });
+window.addEventListener('orientationchange', ()=> { setTimeout(()=>{ scaleStageCanvas(); fitKmRow(); alignStatsBaseline(); }, 50); });
