@@ -452,62 +452,128 @@ window.exitFocus = function exitFocus(){
 
 // ===== OCR 파이프라인: 필요 시 지연 로드 =====
 async function runOcrPipeline(imgDataURL){
-  const primary = new URL('./ocr.js', import.meta.url).href;
-  let OCR;
-  try {
-    console.info('[OCR] import:', primary);
-    OCR = await import(primary);
-  } catch (e1) {
-    console.warn('[OCR] primary import failed:', e1);
-    try {
-      OCR = await import('/js/ocr.js');
-      console.info('[OCR] fallback import:/js/ocr.js success');
-    } catch (e2) {
-      console.error('[OCR] fallback import failed:', e2);
-      const hint = (location.protocol === 'file:') ? ' (Run this over http://, not file://)' : '';
-      throw new Error(`Failed to load OCR module${hint}`);
-    }
-  }
-  if (!OCR?.extractAll) throw new Error('OCR module loaded but extractAll() missing');
-  return OCR.extractAll(imgDataURL, { recordType });
+  const OCR = await import('./ocr.js');
+  const result = await OCR.extractAll(imgDataURL, { recordType });
+  return result;
 }
 
-// ===== 업로드 핸들러 =====
-document.getElementById("file-upload")?.addEventListener("change", async (e)=>{
+// 보정 유틸
+const clamp = (n,min,max)=>Math.min(max,Math.max(min,n));
+const isFiniteNum = (x)=>Number.isFinite(x);
+const toTimeSec = (o)=>{
+  if (isFiniteNum(o?.timeH) || isFiniteNum(o?.timeM) || isFiniteNum(o?.timeS)) {
+    const h = o.timeH||0, m=o.timeM||0, s=o.timeS||0;
+    const t = h*3600 + m*60 + s;
+    return t>0 ? t : null;
+  }
+  if (o?.timeRaw) {
+    const m3 = o.timeRaw.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
+    if (m3) return (+m3[1])*3600 + (+m3[2])*60 + (+m3[3]);
+    const m2 = o.timeRaw.match(/^(\d{1,2}):(\d{2})$/);
+    if (m2) return (+m2[1])*60 + (+m2[2]);
+  }
+  return null;
+};
+const toPaceSec = (o)=>{
+  if (isFiniteNum(o?.paceMin) && isFiniteNum(o?.paceSec)) {
+    const sec = o.paceMin*60 + o.paceSec;
+    return sec>0 ? sec : null;
+  }
+  return null;
+};
+// 합리성 체크(러닝 기준)
+const validPace = (s)=> isFiniteNum(s) && s>=120 && s<=1200;          // 2:00 ~ 20:00 /km
+const validKm   = (k)=> isFiniteNum(k) && k>0 && k<1000;              // 0 < km < 1000
+const validTime = (t)=> isFiniteNum(t) && t>0 && t<= (15*3600);       // 15시간 이내
+
+// 업로드 이벤트
+const fileInputEl = document.getElementById("file-upload");
+document.getElementById("file-upload").addEventListener("change", async (e)=>{
   const file = e.target.files[0]; if(!file) return;
   const status = document.getElementById("upload-status");
   status.textContent = "Processing…";
+  fileInputEl.disabled = true; // 중복 트리거 방지
 
   const reader = new FileReader();
   reader.onload = async () => {
     try{
-      status.textContent = "Loading OCR…";
       const img = reader.result;
       const o = await runOcrPipeline(img);
-      status.textContent = "Recognizing…";
 
+      // 1) 원시값 정리
+      let km    = isFiniteNum(o.km) ? +o.km : null;
+      let paceS = toPaceSec(o);     // 초/킬로
+      let timeS = toTimeSec(o);     // 총 초
+
+      // 2) 값 합리성 검사
+      if (!validKm(km)) km = null;
+      if (!validPace(paceS)) paceS = null;
+      if (!validTime(timeS)) timeS = null;
+
+      // 3) 보정 규칙
+      // pace가 없고 time+km가 있으면 pace 보정
+      if (!paceS && validTime(timeS) && validKm(km)) {
+        const guess = Math.round(timeS / km);
+        if (validPace(guess)) {
+          console.info('[FALLBACK] pace := time/km →', guess, 'sec/km');
+          paceS = guess;
+        }
+      }
+      // km가 없고 time+pace가 있으면 km 보정 (OCR 실패 시만)
+      let derivedKm = null;
+      if (!km && validTime(timeS) && validPace(paceS)) {
+        derivedKm = +(timeS / paceS).toFixed(recordType==='monthly' ? 1 : 2);
+        if (validKm(derivedKm)) {
+          console.info('[FALLBACK] km := time/pace →', derivedKm, 'km');
+          km = derivedKm; // 표시/애니메이션을 위해 사용
+        }
+      }
+
+      // 4) pace 분/초로 되돌리기
+      let paceMin = null, paceSec = null;
+      if (paceS) {
+        paceMin = Math.floor(paceS/60);
+        paceSec = paceS % 60;
+      }
+
+      // 5) UI 상태 업데이트
       parsedData = {
-        km: o.km ?? 0,
+        km: km ?? 0,
         runs: (recordType==='monthly') ? (o.runs ?? null) : null,
-        paceMin: o.paceMin ?? null,
-        paceSec: o.paceSec ?? null,
+        paceMin: paceMin,
+        paceSec: paceSec,
         timeH: o.timeH ?? null,
         timeM: o.timeM ?? null,
         timeS: o.timeS ?? null,
         timeRaw: o.timeRaw ?? null,
       };
 
+      // 6) 표시
       renderKm(0);
       renderStats();
+
+      // 7) 힌트(보정 사용 시)
+      const hintEl = document.getElementById('cv-hint');
+      if (derivedKm || (!toPaceSec(o) && paceS)) {
+        hintEl.style.display = 'block';
+        hintEl.textContent =
+          derivedKm && (!toPaceSec(o) && paceS)
+          ? '※ 거리·페이스 일부는 시간 기반으로 보정되었습니다.'
+          : derivedKm
+            ? '※ 거리는 시간/페이스에서 보정되었습니다.'
+            : '※ 페이스는 시간/거리에서 보정되었습니다.';
+      } else {
+        hintEl.style.display = 'none';
+        hintEl.textContent = '';
+      }
+
       status.textContent = "Done";
     } catch (err) {
-      console.error('[UPLOAD/OCR ERROR]', err?.stack || err);
-      let msg = 'Upload failed';
-      const s = String(err?.message || err || '');
-      if (s.includes('Failed to load OCR module')) msg += ' (OCR module not found)';
-      if (s.includes('http') && s.includes('404')) msg += ' (404)';
-      if (location.protocol === 'file:') msg += ' — please use a local HTTP server';
-      status.textContent = msg;
+      console.error('[OCR ERROR]', err && err.stack ? err.stack : err);
+      status.textContent = "Upload failed";
+    } finally {
+      fileInputEl.value = '';     // 같은 파일 다시 선택 가능
+      fileInputEl.disabled = false;
     }
   };
   reader.readAsDataURL(file);
