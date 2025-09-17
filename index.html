@@ -10,11 +10,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Anta&family=Arvo:ital,wght@0,700;1,700&family=Big+Shoulders+Inline+Text:wght@800&family=Iceberg&family=Londrina+Shadow&family=Permanent+Marker&family=Rock+Salt&family=Tourney:ital,wght@0,800;1,200&display=swap" rel="stylesheet">
 
-  <!-- 외부 CSS (파일명 주의: style.css) -->
-  <link rel="stylesheet" href="./styles.css">
+  <!-- 파비콘 404 방지 -->
+  <link rel="icon" href="data:,">
 
-  <!-- OCR: 글로벌 Tesseract를 선로드 (ocr.js에서 사용) -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
+  <!-- 외부 CSS (파일명이 style.css면 여기서도 style.css여야 함) -->
+  <link rel="stylesheet" href="./style.css">
 </head>
 <body class="bg-white type1 mode-daily">
   <header>
@@ -22,17 +22,14 @@
     <div class="subtitle">by JS @runarchive.js</div>
   </header>
 
-  <!-- 상단 설정 UI -->
   <div class="top-ui">
     <div class="wrap">
-      <!-- Record Type -->
       <div class="row-head"><div class="label">Record Type</div></div>
       <div class="seg-row cols-2" id="mode-row">
         <button class="pill-btn" data-mode="daily">Daily</button>
         <button class="pill-btn" data-mode="monthly">Monthly</button>
       </div>
 
-      <!-- 업로드 -->
       <section class="section upload-box">
         <label for="file-upload" class="upload-label">
           <span class="upload-icon" aria-hidden="true">
@@ -48,7 +45,6 @@
         <div class="status" id="upload-status"></div>
       </section>
 
-      <!-- Layout & BG -->
       <div class="two-col">
         <div>
           <div class="control-title title-left">Layout</div>
@@ -66,13 +62,11 @@
         </div>
       </div>
 
-      <!-- 날짜 입력 -->
       <div class="date-row" id="date-section">
         <div class="control-title title-left">Date</div>
         <input id="date-input" class="date-input" type="date"/>
       </div>
 
-      <!-- 폰트 선택 -->
       <section class="section">
         <div class="control-title">Font</div>
         <div class="font-grid" id="font-grid">
@@ -96,10 +90,8 @@
     </div>
   </div>
 
-  <!-- 포커스 모드 종료 버튼 -->
   <button id="exit-focus" title="Close" onclick="exitFocus()">✕</button>
 
-  <!-- 출력 스테이지 -->
   <section class="stage-outer">
     <div id="stage-canvas" class="stage-canvas">
       <div class="stage-inner fixed" id="stage">
@@ -113,7 +105,6 @@
         </div>
         <div id="km-word">Kilometers</div>
 
-        <!-- 하단 통계 -->
         <div class="grid" id="stats-grid">
           <div id="runs-wrap" style="display:none;">
             <div class="label">Runs</div>
@@ -133,7 +124,10 @@
     </div>
   </section>
 
-  <!-- 앱 스크립트 (ESM). ui.js가 fonts.js/ocr.js를 가져옵니다. -->
+  <!-- OCR는 js/ocr.js에서 필요 시 로드하지만, 네트워크가 빡세면 이 태그가 백업으로 도와줌 -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
+
+  <!-- 메인 UI -->
   <script type="module" src="./js/ui.js"></script>
 </body>
 </html>
