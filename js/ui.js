@@ -394,13 +394,6 @@ function setModeStyle(mode, { kmScale, statGap, kmWordBottomGap } = {}){
   fitKmRow();
 }
 
-// ===== 이벤트 바인딩 =====
-fontGridEl.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-font]'); if(btn) setFont(btn.dataset.font); });
-bgRow.addEventListener('click',   (e)=>{ const btn=e.target.closest('button[data-bg]');    if(btn) setBackground(btn.dataset.bg); });
-modeRow.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-mode]');  if(btn) setRecordType(btn.dataset.mode); });
-layoutRow.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-layout]'); if(btn) setLayout(btn.dataset.layout); });
-dateInput.addEventListener('change', setDateFromInput);
-
 // ===== Run / Focus =====
 window.onRun = function onRun(){
   document.body.classList.add('focus');
@@ -415,11 +408,33 @@ window.exitFocus = function exitFocus(){
 
 // ===== OCR 파이프라인: 필요 시 지연 로드 =====
 async function runOcrPipeline(imgDataURL){
-  const OCR = await import('./ocr.js');
-  const result = await OCR.extractAll(imgDataURL, { recordType });
-  return result;
+  // import 경로를 안전하게 계산 + 재시도
+  const primary = new URL('./ocr.js', import.meta.url).href;
+  let OCR;
+  try {
+    console.info('[OCR] import:', primary);
+    OCR = await import(primary);
+  } catch (e1) {
+    console.warn('[OCR] primary import failed:', e1);
+    // 흔한 배포 구조: /js/ocr.js
+    try {
+      OCR = await import('/js/ocr.js');
+      console.info('[OCR] fallback import:/js/ocr.js success');
+    } catch (e2) {
+      console.error('[OCR] fallback import failed:', e2);
+      // 오류 원인 안내
+      const hint = (location.protocol === 'file:')
+        ? ' (Run this over http://, not file://)'
+        : '';
+      throw new Error(`Failed to load OCR module${hint}`);
+    }
+  }
+  if (!OCR?.extractAll) throw new Error('OCR module loaded but extractAll() missing');
+  return OCR.extractAll(imgDataURL, { recordType });
 }
-document.getElementById("file-upload").addEventListener("change", async (e)=>{
+
+// ===== 업로드 핸들러 =====
+document.getElementById("file-upload")?.addEventListener("change", async (e)=>{
   const file = e.target.files[0]; if(!file) return;
   const status = document.getElementById("upload-status");
   status.textContent = "Processing…";
@@ -427,8 +442,10 @@ document.getElementById("file-upload").addEventListener("change", async (e)=>{
   const reader = new FileReader();
   reader.onload = async () => {
     try{
+      status.textContent = "Loading OCR…";
       const img = reader.result;
       const o = await runOcrPipeline(img);
+      status.textContent = "Recognizing…";
 
       parsedData = {
         km: o.km ?? 0,
@@ -444,10 +461,15 @@ document.getElementById("file-upload").addEventListener("change", async (e)=>{
       renderKm(0);
       renderStats();
       status.textContent = "Done";
-} catch (err) {
-  console.error('[OCR ERROR]', err && err.stack ? err.stack : err);
-  status.textContent = "Upload failed";
-}
+    } catch (err) {
+      console.error('[UPLOAD/OCR ERROR]', err?.stack || err);
+      let msg = 'Upload failed';
+      const s = String(err?.message || err || '');
+      if (s.includes('Failed to load OCR module')) msg += ' (OCR module not found)';
+      if (s.includes('http') && s.includes('404')) msg += ' (404)';
+      if (location.protocol === 'file:') msg += ' — please use a local HTTP server';
+      status.textContent = msg;
+    }
   };
   reader.readAsDataURL(file);
 });
