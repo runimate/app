@@ -1,15 +1,19 @@
-// ui.js
+// ui.js — clean version (no hint banners)
 // 화면/이벤트/애니메이션 컨트롤러
-import { fontSettings, kmFontScale, fontIndentMap, applyFontIndents, applyFontStatsOffset } from './fonts.js';
+import { fontSettings, kmFontScale, applyFontIndents, applyFontStatsOffset } from './fonts.js';
 
-// ===== 상태 =====
+/* =========================
+   상태
+========================= */
 let parsedData = { km:null, runs:null, paceMin:null, paceSec:null, timeH:null, timeM:null, timeS:null, timeRaw:null };
 let recordType = 'daily';
 let layoutType = 'type1';
 let selectedFont = 'Helvetica Neue';
 let selectedDate = new Date();
 
-// ===== DOM =====
+/* =========================
+   DOM
+========================= */
 const fontGridEl  = document.getElementById('font-grid');
 const bgRow       = document.getElementById('bg-row');
 const modeRow     = document.getElementById('mode-row');
@@ -22,21 +26,27 @@ const runsWrap    = document.getElementById('runs-wrap');
 const paceWrap    = document.getElementById('pace-wrap');
 const timeWrap    = document.getElementById('time-wrap');
 const uploadLabelText = document.getElementById('upload-label-text');
+const fileInputEl = document.getElementById('file-upload');
 
 const MONTH_ABBR = ["JAN.","FEB.","MAR.","APR.","MAY.","JUN.","JUL.","AUG.","SEP.","OCT.","NOV.","DEC."];
 
-// ===== 보조 유틸 =====
+/* =========================
+   유틸
+========================= */
 const zero2txt = (n)=>String(n).padStart(2,'0');
+
 function ensureFontReady(fontFamily, weight = 700, sizePx = 200, style='normal'){
   if (!('fonts' in document) || typeof document.fonts.load !== 'function') return Promise.resolve();
   const fam = `"${fontFamily}"`;
   return document.fonts.load(`${style} ${weight} ${sizePx}px ${fam}`).catch(()=>{});
 }
 
-// 추가: 다양한 포맷의 시간 파서 (H:MM:SS / MM:SS)
 function parseTimeToSecFlexible(raw){
   if(!raw) return NaN;
-  const t = String(raw).trim().replace(/[’'′]/g,':').replace(/[″"]/g,':').replace(/：/g,':');
+  const t = String(raw).trim()
+    .replace(/[’'′]/g,':')
+    .replace(/[″"]/g,':')
+    .replace(/：/g,':');
   const m3 = t.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
   if (m3) return (+m3[1])*3600 + (+m3[2])*60 + (+m3[3]);
   const m2 = t.match(/^(\d{1,2}):(\d{2})$/);
@@ -55,8 +65,11 @@ function getTimeSecFromParsed(pd){
   }
   return NaN;
 }
+const isFiniteNum = (x)=>Number.isFinite(x);
 
-// ===== 날짜/표시 =====
+/* =========================
+   날짜/표시
+========================= */
 function formatDateText(d){
   const day = String(d.getDate());
   const yr  = d.getFullYear();
@@ -71,12 +84,16 @@ function formatDateText(d){
   return ``;
 }
 
-// ===== 숫자 표기 =====
+/* =========================
+   숫자 표기
+========================= */
 function truncate(value, digits){ const f=Math.pow(10,digits); return Math.floor((Number(value)||0)*f)/f; }
 function formatKm(value){ const v=Math.max(0, Number(value)||0); return (recordType==='monthly') ? truncate(v,1).toFixed(1) : truncate(v,2).toFixed(2); }
 function renderKm(value){ document.getElementById('km').textContent = formatKm(value); }
 
-// ===== 레이아웃 =====
+/* =========================
+   레이아웃
+========================= */
 function updateGridCols(){
   const cols = (layoutType==='type1') ? 1 : (recordType==='monthly' ? 3 : 2);
   statsGrid.style.setProperty('--cols', cols);
@@ -110,13 +127,13 @@ function layoutStatsGrid(){
   }
 }
 
-// ===== 표기 포맷(폴백 포함) =====
+/* =========================
+   표기 포맷(조용한 폴백 포함)
+========================= */
 function formatPaceByType(){
-  // OCR 결과가 0:00 또는 null이면 폴백: time/km
-  const hasValidOcrPace = (
+  const hasValidOcrPace =
     parsedData.paceMin!=null && parsedData.paceSec!=null &&
-    (parsedData.paceMin + parsedData.paceSec) > 0
-  );
+    (parsedData.paceMin + parsedData.paceSec) > 0;
 
   let mm, ss;
   if (hasValidOcrPace){
@@ -130,7 +147,6 @@ function formatPaceByType(){
       mm = String(Math.floor(psec/60));
       ss = zero2txt(psec%60);
     } else {
-      // 계산 불가 → 플레이스홀더
       return (layoutType==='type1') ? '--:-- /km' : '--:--';
     }
   }
@@ -185,7 +201,9 @@ function updateUploadLabel(){
       : 'Upload your NRC record for TODAY';
 }
 
-// ===== 캔버스 스케일/애니 =====
+/* =========================
+   캔버스 스케일/애니
+========================= */
 const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
 function animateNumber(id,start,end,duration){
   return new Promise(resolve=>{
@@ -255,7 +273,9 @@ async function runAnimation(){
   fitKmRow();
 }
 
-// ===== 폰트/배경/모드/레이아웃 =====
+/* =========================
+   폰트/배경/모드/레이아웃
+========================= */
 function updateActive(groupEl, targetBtn){
   [...groupEl.querySelectorAll('button')].forEach(b=>b.classList.remove('is-active'));
   if(targetBtn) targetBtn.classList.add('is-active');
@@ -385,7 +405,9 @@ function applyLayoutVisual(){
   alignStatsBaseline();
 }
 
-// ===== 스타일 변수 제어(디자인 튜닝용) =====
+/* =========================
+   스타일 변수 제어(디자인 튜닝용)
+========================= */
 function setTypeStatsStyle(type, { size, labelSize, gap, pull, pull2 } = {}){
   const root = document.documentElement.style;
   if(type==='type1'){
@@ -434,7 +456,9 @@ function setModeStyle(mode, { kmScale, statGap, kmWordBottomGap } = {}){
   fitKmRow();
 }
 
-// ===== Run / Focus =====
+/* =========================
+   Run / Focus
+========================= */
 window.onRun = function onRun(){
   document.body.classList.add('focus');
   document.getElementById('stage-canvas').scrollIntoView({behavior:'smooth', block:'start'});
@@ -446,49 +470,22 @@ window.exitFocus = function exitFocus(){
   document.getElementById('km').textContent = recordType==='monthly' ? "0.0" : "0.00";
 };
 
-// ===== OCR 파이프라인: 필요 시 지연 로드 =====
+/* =========================
+   OCR 파이프라인 (지연 로드)
+========================= */
 async function runOcrPipeline(imgDataURL){
   const OCR = await import('./ocr.js');
-  const result = await OCR.extractAll(imgDataURL, { recordType });
-  return result;
+  return OCR.extractAll(imgDataURL, { recordType });
 }
 
-// 보정 유틸
-const clamp = (n,min,max)=>Math.min(max,Math.max(min,n));
-const isFiniteNum = (x)=>Number.isFinite(x);
-const toTimeSec = (o)=>{
-  if (isFiniteNum(o?.timeH) || isFiniteNum(o?.timeM) || isFiniteNum(o?.timeS)) {
-    const h = o.timeH||0, m=o.timeM||0, s=o.timeS||0;
-    const t = h*3600 + m*60 + s;
-    return t>0 ? t : null;
-  }
-  if (o?.timeRaw) {
-    const m3 = o.timeRaw.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
-    if (m3) return (+m3[1])*3600 + (+m3[2])*60 + (+m3[3]);
-    const m2 = o.timeRaw.match(/^(\d{1,2}):(\d{2})$/);
-    if (m2) return (+m2[1])*60 + (+m2[2]);
-  }
-  return null;
-};
-const toPaceSec = (o)=>{
-  if (isFiniteNum(o?.paceMin) && isFiniteNum(o?.paceSec)) {
-    const sec = o.paceMin*60 + o.paceSec;
-    return sec>0 ? sec : null;
-  }
-  return null;
-};
-// 합리성 체크(러닝 기준)
-const validPace = (s)=> isFiniteNum(s) && s>=120 && s<=1200;          // 2:00 ~ 20:00 /km
-const validKm   = (k)=> isFiniteNum(k) && k>0 && k<1000;              // 0 < km < 1000
-const validTime = (t)=> isFiniteNum(t) && t>0 && t<= (15*3600);       // 15시간 이내
-
-// 업로드 이벤트
-const fileInputEl = document.getElementById("file-upload");
-document.getElementById("file-upload").addEventListener("change", async (e)=>{
+/* =========================
+   업로드 이벤트 — 단 하나만!
+========================= */
+fileInputEl.addEventListener("change", async (e)=>{
   const file = e.target.files[0]; if(!file) return;
   const status = document.getElementById("upload-status");
   status.textContent = "Processing…";
-  fileInputEl.disabled = true; // 중복 트리거 방지
+  fileInputEl.disabled = true;
 
   const reader = new FileReader();
   reader.onload = async () => {
@@ -496,73 +493,48 @@ document.getElementById("file-upload").addEventListener("change", async (e)=>{
       const img = reader.result;
       const o = await runOcrPipeline(img);
 
-      // 1) 원시값 정리
-      let km    = isFiniteNum(o.km) ? +o.km : null;
-      let paceS = toPaceSec(o);     // 초/킬로
-      let timeS = toTimeSec(o);     // 총 초
+      // 원시값
+      let km = isFiniteNum(+o.km) ? +o.km : null;
+      let paceMin = isFiniteNum(+o.paceMin) ? +o.paceMin : null;
+      let paceSec = isFiniteNum(+o.paceSec) ? +o.paceSec : null;
 
-      // 2) 값 합리성 검사
-      if (!validKm(km)) km = null;
-      if (!validPace(paceS)) paceS = null;
-      if (!validTime(timeS)) timeS = null;
-
-      // 3) 보정 규칙
-      // pace가 없고 time+km가 있으면 pace 보정
-      if (!paceS && validTime(timeS) && validKm(km)) {
-        const guess = Math.round(timeS / km);
-        if (validPace(guess)) {
-          console.info('[FALLBACK] pace := time/km →', guess, 'sec/km');
-          paceS = guess;
-        }
-      }
-      // km가 없고 time+pace가 있으면 km 보정 (OCR 실패 시만)
-      let derivedKm = null;
-      if (!km && validTime(timeS) && validPace(paceS)) {
-        derivedKm = +(timeS / paceS).toFixed(recordType==='monthly' ? 1 : 2);
-        if (validKm(derivedKm)) {
-          console.info('[FALLBACK] km := time/pace →', derivedKm, 'km');
-          km = derivedKm; // 표시/애니메이션을 위해 사용
-        }
+      // time 초
+      let timeSec = NaN;
+      if (isFiniteNum(o.timeH) || isFiniteNum(o.timeM) || isFiniteNum(o.timeS)) {
+        const h = o.timeH||0, m=o.timeM||0, s=o.timeS||0;
+        timeSec = h*3600 + m*60 + s;
+      } else if (o.timeRaw) {
+        timeSec = parseTimeToSecFlexible(o.timeRaw);
       }
 
-      // 4) pace 분/초로 되돌리기
-      let paceMin = null, paceSec = null;
-      if (paceS) {
-        paceMin = Math.floor(paceS/60);
-        paceSec = paceS % 60;
+      // pace 보정 (없거나 0:00이면)
+      const hasPace = isFiniteNum(paceMin) && isFiniteNum(paceSec) && (paceMin + paceSec) > 0;
+      if (!hasPace && isFinite(timeSec) && timeSec>0 && isFinite(km) && km>0) {
+        const p = Math.max(0, Math.round(timeSec / km));
+        paceMin = Math.floor(p/60);
+        paceSec = p%60;
       }
 
-      // 5) UI 상태 업데이트
+      // km 보정 (km가 없을 때만)
+      if ((!isFinite(km) || km<=0) && isFinite(timeSec) && timeSec>0 && hasPace) {
+        const psec = paceMin*60 + paceSec;
+        if (psec > 0) km = +(timeSec / psec).toFixed(recordType==='monthly' ? 1 : 2);
+      }
+
+      // UI 상태 업데이트
       parsedData = {
         km: km ?? 0,
         runs: (recordType==='monthly') ? (o.runs ?? null) : null,
-        paceMin: paceMin,
-        paceSec: paceSec,
+        paceMin: paceMin ?? null,
+        paceSec: paceSec ?? null,
         timeH: o.timeH ?? null,
         timeM: o.timeM ?? null,
         timeS: o.timeS ?? null,
         timeRaw: o.timeRaw ?? null,
       };
 
-      // 6) 표시
       renderKm(0);
       renderStats();
-
-      // 7) 힌트(보정 사용 시)
-      const hintEl = document.getElementById('cv-hint');
-      if (derivedKm || (!toPaceSec(o) && paceS)) {
-        hintEl.style.display = 'block';
-        hintEl.textContent =
-          derivedKm && (!toPaceSec(o) && paceS)
-          ? '※ 거리·페이스 일부는 시간 기반으로 보정되었습니다.'
-          : derivedKm
-            ? '※ 거리는 시간/페이스에서 보정되었습니다.'
-            : '※ 페이스는 시간/거리에서 보정되었습니다.';
-      } else {
-        hintEl.style.display = 'none';
-        hintEl.textContent = '';
-      }
-
       status.textContent = "Done";
     } catch (err) {
       console.error('[OCR ERROR]', err && err.stack ? err.stack : err);
@@ -575,7 +547,9 @@ document.getElementById("file-upload").addEventListener("change", async (e)=>{
   reader.readAsDataURL(file);
 });
 
-// ===== 초기화 =====
+/* =========================
+   초기화
+========================= */
 window.onload = ()=>{
   setRecordType('daily');
   setLayout('type1');
