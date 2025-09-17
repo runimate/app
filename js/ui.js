@@ -444,10 +444,10 @@ document.getElementById("file-upload").addEventListener("change", async (e)=>{
       renderKm(0);
       renderStats();
       status.textContent = "Done";
-    }catch(err){
-      console.error(err);
-      status.textContent = "Upload failed";
-    }
+} catch (err) {
+  console.error('[OCR ERROR]', err && err.stack ? err.stack : err);
+  status.textContent = "Upload failed";
+}
   };
   reader.readAsDataURL(file);
 });
