@@ -1,4 +1,4 @@
-// ui.js — clean version (no hint banners)
+// ui.js — clean + fixed (event binding & CSS.escape fallback)
 // 화면/이벤트/애니메이션 컨트롤러
 import { fontSettings, kmFontScale, applyFontIndents, applyFontStatsOffset } from './fonts.js';
 
@@ -34,6 +34,11 @@ const MONTH_ABBR = ["JAN.","FEB.","MAR.","APR.","MAY.","JUN.","JUL.","AUG.","SEP
    유틸
 ========================= */
 const zero2txt = (n)=>String(n).padStart(2,'0');
+
+// CSS.escape 폴백 (iOS 사파리 구버전 등)
+const cssEsc = (s)=> (window.CSS && typeof CSS.escape === 'function')
+  ? CSS.escape(s)
+  : String(s).replace(/"/g,'\\"');
 
 function ensureFontReady(fontFamily, weight = 700, sizePx = 200, style='normal'){
   if (!('fonts' in document) || typeof document.fonts.load !== 'function') return Promise.resolve();
@@ -95,12 +100,14 @@ function renderKm(value){ document.getElementById('km').textContent = formatKm(v
    레이아웃
 ========================= */
 function updateGridCols(){
+  if(!statsGrid) return;
   const cols = (layoutType==='type1') ? 1 : (recordType==='monthly' ? 3 : 2);
   statsGrid.style.setProperty('--cols', cols);
 }
 function layoutStatsGrid(){
   if (layoutType === 'type1'){
     [runsWrap, paceWrap, timeWrap].forEach(el=>{
+      if(!el) return;
       el.style.gridColumn = '';
       el.style.transform = '';
       el.style.marginLeft = '';
@@ -108,22 +115,32 @@ function layoutStatsGrid(){
     return;
   }
   if (recordType === 'daily'){
-    paceWrap.style.gridColumn = '1 / 2';
-    timeWrap.style.gridColumn = '2 / 3';
-    paceWrap.style.transform = 'translateX(0)';
-    timeWrap.style.transform = `translateX(${getComputedStyle(document.documentElement).getPropertyValue('--statPull').trim()})`;
-    paceWrap.style.marginLeft = '0';
-    timeWrap.style.marginLeft = '0';
+    if (paceWrap) {
+      paceWrap.style.gridColumn = '1 / 2';
+      paceWrap.style.transform = 'translateX(0)';
+      paceWrap.style.marginLeft = '0';
+    }
+    if (timeWrap) {
+      timeWrap.style.gridColumn = '2 / 3';
+      timeWrap.style.transform = `translateX(${getComputedStyle(document.documentElement).getPropertyValue('--statPull').trim()})`;
+      timeWrap.style.marginLeft = '0';
+    }
   } else {
-    runsWrap.style.gridColumn = '1 / 2';
-    paceWrap.style.gridColumn = '2 / 3';
-    timeWrap.style.gridColumn = '3 / 4';
-    runsWrap.style.transform = 'translateX(0)';
-    paceWrap.style.transform = `translateX(${getComputedStyle(document.documentElement).getPropertyValue('--statPull').trim()})`;
-    timeWrap.style.transform = `translateX(${getComputedStyle(document.documentElement).getPropertyValue('--statPull2').trim()})`;
-    runsWrap.style.marginLeft = '0';
-    paceWrap.style.marginLeft = '0';
-    timeWrap.style.marginLeft = '0';
+    if (runsWrap) {
+      runsWrap.style.gridColumn = '1 / 2';
+      runsWrap.style.transform = 'translateX(0)';
+      runsWrap.style.marginLeft = '0';
+    }
+    if (paceWrap) {
+      paceWrap.style.gridColumn = '2 / 3';
+      paceWrap.style.transform = `translateX(${getComputedStyle(document.documentElement).getPropertyValue('--statPull').trim()})`;
+      paceWrap.style.marginLeft = '0';
+    }
+    if (timeWrap) {
+      timeWrap.style.gridColumn = '3 / 4';
+      timeWrap.style.transform = `translateX(${getComputedStyle(document.documentElement).getPropertyValue('--statPull2').trim()})`;
+      timeWrap.style.marginLeft = '0';
+    }
   }
 }
 
@@ -165,12 +182,12 @@ function alignStatsBaseline(){
   const stats = [];
   const addIfVisible = (id)=>{
     const wrap = document.getElementById(id+'-wrap');
-    if(getComputedStyle(wrap).display!=='none'){
+    if(wrap && getComputedStyle(wrap).display!=='none'){
       stats.push(document.getElementById(id));
     }
   };
   addIfVisible('runs'); addIfVisible('pace'); addIfVisible('time');
-  stats.forEach(el=>{ el.style.transform = ''; });
+  stats.forEach(el=>{ if(el) el.style.transform = ''; });
   const bottoms = stats.map(el=>el.getBoundingClientRect().bottom);
   const maxBottom = Math.max(...bottoms);
   stats.forEach((el,i)=>{
@@ -179,15 +196,21 @@ function alignStatsBaseline(){
   });
 }
 function renderStats(){
-  document.getElementById('pace-label').textContent = 'Avg. Pace';
-  document.getElementById('time-label').textContent = 'Time';
-  runsWrap.style.display = (recordType === 'monthly') ? 'block' : 'none';
+  const paceLabel = document.getElementById('pace-label');
+  const timeLabel = document.getElementById('time-label');
+  if (paceLabel) paceLabel.textContent = 'Avg. Pace';
+  if (timeLabel) timeLabel.textContent = 'Time';
+
+  if (runsWrap) runsWrap.style.display = (recordType === 'monthly') ? 'block' : 'none';
   if (recordType === 'monthly') {
     const runsVal = (parsedData.runs == null || Number.isNaN(parsedData.runs)) ? '--' : parsedData.runs;
-    document.getElementById('runs').textContent = String(runsVal);
+    const runsEl = document.getElementById('runs');
+    if (runsEl) runsEl.textContent = String(runsVal);
   }
-  document.getElementById('pace').textContent = formatPaceByType();
-  document.getElementById('time').textContent = formatTimeByType();
+  const paceEl = document.getElementById('pace');
+  const timeEl = document.getElementById('time');
+  if (paceEl) paceEl.textContent = formatPaceByType();
+  if (timeEl) timeEl.textContent = formatTimeByType();
 
   updateGridCols();
   layoutStatsGrid();
@@ -214,7 +237,7 @@ function animateNumber(id,start,end,duration){
       const raw = Math.min((now - startTime)/duration,1);
       const eased = easeOutCubic(raw);
       const val = (start + (end-start)*eased);
-      kmEl.textContent = formatKm(val);
+      if (kmEl) kmEl.textContent = formatKm(val);
       raw < 1 ? requestAnimationFrame(update) : resolve();
     }
     requestAnimationFrame(update);
@@ -231,6 +254,7 @@ function scaleStageCanvas(){
 function syncDateWidth(){
   if (layoutType !== 'type2') return;
   const row = document.getElementById('km-row');
+  if (!row || !dateDisplay) return;
   const width = row.getBoundingClientRect().width;
   dateDisplay.style.width = width + 'px';
 }
@@ -239,6 +263,7 @@ function fitKmRow(){
   const row     = document.getElementById('km-row');
   const measure = document.getElementById('km-measure');
   const kmEl    = document.getElementById('km');
+  if(!stage || !row || !measure || !kmEl) return;
 
   const kmCS = window.getComputedStyle(kmEl);
   measure.style.fontFamily = kmCS.fontFamily;
@@ -277,6 +302,7 @@ async function runAnimation(){
    폰트/배경/모드/레이아웃
 ========================= */
 function updateActive(groupEl, targetBtn){
+  if(!groupEl) return;
   [...groupEl.querySelectorAll('button')].forEach(b=>b.classList.remove('is-active'));
   if(targetBtn) targetBtn.classList.add('is-active');
 }
@@ -287,20 +313,24 @@ function setFont(font){
   const dateDisp = document.getElementById("date-display");
   const fs = fontSettings[font] || {};
 
-  km.style.fontFamily = `"${font}", sans-serif`;
-  km.style.fontSize   = ((fs.base ?? 200)) + "px";
-  km.style.fontWeight = (fs.weight ?? 700);
-  km.style.transform  = fs.translate ? `translate(${fs.translate})` : "translate(0,0)";
-  km.style.fontSynthesis = 'none';
+  if (km) {
+    km.style.fontFamily = `"${font}", sans-serif`;
+    km.style.fontSize   = ((fs.base ?? 200)) + "px";
+    km.style.fontWeight = (fs.weight ?? 700);
+    km.style.transform  = fs.translate ? `translate(${fs.translate})` : "translate(0,0)";
+    km.style.fontSynthesis = 'none';
+  }
 
   const whitelist = new Set(["Helvetica Neue","Anton","Anta","Arvo","Iceberg"]);
-  if (whitelist.has(font)) {
-    dateDisp.style.fontFamily = `"${font}", sans-serif`;
-    dateDisp.style.fontWeight = (fs.dateWeight ?? 700);
-    dateDisp.style.fontSynthesis = 'none';
-  } else {
-    dateDisp.style.fontFamily = "";
-    dateDisp.style.fontWeight = 700;
+  if (dateDisp) {
+    if (whitelist.has(font)) {
+      dateDisp.style.fontFamily = `"${font}", sans-serif`;
+      dateDisp.style.fontWeight = (fs.dateWeight ?? 700);
+      dateDisp.style.fontSynthesis = 'none';
+    } else {
+      dateDisp.style.fontFamily = "";
+      dateDisp.style.fontWeight = 700;
+    }
   }
 
   const root = document.documentElement.style;
@@ -319,7 +349,7 @@ function setFont(font){
 
   if (fs.kmWordGap) document.documentElement.style.setProperty('--kmWordGap', fs.kmWordGap);
 
-  const targetBtn = fontGridEl.querySelector(`button[data-font="${CSS.escape(font)}"]`);
+  const targetBtn = fontGridEl?.querySelector(`button[data-font="${cssEsc(font)}"]`);
   updateActive(fontGridEl, targetBtn);
 
   applyFontIndents(selectedFont, layoutType);
@@ -335,15 +365,15 @@ function setBackground(color){
   const htmlEl = document.documentElement, bodyEl = document.body;
   if(color==='black'){ htmlEl.classList.replace('bg-white','bg-black'); bodyEl.classList.replace('bg-white','bg-black'); }
   else { htmlEl.classList.replace('bg-black','bg-white'); bodyEl.classList.replace('bg-black','bg-white'); }
-  const targetBtn = bgRow.querySelector(`button[data-bg="${CSS.escape(color)}"]`);
+  const targetBtn = bgRow?.querySelector(`button[data-bg="${cssEsc(color)}"]`);
   updateActive(bgRow, targetBtn);
 }
 function setRecordType(mode){
   recordType = mode;
   document.body.classList.toggle('mode-daily', mode==='daily');
   document.body.classList.toggle('mode-monthly', mode==='monthly');
-  updateActive(modeRow, modeRow.querySelector(`button[data-mode="${CSS.escape(mode)}"]`));
-  runsWrap.style.display = (mode==='monthly') ? 'block' : 'none';
+  updateActive(modeRow, modeRow?.querySelector(`button[data-mode="${cssEsc(mode)}"]`));
+  if (runsWrap) runsWrap.style.display = (mode==='monthly') ? 'block' : 'none';
   renderKm(document.getElementById('km').textContent.replace(/[^\d.]/g,'') || 0);
   renderStats();
   updateGridCols();
@@ -354,36 +384,40 @@ function setRecordType(mode){
 }
 function setLayout(type){
   layoutType = type;
-  updateActive(layoutRow, layoutRow.querySelector(`button[data-layout="${CSS.escape(type)}"]`));
+  updateActive(layoutRow, layoutRow?.querySelector(`button[data-layout="${cssEsc(type)}"]`));
   applyLayoutVisual();
 }
 function setDateFromInput(){
-  const val = dateInput.value; if(!val) return;
+  const val = dateInput?.value; if(!val) return;
   const [y,m,d] = val.split('-').map(Number);
   selectedDate = new Date(y, m-1, d);
   renderDateDisplay(); syncDateWidth();
 }
 function renderDateDisplay(){
-  dateDisplay.textContent = formatDateText(selectedDate);
+  if (dateDisplay) dateDisplay.textContent = formatDateText(selectedDate);
 }
 function applyLayoutVisual(){
   const word = document.getElementById('km-word');
 
-  if(layoutType==='type1'){
-    dateSection.style.display = (recordType==='monthly') ? 'grid' : 'none';
-  }else{
-    dateSection.style.display = 'grid';
+  if(dateSection){
+    if(layoutType==='type1'){
+      dateSection.style.display = (recordType==='monthly') ? 'grid' : 'none';
+    }else{
+      dateSection.style.display = 'grid';
+    }
   }
 
-  if (layoutType==='type2' || (layoutType==='type1' && recordType==='monthly')) {
-    dateDisplay.style.display = 'block';
-  } else {
-    dateDisplay.style.display = 'none';
+  if (dateDisplay){
+    if (layoutType==='type2' || (layoutType==='type1' && recordType==='monthly')) {
+      dateDisplay.style.display = 'block';
+    } else {
+      dateDisplay.style.display = 'none';
+    }
   }
 
-  word.style.display = 'block';
+  if (word) word.style.display = 'block';
 
-  if(!dateInput.value){
+  if(dateInput && !dateInput.value){
     const today = new Date();
     const yyyy = today.getFullYear(), mm = String(today.getMonth()+1).padStart(2,'0'), dd = String(today.getDate()).padStart(2,'0');
     dateInput.value = `${yyyy}-${mm}-${dd}`;
@@ -457,17 +491,40 @@ function setModeStyle(mode, { kmScale, statGap, kmWordBottomGap } = {}){
 }
 
 /* =========================
+   이벤트 바인딩
+========================= */
+if (fontGridEl) fontGridEl.addEventListener('click', (e)=>{
+  const btn = e.target.closest('button[data-font]');
+  if (btn) setFont(btn.dataset.font);
+});
+if (bgRow) bgRow.addEventListener('click', (e)=>{
+  const btn = e.target.closest('button[data-bg]');
+  if (btn) setBackground(btn.dataset.bg);
+});
+if (modeRow) modeRow.addEventListener('click', (e)=>{
+  const btn = e.target.closest('button[data-mode]');
+  if (btn) setRecordType(btn.dataset.mode);
+});
+if (layoutRow) layoutRow.addEventListener('click', (e)=>{
+  const btn = e.target.closest('button[data-layout]');
+  if (btn) setLayout(btn.dataset.layout);
+});
+if (dateInput) dateInput.addEventListener('change', setDateFromInput);
+
+/* =========================
    Run / Focus
 ========================= */
 window.onRun = function onRun(){
   document.body.classList.add('focus');
-  document.getElementById('stage-canvas').scrollIntoView({behavior:'smooth', block:'start'});
+  const canvas = document.getElementById('stage-canvas');
+  if (canvas) canvas.scrollIntoView({behavior:'smooth', block:'start'});
   runAnimation();
 };
 window.exitFocus = function exitFocus(){
   document.body.classList.remove('focus');
   window.scrollTo({top:0, behavior:'smooth'});
-  document.getElementById('km').textContent = recordType==='monthly' ? "0.0" : "0.00";
+  const kmEl = document.getElementById('km');
+  if (kmEl) kmEl.textContent = recordType==='monthly' ? "0.0" : "0.00";
 };
 
 /* =========================
@@ -481,10 +538,10 @@ async function runOcrPipeline(imgDataURL){
 /* =========================
    업로드 이벤트 — 단 하나만!
 ========================= */
-fileInputEl.addEventListener("change", async (e)=>{
+if (fileInputEl) fileInputEl.addEventListener("change", async (e)=>{
   const file = e.target.files[0]; if(!file) return;
   const status = document.getElementById("upload-status");
-  status.textContent = "Processing…";
+  if (status) status.textContent = "Processing…";
   fileInputEl.disabled = true;
 
   const reader = new FileReader();
@@ -535,10 +592,10 @@ fileInputEl.addEventListener("change", async (e)=>{
 
       renderKm(0);
       renderStats();
-      status.textContent = "Done";
+      if (status) status.textContent = "Done";
     } catch (err) {
       console.error('[OCR ERROR]', err && err.stack ? err.stack : err);
-      status.textContent = "Upload failed";
+      if (status) status.textContent = "Upload failed";
     } finally {
       fileInputEl.value = '';     // 같은 파일 다시 선택 가능
       fileInputEl.disabled = false;
@@ -568,7 +625,8 @@ window.onload = ()=>{
   setModeStyle('monthly', { kmScale:1.0 });
 
   const t=new Date();
-  document.getElementById('date-input').value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+  const di = document.getElementById('date-input');
+  if (di) di.value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
   selectedDate = t;
 
   scaleStageCanvas();
