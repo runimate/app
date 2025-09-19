@@ -1,5 +1,6 @@
-// js/ocr.js — robust pass (distance/pace/time only)
+// js/ocr.js — daily + monthly 지원 (ES Module)
 
+// 1) Tesseract 보장
 async function ensureTesseract() {
   if (window.Tesseract) return window.Tesseract;
   await new Promise((resolve, reject) => {
@@ -7,173 +8,169 @@ async function ensureTesseract() {
     s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
     s.async = true;
     s.onload = resolve;
-    s.onerror = () => reject(new Error('Failed to load Tesseract.js'));
+    s.onerror = () => reject(new Error('Failed to load Tesseract.js CDN'));
     document.head.appendChild(s);
   });
   if (!window.Tesseract) throw new Error('Tesseract failed to initialize');
   return window.Tesseract;
 }
 
-// ---------- image utils ----------
-function toImage(src) {
-  return new Promise((res, rej) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => res(img);
-    img.onerror = rej;
-    img.src = src;
-  });
-}
-function makeCanvas(w, h) {
-  const c = document.createElement('canvas');
-  c.width = Math.max(2, Math.round(w));
-  c.height = Math.max(2, Math.round(h));
+// 2) 캔버스 유틸
+function toImage(src){ return new Promise((res, rej)=>{ const img=new Image(); img.onload=()=>res(img); img.onerror=rej; img.src=src; }); }
+function makeCanvas(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
+function drawCrop(img,x,y,w,h,scale=2.2){
+  const c=makeCanvas(Math.round(w*scale), Math.round(h*scale));
+  const ctx=c.getContext('2d', { willReadFrequently:true });
+  ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(img, x,y,w,h, 0,0,c.width,c.height);
   return c;
 }
-function drawCrop(img, x, y, w, h, scale = 2.2) {
-  const c = makeCanvas(w * scale, h * scale);
-  const g = c.getContext('2d', { willReadFrequently: true });
-  g.imageSmoothingEnabled = false;
-  g.drawImage(img, x, y, w, h, 0, 0, c.width, c.height);
-  return c;
-}
-function binarize(canvas, threshold = 185) {
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  const im = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const d = im.data;
-  for (let i = 0; i < d.length; i += 4) {
-    const g = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
-    const v = g > threshold ? 255 : 0;
-    d[i] = d[i+1] = d[i+2] = v;
+function binarize(canvas, threshold=185){
+  const ctx = canvas.getContext('2d', { willReadFrequently:true });
+  const im  = ctx.getImageData(0,0,canvas.width,canvas.height);
+  const d   = im.data;
+  for(let i=0;i<d.length;i+=4){
+    const g = 0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+    const v = g>threshold ? 255 : 0;
+    d[i]=d[i+1]=d[i+2]=v;
   }
-  ctx.putImageData(im, 0, 0);
+  ctx.putImageData(im,0,0);
   return canvas;
 }
-const toURL = (c) => c.toDataURL('image/png');
+function fillWhite(canvas, rx, ry, rw, rh){ // rx..: 0~1 비율 좌표
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(canvas.width*rx, canvas.height*ry, canvas.width*rw, canvas.height*rh);
+  return canvas;
+}
+const toURL = (c)=>c.toDataURL('image/png');
 
-// ---------- layout ROIs ----------
-function rois(w, h) {
-  // NOTE: top.w를 좁혀 우측의 GARMIN 박스를 배제
-  const top = {
-    x: Math.round(w * 0.06),
-    y: Math.round(h * 0.06),
-    w: Math.round(w * 0.72),       // ← 기존 0.86 → 0.72 (우측 28% 마스킹)
-    h: Math.round(h * 0.24)
+// 3) OCR helpers
+async function ocrLine(url, { psm=7, whitelist='0123456789:’\'″"′ ' } = {}){
+  const T = await ensureTesseract();
+  const opts = {
+    tessedit_pageseg_mode: psm,
+    tessedit_char_whitelist: whitelist,
+    preserve_interword_spaces: '1'
   };
-
-  // 하단 3열 (NRC/가민 공통 배치에 맞춘 대략값)
-  const bar = { x: Math.round(w*0.06), y: Math.round(h*0.48), w: Math.round(w*0.88), h: Math.round(h*0.16) };
-  const cellW = Math.round(bar.w / 3);
-  const pace = { x: bar.x + 0*cellW, y: bar.y, w: cellW, h: bar.h };
-  const time = { x: bar.x + 1*cellW, y: bar.y, w: cellW, h: bar.h };
-
-  return { top, pace, time };
+  const res = await Tesseract.recognize(url, 'eng+kor', opts);
+  return res?.data?.text?.trim() ?? '';
+}
+async function bestTextFrom(canvas){
+  // 임계값 다양화 + 원본: 가장 긴 숫자 패턴 선택
+  const candidates = [null, 165, 185, 205];
+  const texts = [];
+  for(const th of candidates){
+    const c = th==null ? canvas : binarize(cloneCanvas(canvas), th);
+    texts.push(await ocrLine(toURL(c)));
+  }
+  // 가장 숫자/콜론이 많은 걸 선택
+  const score = (s)=> (s.match(/[0-9]/g)||[]).length + (s.match(/[:]/g)||[]).length*2;
+  return texts.sort((a,b)=>score(b)-score(a))[0] || '';
+}
+function cloneCanvas(src){
+  const c = makeCanvas(src.width, src.height);
+  c.getContext('2d').drawImage(src,0,0);
+  return c;
 }
 
-// ---------- parsing ----------
-function sanitizePunct(s){
-  return String(s || '')
-    .replace(/[’'′]/g, ':')   // minute mark → :
-    .replace(/[″"]/g, ':')    // second mark → :
-    .replace(/：/g, ':')
-    .replace(/\s+/g, ' ')
-    .trim();
+// 4) ROI들
+function roisDaily(w,h){
+  // 상단 큰 거리 (좌70% 영역만 사용, 우상단 로고 마스킹)
+  const top = { x: Math.round(w*0.06), y: Math.round(h*0.06), w: Math.round(w*0.74), h: Math.round(h*0.26) };
+  // 하단 3칸 중 Pace/Time
+  const barY = Math.round(h*0.48), barH = Math.round(h*0.16);
+  const barX = Math.round(w*0.06), barW = Math.round(w*0.88), cellW = Math.round(barW/3);
+  return {
+    top,
+    pace: { x: barX + 0*cellW, y: barY, w: cellW, h: barH },
+    time: { x: barX + 1*cellW, y: barY, w: cellW, h: barH },
+    runs: null
+  };
 }
-function parseDistance(s) {
-  const t = sanitizePunct(s).replace(/,/g, '.');
-  const m = t.match(/\b(\d{1,3}(?:\.\d{1,2})?)\b/);
+function roisMonthly(w,h){
+  // 상단 누적 KM
+  const top = { x: Math.round(w*0.06), y: Math.round(h*0.06), w: Math.round(w*0.80), h: Math.round(h*0.26) };
+  // 중단 3칸: Runs / Avg. Pace / Time (좌→우)
+  const barY = Math.round(h*0.50), barH = Math.round(h*0.18);
+  const barX = Math.round(w*0.06), barW = Math.round(w*0.88), cellW = Math.round(barW/3);
+  return {
+    top,
+    runs: { x: barX + 0*cellW, y: barY, w: cellW, h: barH },
+    pace: { x: barX + 1*cellW, y: barY, w: cellW, h: barH },
+    time: { x: barX + 2*cellW, y: barY, w: cellW, h: barH },
+  };
+}
+
+// 5) 파서
+function parseDistance(s){
+  // 소수점/콤마 모두 허용. 1~3자리 정수 + 선택적 .dd
+  const m = s.replace(/,/g,'.').match(/\b(\d{1,3}(?:\.\d{1,2})?)\b/);
   return m ? parseFloat(m[1]) : null;
 }
-function parsePace(s) {
-  const t = sanitizePunct(s);
-  const m = t.match(/(\d{1,2})\s*:\s*(\d{2})/);
-  if (!m) return { min:null, sec:null };
-  const mm = +m[1], ss = +m[2];
-  if (mm < 2 || mm > 20 || ss > 59) return { min:null, sec:null };
-  return { min:mm, sec:ss };
+function parseRuns(s){
+  const m = s.match(/\b(\d{1,3})\b/);
+  return m ? parseInt(m[1],10) : null;
 }
-function parseTime(s) {
-  const t = sanitizePunct(s);
-  const hms = t.match(/\b(\d{1,2})\s*:\s*(\d{2})\s*:\s*(\d{2})\b/);
+function parsePace(s){
+  const t = s.replace(/[’′']/g,':').replace(/[″"]/g,':').replace(/：/g,':');
+  const m = t.match(/(\d{1,2})\s*:\s*([0-5]\d)/);
+  if(!m) return { min:null, sec:null };
+  return { min:+m[1], sec:+m[2] };
+}
+function parseTime(s){
+  const t = s.replace(/[’′']/g,':').replace(/：/g,':');
+  // 5h 41m 34s 형태
+  const hmsWords = t.match(/(\d{1,2})\s*h[^0-9]*(\d{1,2})\s*m[^0-9]*(\d{1,2})\s*s/i);
+  if (hmsWords) return { raw:`${+hmsWords[1]}:${hmsWords[2]}:${hmsWords[3]}`, H:+hmsWords[1], M:+hmsWords[2], S:+hmsWords[3] };
+  // 1:05:46
+  const hms = t.match(/\b(\d{1,2})\s*:\s*([0-5]\d)\s*:\s*([0-5]\d)\b/);
   if (hms) return { raw:`${+hms[1]}:${hms[2]}:${hms[3]}`, H:+hms[1], M:+hms[2], S:+hms[3] };
-  const ms  = t.match(/\b(\d{1,2})\s*:\s*(\d{2})\b/);
+  // 47:53
+  const ms  = t.match(/\b(\d{1,2})\s*:\s*([0-5]\d)\b/);
   if (ms)  return { raw:`${+ms[1]}:${ms[2]}`, H:null, M:+ms[1], S:+ms[2] };
   return { raw:null, H:null, M:null, S:null };
 }
 
-// ---------- OCR core (multi-pass + whitelist) ----------
-async function ocrLine(url, whitelist) {
-  const T = await ensureTesseract();
-  const baseCfg = {
-    tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
-    user_defined_dpi: '300',
-    tessedit_char_whitelist: whitelist,
-    load_system_dawg: 'F',
-    load_freq_dawg: 'F'
-  };
-  // 한 번 더 강하게 숫자만
-  const altCfg = {
-    ...baseCfg,
-    tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
-  };
-
-  // 4-pass: bin 165/185/205 + non-bin
-  const results = [];
-  const tryOne = async (url, cfg) => {
-    const r = await Tesseract.recognize(url, 'eng', cfg);
-    results.push({ text: r?.data?.text || '', conf: r?.data?.confidence ?? 0 });
-  };
-  await tryOne(url, baseCfg);
-
-  // 비/가벼운 재시도를 위해 같은 이미지로 altCfg
-  await tryOne(url, altCfg);
-
-  return results.sort((a,b)=> (b.conf||0)-(a.conf||0))[0]; // 최고 confidence
-}
-
-async function ocrCandidatesFromCanvas(canvas, whitelist) {
-  // 다양한 threshold로 만든 3장의 candidate + 원본 1장 => 각자 ocrLine
-  const urls = [
-    toURL(binarize(canvas.cloneNode(true), 165)),
-    toURL(binarize(canvas.cloneNode(true), 185)),
-    toURL(binarize(canvas.cloneNode(true), 205)),
-    toURL(canvas) // non-binarized
-  ];
-  const outs = await Promise.all(urls.map(u => ocrLine(u, whitelist)));
-  // 최고 conf 반환
-  return outs.sort((a,b)=> (b.conf||0)-(a.conf||0))[0];
-}
-
-// ---------- public API ----------
-export async function extractAll(imgDataURL, { recordType } = { recordType:'daily' }) {
+// 6) 공개 API
+export async function extractAll(imgDataURL, { recordType='daily' } = {}){
   const img = await toImage(imgDataURL);
   const { width:w, height:h } = img;
-  const { top, pace, time } = rois(w, h);
 
-  // distance (mask right-28% to avoid GARMIN)
-  const topCrop = drawCrop(img, top.x, top.y, top.w, top.h, 2.6);
-  // 추가 마스킹(혹시 남은 로고 영역 대비): 오른쪽 6% 더 잘라내기
-  const mctx = topCrop.getContext('2d');
-  mctx.fillStyle = '#fff';
-  mctx.fillRect(Math.round(topCrop.width*0.94), 0, Math.round(topCrop.width*0.06), topCrop.height);
+  const R = recordType==='monthly' ? roisMonthly(w,h) : roisDaily(w,h);
 
-  const kmBest = await ocrCandidatesFromCanvas(topCrop, '0123456789.');
-  const km = parseDistance(kmBest.text);
+  // --- 거리 (가민 로고 덮기 포함) ---
+  let topC = drawCrop(img, R.top.x, R.top.y, R.top.w, R.top.h, 2.6);
+  // 우상단 로고 영역을 강제로 흰색 덮기 (텍스트 라인에 방해되는 영역)
+  topC = fillWhite(topC, 0.68, 0.00, 0.32, 0.45);
+  const kmTxt = await bestTextFrom(binarize(cloneCanvas(topC), 190));
+  const km = parseDistance(kmTxt);
 
-  // pace / time
-  const paceCrop = drawCrop(img, pace.x, pace.y, pace.w, pace.h, 2.6);
-  const timeCrop = drawCrop(img, time.x, time.y, time.w, time.h, 2.6);
+  // --- 페이스 ---
+  let paceMin=null, paceSec=null;
+  if (R.pace){
+    const paceC = drawCrop(img, R.pace.x, R.pace.y, R.pace.w, R.pace.h, 2.6);
+    const paceTxt = await bestTextFrom(paceC);
+    const P = parsePace(paceTxt);
+    paceMin = P.min; paceSec = P.sec;
+  }
 
-  const paceBest = await ocrCandidatesFromCanvas(paceCrop, '0123456789:’′"');
-  const timeBest = await ocrCandidatesFromCanvas(timeCrop, '0123456789:’′"');
+  // --- 시간 ---
+  let timeH=null, timeM=null, timeS=null, timeRaw=null;
+  if (R.time){
+    const timeC = drawCrop(img, R.time.x, R.time.y, R.time.w, R.time.h, 2.6);
+    const timeTxt = await bestTextFrom(timeC);
+    const T = parseTime(timeTxt);
+    timeH = T.H; timeM = T.M; timeS = T.S; timeRaw = T.raw;
+  }
 
-  const { min:paceMin, sec:paceSec } = parsePace(paceBest.text);
-  const T = parseTime(timeBest.text);
+  // --- 러닝 횟수 (monthly만) ---
+  let runs = null;
+  if (recordType==='monthly' && R.runs){
+    const runsC = drawCrop(img, R.runs.x, R.runs.y, R.runs.w, R.runs.h, 2.6);
+    const runsTxt = await bestTextFrom(runsC);
+    runs = parseRuns(runsTxt);
+  }
 
-  return {
-    km: km ?? 0,
-    runs: (recordType === 'monthly') ? null : null,
-    paceMin, paceSec,
-    timeH: T.H, timeM: T.M, timeS: T.S, timeRaw: T.raw
-  };
+  return { km: km ?? 0, runs, paceMin, paceSec, timeH, timeM, timeS, timeRaw };
 }
