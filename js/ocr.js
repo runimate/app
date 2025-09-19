@@ -1,21 +1,26 @@
-// js/ocr.js — monthly Runs 지원 + pace 교정 + dual-threshold
+// js/ocr.js — pace/time 특화 안정화 버전 (영/한 공용 레이아웃)
+// 필요한 3개만 뽑음: km, pace(mm:ss), time(H:MM:SS | MM:SS)
 
-// 1) Tesseract 보장
-async function ensureTesseract() {
+/////////////////////////////
+// 0) Tesseract 보장
+/////////////////////////////
+async function ensureTesseract () {
   if (window.Tesseract) return window.Tesseract;
   await new Promise((resolve, reject) => {
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
     s.async = true;
     s.onload = resolve;
-    s.onerror = () => reject(new Error('Failed to load Tesseract.js CDN'));
+    s.onerror = () => reject(new Error('Failed to load Tesseract.js'));
     document.head.appendChild(s);
   });
   if (!window.Tesseract) throw new Error('Tesseract failed to initialize');
   return window.Tesseract;
 }
 
-// 2) 이미지/전처리 유틸
+/////////////////////////////
+// 1) 이미지/캔버스 유틸
+/////////////////////////////
 function toImage(src) {
   return new Promise((res, rej) => {
     const img = new Image();
@@ -24,7 +29,7 @@ function toImage(src) {
     img.src = src;
   });
 }
-function drawCrop(img, x, y, w, h, scale = 2.6) {
+function drawCrop(img, x, y, w, h, scale = 2.8) {
   const c = document.createElement('canvas');
   c.width = Math.round(w * scale);
   c.height = Math.round(h * scale);
@@ -33,168 +38,216 @@ function drawCrop(img, x, y, w, h, scale = 2.6) {
   ctx.drawImage(img, x, y, w, h, 0, 0, c.width, c.height);
   return c;
 }
-function binarize(canvas, threshold = 185) {
+function toGray(canvas) {
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   const im = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const d = im.data;
   for (let i = 0; i < d.length; i += 4) {
     const g = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
-    const v = g > threshold ? 255 : 0;
+    d[i] = d[i+1] = d[i+2] = g;
+  }
+  ctx.putImageData(im, 0, 0);
+  return canvas;
+}
+function binarize(canvas, th = 185) {
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const im = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const d = im.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const v = d[i] > th ? 255 : 0; // 이미 gray 가정
     d[i] = d[i+1] = d[i+2] = v;
   }
   ctx.putImageData(im, 0, 0);
   return canvas;
 }
-const toDataURL = (canvas) => canvas.toDataURL('image/png');
+const dataURL = (c) => c.toDataURL('image/png');
 
-// 3) OCR 호출 (숫자 전용 세팅)
-async function ocrDigits(url, T, psm = T.PSM.SINGLE_LINE) {
-  const res = await T.recognize(url, 'eng+kor', {
-    tessedit_pageseg_mode: psm,
-    tessedit_char_whitelist: '0123456789:.',
-    classify_bln_numeric_mode: '1',
-    preserve_interword_spaces: '1'
+/////////////////////////////
+// 2) ROIs (NRC/가민 카드 공통 비율)
+//   - 상단 큰 "거리"
+//   - 하단 3열(좌: Pace, 중: Time)
+//   * 일부 스크린샷 편차를 흡수하도록 여백 확대
+/////////////////////////////
+function rois(w, h) {
+  const top = {
+    x: Math.round(w * 0.06),
+    y: Math.round(h * 0.06),
+    w: Math.round(w * 0.88),
+    h: Math.round(h * 0.26),
+  };
+  const barY = Math.round(h * 0.47);
+  const barH = Math.round(h * 0.19);
+  const barX = Math.round(w * 0.06);
+  const barW = Math.round(w * 0.88);
+  const cellW = Math.round(barW / 3);
+
+  const pace = { x: barX + 0 * cellW, y: barY, w: cellW, h: barH };
+  const time = { x: barX + 1 * cellW, y: barY, w: cellW, h: barH };
+
+  return { top, pace, time };
+}
+
+/////////////////////////////
+// 3) OCR 래퍼 (화이트리스트 & 다중전처리)
+/////////////////////////////
+async function ocrLine(url, { whitelist = null, lang = 'eng', psm = 'SINGLE_LINE' } = {}) {
+  const T = await ensureTesseract();
+  const params = {
+    preserve_interword_spaces: '1',
+    tessedit_pageseg_mode: T.PSM[psm] ?? T.PSM.SINGLE_LINE,
+  };
+  if (whitelist) params.tessedit_char_whitelist = whitelist;
+
+  const { data } = await Tesseract.recognize(url, lang, params);
+  // text와 confidence를 함께 반환
+  const text = (data?.text || '').trim();
+  const conf = (data?.confidence ?? 0);
+  return { text, conf };
+}
+
+async function ocrBestFromVariants(canvas, { whitelist, lang = 'eng' } = {}) {
+  // pace/time는 작은 기호(′ ″ :) 보존이 중요 → 여러 임계값 시도
+  const variants = [];
+  const ths = [170, 185, 200];
+  const gray = toGray(canvas);
+
+  // 원본 회색, 임계값 3종
+  variants.push(gray);
+  ths.forEach(th => {
+    const c = document.createElement('canvas');
+    c.width = gray.width; c.height = gray.height;
+    c.getContext('2d').drawImage(gray, 0, 0);
+    variants.push(binarize(c, th));
   });
-  return res?.data?.text || '';
-}
 
-// 4) ROI (일/월 레이아웃 분기)
-function rois(w, h, recordType = 'daily') {
-  const top = { x: Math.round(w*0.07), y: Math.round(h*0.07), w: Math.round(w*0.86), h: Math.round(h*0.24) };
-
-  const bar = { x: Math.round(w*0.06), y: Math.round(h*0.48), w: Math.round(w*0.88), h: Math.round(h*0.16) };
-  const cellW = Math.round(bar.w / 3);
-
-  if (recordType === 'monthly') {
-    // [Runs][Pace][Time]
-    const runs = { x: bar.x + 0*cellW, y: bar.y, w: cellW, h: bar.h };
-    const pace = { x: bar.x + 1*cellW, y: bar.y, w: cellW, h: bar.h };
-    const time = { x: bar.x + 2*cellW, y: bar.y, w: cellW, h: bar.h };
-    return { top, runs, pace, time };
-  } else {
-    // [Pace][Time][(unused)]
-    const pace = { x: bar.x + 0*cellW, y: bar.y, w: cellW, h: bar.h };
-    const time = { x: bar.x + 1*cellW, y: bar.y, w: cellW, h: bar.h };
-    return { top, pace, time };
+  // RAW_LINE 한 번, SINGLE_LINE 한 번 → 총 8패스까지
+  const tries = [];
+  for (const c of variants) {
+    const url = dataURL(c);
+    tries.push(ocrLine(url, { whitelist, lang, psm: 'RAW_LINE' }));
+    tries.push(ocrLine(url, { whitelist, lang, psm: 'SINGLE_LINE' }));
   }
+
+  // 가장 "그럴듯한" 문자열 선택: 숫자/콜론 비율 높고 길이 3~7, confidence 높은 것 우선
+  const results = await Promise.all(tries);
+  let best = { text: '', conf: -1, score: -1 };
+  for (const r of results) {
+    const t = r.text || '';
+    const digits = (t.match(/[0-9]/g) || []).length;
+    const colons = (t.match(/[:’'′″"]/g) || []).length;
+    const len = t.length;
+    const score = digits * 3 + colons * 2 + r.conf * 0.02 - Math.abs(len - 5); // 대략적인 휴리스틱
+    if (score > best.score) best = { ...r, score };
+  }
+  return best.text;
 }
 
-// 5) 파서
-function parseDistance(s) {
-  const m = String(s || '').replace(/,/g, '.').match(/\b(\d{1,3}(?:\.\d{1,2})?)\b/);
+/////////////////////////////
+// 4) 파서 & 정규화
+/////////////////////////////
+function normPaceString(s) {
+  if (!s) return '';
+  return s
+    // 흔한 잘못된 문자들을 콜론으로 통일
+    .replace(/[’'′]/g, ':')
+    .replace(/[“”″"]/g, ':')
+    .replace(/：/g, ':')
+    // 'O', 'o' → 0, 'l','I' → 1, 'S'→'5', 'B'→'8'
+    .replace(/[Oo]/g, '0')
+    .replace(/[lI]/g, '1')
+    .replace(/S/g, '5')
+    .replace(/B/g, '8')
+    // 숫자/콜론 외 제거 & 콜론 중복 정리
+    .replace(/[^0-9:]/g, '')
+    .replace(/:+/g, ':')
+    .replace(/^:|:$/g, '');
+}
+function parsePaceStrict(s) {
+  const t = normPaceString(s);
+  const m = t.match(/\b(\d{1,2}):(\d{2})\b/);
+  if (!m) return { min: null, sec: null, raw: t };
+
+  let mm = +m[1], ss = +m[2];
+
+  // 초가 60 이상으로 뜨면 흔한 오인식(7→1 등) 보정 시도
+  if (ss >= 60 && ss <= 79) ss -= 20; // 72→52 같은 케이스 보정
+  if (ss >= 60) ss = ss % 60;
+
+  // '15:06'처럼 앞에 붙는 유령 '1' 보정 (정상 페이스 범위 고려)
+  if (mm >= 13 && mm <= 21) {
+    const mm2 = mm - 10;
+    if (mm2 >= 3 && mm2 <= 12) mm = mm2;
+  }
+
+  // 최종 유효성 검사 (2:30~12:00/km를 합리 범위로)
+  if (!(mm >= 2 && mm <= 12) || !(ss >= 0 && ss <= 59)) {
+    return { min: null, sec: null, raw: t };
+  }
+  return { min: mm, sec: ss, raw: t };
+}
+
+function parseTimeFlexible(s) {
+  if (!s) return { raw: null, H: null, M: null, S: null };
+  const t = s
+    .replace(/[’'′]/g, ':')
+    .replace(/：/g, ':')
+    .replace(/[Oo]/g, '0')
+    .replace(/[lI]/g, '1');
+  const hms = t.match(/\b(\d{1,2})\s*:\s*(\d{2})\s*:\s*(\d{2})\b/);
+  if (hms) return { raw: `${+hms[1]}:${hms[2]}:${hms[3]}`, H: +hms[1], M: +hms[2], S: +hms[3] };
+  const ms = t.match(/\b(\d{1,2})\s*:\s*(\d{2})\b/);
+  if (ms)  return { raw: `${+ms[1]}:${ms[2]}`, H: null, M: +ms[1], S: +ms[2] };
+  return { raw: null, H: null, M: null, S: null };
+}
+
+function parseDistanceStrict(s) {
+  // 큰 거리 라인: 숫자와 점만 허용, 소수점 1~2자리
+  const t = s.replace(/[^0-9.]/g, '').replace(/\.{2,}/g, '.');
+  const m = t.match(/\b(\d{1,3}(?:\.\d{1,2})?)\b/);
   return m ? parseFloat(m[1]) : null;
 }
-function parseRuns(s) {
-  const m = String(s || '').match(/\b(\d{1,3})\b/);
-  if (!m) return null;
-  const v = +m[1];
-  // 월간 러닝 횟수 현실 범위 (1~60 정도로 제한)
-  return (v >= 1 && v <= 60) ? v : null;
-}
-function parsePace(s) {
-  const t = String(s || '')
-    .replace(/[’'′]/g, ':')
-    .replace(/″|"/g, ':')
-    .replace(/：/g, ':');
-  const m = t.match(/(\d{1,2})\s*:\s*(\d{2})/);
-  if (!m) return { min:null, sec:null, secTotal:null, raw:null };
-  const min = +m[1], sec = +m[2];
-  return { min, sec, secTotal: min*60 + sec, raw: `${min}:${m[2]}` };
-}
-function parseTime(s) {
-  const t = String(s || '').replace(/[’'′]/g, ':').replace(/：/g, ':');
-  const hms = t.match(/\b(\d{1,2})\s*:\s*(\d{2})\s*:\s*(\d{2})\b/);
-  if (hms) {
-    const H=+hms[1], M=+hms[2], S=+hms[3];
-    return { raw:`${H}:${hms[2]}:${hms[3]}`, H, M, S, secTotal: H*3600 + M*60 + S };
-  }
-  const ms = t.match(/\b(\d{1,2})\s*:\s*(\d{2})\b/);
-  if (ms)  {
-    const M=+ms[1], S=+ms[2];
-    return { raw:`${M}:${ms[2]}`, H:null, M, S, secTotal: M*60 + S };
-  }
-  return { raw:null, H:null, M:null, S:null, secTotal:null };
-}
 
-// 6) 합리성 체크 & 교차검증
-const validPace = (s)=> Number.isFinite(s) && s>=120 && s<=1200; // 2:00~20:00
-const validKm   = (k)=> Number.isFinite(k) && k>0 && k<1000;
-const validTime = (t)=> Number.isFinite(t) && t>0 && t<= (15*3600);
-
-function reconcilePace(ocrPaceSec, timeSec, km) {
-  const calc = (validTime(timeSec) && validKm(km)) ? Math.round(timeSec / km) : null;
-  if (!validPace(ocrPaceSec) && validPace(calc)) return calc;
-  if (validPace(ocrPaceSec) && validPace(calc)) {
-    const diff = Math.abs(ocrPaceSec - calc);
-    if (diff >= 20) return calc; // 6↔5분대 대실수 방지
-  }
-  return ocrPaceSec ?? calc ?? null;
-}
-
-// 7) 공개 API
-export async function extractAll(imgDataURL, { recordType } = { recordType:'daily' }) {
-  const T = await ensureTesseract();
+/////////////////////////////
+// 5) 공개 API
+/////////////////////////////
+export async function extractAll(imgDataURL, { recordType } = { recordType: 'daily' }) {
   const img = await toImage(imgDataURL);
-  const { width:w, height:h } = img;
-  const R = rois(w, h, recordType);
+  const { width: w, height: h } = img;
+  const { top, pace, time } = rois(w, h);
 
-  // --- 거리
-  const topC = binarize(drawCrop(img, R.top.x, R.top.y, R.top.w, R.top.h, 2.6), 190);
-  const kmTxt = await ocrDigits(toDataURL(topC), T, T.PSM.SINGLE_LINE);
-  const km = parseDistance(kmTxt);
+  // 5-1. 거리 (숫자+점만 화이트리스트, SINGLE_LINE)
+  const topC = drawCrop(img, top.x, top.y, top.w, top.h, 2.6);
+  toGray(topC);
+  binarize(topC, 190);
+  const topTxt = (await ocrLine(dataURL(topC), {
+    whitelist: '0123456789.',
+    lang: 'eng',
+    psm: 'SINGLE_LINE'
+  })).text;
+  const km = parseDistanceStrict(topTxt);
 
-  // --- 페이스/시간 (dual threshold)
-  const paceBoxes = R.pace
-    ? [ binarize(drawCrop(img, R.pace.x, R.pace.y, R.pace.w, R.pace.h, 2.6), 185),
-        binarize(drawCrop(img, R.pace.x, R.pace.y, R.pace.w, R.pace.h, 2.6), 200) ]
-    : [];
-  const timeBox = R.time
-    ? binarize(drawCrop(img, R.time.x, R.time.y, R.time.w, R.time.h, 2.6), 185)
-    : null;
+  // 5-2. 페이스 (숫자+콜론만 허용, 다중 전처리 → 베스트 선택)
+  const paceC = drawCrop(img, pace.x, pace.y, pace.w, pace.h, 3.0);
+  const paceTxt = await ocrBestFromVariants(paceC, {
+    whitelist: '0123456789:\'′″"',
+    lang: 'eng' // 숫자/콜론만 필요해서 eng로 충분
+  });
+  const { min: paceMin, sec: paceSec } = parsePaceStrict(paceTxt);
 
-  const [paceTxt1, paceTxt2, timeTxt] = await Promise.all([
-    paceBoxes[0] ? ocrDigits(toDataURL(paceBoxes[0]), T, T.PSM.SINGLE_LINE) : '',
-    paceBoxes[1] ? ocrDigits(toDataURL(paceBoxes[1]), T, T.PSM.SINGLE_LINE) : '',
-    timeBox ? ocrDigits(toDataURL(timeBox), T, T.PSM.SINGLE_LINE) : ''
-  ]);
-
-  const p1 = parsePace(paceTxt1);
-  const p2 = parsePace(paceTxt2);
-  const Tm = parseTime(timeTxt);
-  const timeSec = Tm.secTotal ?? null;
-
-  // pace 후보 선택(보수적으로 더 느린 쪽 우선)
-  const candidates = [p1.secTotal, p2.secTotal].filter(Number.isFinite);
-  let ocrPaceSec = null;
-  if (candidates.length === 1) ocrPaceSec = candidates[0];
-  else if (candidates.length === 2) ocrPaceSec = Math.max(candidates[0], candidates[1]);
-  const finalPaceSec = reconcilePace(ocrPaceSec, timeSec, km);
-
-  let paceMin = null, paceSec = null;
-  if (Number.isFinite(finalPaceSec)) {
-    paceMin = Math.floor(finalPaceSec/60);
-    paceSec = finalPaceSec % 60;
-  }
-
-  // --- 월간: Runs 추출
-  let runs = null;
-  if (recordType === 'monthly' && R.runs) {
-    const runsC1 = binarize(drawCrop(img, R.runs.x, R.runs.y, R.runs.w, R.runs.h, 2.6), 185);
-    const runsC2 = binarize(drawCrop(img, R.runs.x, R.runs.y, R.runs.w, R.runs.h, 2.6), 200);
-    const [runsTxt1, runsTxt2] = await Promise.all([
-      ocrDigits(toDataURL(runsC1), T, T.PSM.SINGLE_LINE),
-      ocrDigits(toDataURL(runsC2), T, T.PSM.SINGLE_LINE),
-    ]);
-    // 두 결과 중 유효한 값을 고름(큰 값 우선)
-    const r1 = parseRuns(runsTxt1);
-    const r2 = parseRuns(runsTxt2);
-    runs = [r1, r2].filter((x)=>Number.isInteger(x)).sort((a,b)=>b-a)[0] ?? null;
-  }
+  // 5-3. 시간 (숫자+콜론, SINGLE_LINE 우선)
+  const timeC = drawCrop(img, time.x, time.y, time.w, time.h, 3.0);
+  const timeRes = await ocrLine(dataURL(toGray(timeC)), {
+    whitelist: '0123456789:',
+    lang: 'eng',
+    psm: 'SINGLE_LINE'
+  });
+  const T = parseTimeFlexible(timeRes.text);
 
   return {
-    km: validKm(km) ? km : 0,
-    runs,
-    paceMin, paceSec,
-    timeH: Tm.H, timeM: Tm.M, timeS: Tm.S, timeRaw: Tm.raw
+    km: Number.isFinite(km) ? km : 0,
+    runs: (recordType === 'monthly') ? null : null, // 월간은 별도 설계에 맞춰 확장
+    paceMin: Number.isFinite(paceMin) ? paceMin : null,
+    paceSec: Number.isFinite(paceSec) ? paceSec : null,
+    timeH: T.H, timeM: T.M, timeS: T.S, timeRaw: T.raw
   };
 }
