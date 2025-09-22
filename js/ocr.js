@@ -37,7 +37,7 @@ function binarize(canvas, threshold=185){
   ctx.putImageData(im,0,0);
   return canvas;
 }
-function fillWhite(canvas, rx, ry, rw, rh){ // rx..: 0~1 비율 좌표
+function fillWhite(canvas, rx, ry, rw, rh){
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#fff';
   ctx.fillRect(canvas.width*rx, canvas.height*ry, canvas.width*rw, canvas.height*rh);
@@ -57,14 +57,12 @@ async function ocrLine(url, { psm=7, whitelist='0123456789:’\'″"′ ' } = {}
   return res?.data?.text?.trim() ?? '';
 }
 async function bestTextFrom(canvas){
-  // 임계값 다양화 + 원본: 가장 긴 숫자 패턴 선택
   const candidates = [null, 165, 185, 205];
   const texts = [];
   for(const th of candidates){
     const c = th==null ? canvas : binarize(cloneCanvas(canvas), th);
     texts.push(await ocrLine(toURL(c)));
   }
-  // 가장 숫자/콜론이 많은 걸 선택
   const score = (s)=> (s.match(/[0-9]/g)||[]).length + (s.match(/[:]/g)||[]).length*2;
   return texts.sort((a,b)=>score(b)-score(a))[0] || '';
 }
@@ -76,9 +74,7 @@ function cloneCanvas(src){
 
 // 4) ROI들
 function roisDaily(w,h){
-  // 상단 큰 거리 (좌70% 영역만 사용, 우상단 로고 마스킹)
   const top = { x: Math.round(w*0.06), y: Math.round(h*0.06), w: Math.round(w*0.74), h: Math.round(h*0.26) };
-  // 하단 3칸 중 Pace/Time
   const barY = Math.round(h*0.48), barH = Math.round(h*0.16);
   const barX = Math.round(w*0.06), barW = Math.round(w*0.88), cellW = Math.round(barW/3);
   return {
@@ -89,9 +85,7 @@ function roisDaily(w,h){
   };
 }
 function roisMonthly(w,h){
-  // 상단 누적 KM
   const top = { x: Math.round(w*0.06), y: Math.round(h*0.06), w: Math.round(w*0.80), h: Math.round(h*0.26) };
-  // 중단 3칸: Runs / Avg. Pace / Time (좌→우)
   const barY = Math.round(h*0.50), barH = Math.round(h*0.18);
   const barX = Math.round(w*0.06), barW = Math.round(w*0.88), cellW = Math.round(barW/3);
   return {
@@ -104,29 +98,36 @@ function roisMonthly(w,h){
 
 // 5) 파서
 function parseDistance(s){
-  // 소수점/콤마 모두 허용. 1~3자리 정수 + 선택적 .dd
-  const m = s.replace(/,/g,'.').match(/\b(\d{1,3}(?:\.\d{1,2})?)\b/);
-  return m ? parseFloat(m[1]) : null;
+  s = s.replace(/[Oo]/g, '0').replace(/,/g,'.'); // O → 0 보정 포함
+  const matches = [...s.matchAll(/\b(\d{1,4}(?:\.\d{1,2})?)\b/g)];
+  if (!matches.length) return null;
+  let val = parseFloat(matches[0][1]);
+  // 보정: 3자리 이상 정수인데 소수점 없으면 잘못 인식된 걸로 판단
+  if (!matches[0][1].includes('.') && val >= 100){
+    const fixed = (val / 100).toFixed(2);
+    return parseFloat(fixed);
+  }
+  return val;
 }
+
 function parseRuns(s){
   const m = s.match(/\b(\d{1,3})\b/);
   return m ? parseInt(m[1],10) : null;
 }
+
 function parsePace(s){
   const t = s.replace(/[’′']/g,':').replace(/[″"]/g,':').replace(/：/g,':');
   const m = t.match(/(\d{1,2})\s*:\s*([0-5]\d)/);
   if(!m) return { min:null, sec:null };
   return { min:+m[1], sec:+m[2] };
 }
+
 function parseTime(s){
   const t = s.replace(/[’′']/g,':').replace(/：/g,':');
-  // 5h 41m 34s 형태
   const hmsWords = t.match(/(\d{1,2})\s*h[^0-9]*(\d{1,2})\s*m[^0-9]*(\d{1,2})\s*s/i);
   if (hmsWords) return { raw:`${+hmsWords[1]}:${hmsWords[2]}:${hmsWords[3]}`, H:+hmsWords[1], M:+hmsWords[2], S:+hmsWords[3] };
-  // 1:05:46
   const hms = t.match(/\b(\d{1,2})\s*:\s*([0-5]\d)\s*:\s*([0-5]\d)\b/);
   if (hms) return { raw:`${+hms[1]}:${hms[2]}:${hms[3]}`, H:+hms[1], M:+hms[2], S:+hms[3] };
-  // 47:53
   const ms  = t.match(/\b(\d{1,2})\s*:\s*([0-5]\d)\b/);
   if (ms)  return { raw:`${+ms[1]}:${ms[2]}`, H:null, M:+ms[1], S:+ms[2] };
   return { raw:null, H:null, M:null, S:null };
@@ -139,14 +140,11 @@ export async function extractAll(imgDataURL, { recordType='daily' } = {}){
 
   const R = recordType==='monthly' ? roisMonthly(w,h) : roisDaily(w,h);
 
-  // --- 거리 (가민 로고 덮기 포함) ---
   let topC = drawCrop(img, R.top.x, R.top.y, R.top.w, R.top.h, 2.6);
-  // 우상단 로고 영역을 강제로 흰색 덮기 (텍스트 라인에 방해되는 영역)
   topC = fillWhite(topC, 0.68, 0.00, 0.32, 0.45);
   const kmTxt = await bestTextFrom(binarize(cloneCanvas(topC), 190));
   const km = parseDistance(kmTxt);
 
-  // --- 페이스 ---
   let paceMin=null, paceSec=null;
   if (R.pace){
     const paceC = drawCrop(img, R.pace.x, R.pace.y, R.pace.w, R.pace.h, 2.6);
@@ -155,7 +153,6 @@ export async function extractAll(imgDataURL, { recordType='daily' } = {}){
     paceMin = P.min; paceSec = P.sec;
   }
 
-  // --- 시간 ---
   let timeH=null, timeM=null, timeS=null, timeRaw=null;
   if (R.time){
     const timeC = drawCrop(img, R.time.x, R.time.y, R.time.w, R.time.h, 2.6);
@@ -164,7 +161,6 @@ export async function extractAll(imgDataURL, { recordType='daily' } = {}){
     timeH = T.H; timeM = T.M; timeS = T.S; timeRaw = T.raw;
   }
 
-  // --- 러닝 횟수 (monthly만) ---
   let runs = null;
   if (recordType==='monthly' && R.runs){
     const runsC = drawCrop(img, R.runs.x, R.runs.y, R.runs.w, R.runs.h, 2.6);
