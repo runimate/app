@@ -41,9 +41,9 @@ export const fontSettings = {
     raceTitleSize: "30px",
     raceSubtypeSize: "50px",
     raceTimeSize: "130px",
-    raceTimeLetterSpace: "0px",
+    raceTimeLetterSpace: "2px",
     raceTimeTranslate: "0px,0px",
-    racePaceSize: "58px",
+    racePaceSize: "64px",
     raceGapSubtypeB: "10px",
     raceGapTimeB: "10px",
     raceGapPaceT: "14px"
@@ -55,10 +55,10 @@ export const fontSettings = {
 
     raceTitleSize: "30px",
     raceSubtypeSize: "50px",
-    raceTimeSize: "130px",
+    raceTimeSize: "140px",
     raceTimeLetterSpace: "-2px",
     raceTimeTranslate: "0px,0px",
-    racePaceSize: "54px",
+    racePaceSize: "64px",
     raceGapSubtypeB: "12px",
     raceGapTimeB: "8px",
     raceGapPaceT: "14px"
@@ -73,7 +73,7 @@ export const fontSettings = {
     raceTimeSize: "140px",
     raceTimeLetterSpace: "-2px",
     raceTimeTranslate: "0px,0px",
-    racePaceSize: "52px",
+    racePaceSize: "64px",
     raceGapSubtypeB: "10px",
     raceGapTimeB: "8px",
     raceGapPaceT: "12px"
@@ -88,7 +88,7 @@ export const fontSettings = {
     raceTimeSize: "130px",
     raceTimeLetterSpace: "-2px",
     raceTimeTranslate: "0px,0px",
-    racePaceSize: "52px",
+    racePaceSize: "64px",
     raceGapSubtypeB: "10px",
     raceGapTimeB: "8px",
     raceGapPaceT: "12px"
@@ -103,7 +103,7 @@ export const fontSettings = {
     raceTimeSize: "130px",
     raceTimeLetterSpace: "-2px",
     raceTimeTranslate: "0px,0px",
-    racePaceSize: "52px",
+    racePaceSize: "64px",
     raceGapSubtypeB: "10px",
     raceGapTimeB: "8px",
     raceGapPaceT: "12px"
@@ -118,7 +118,7 @@ export const fontSettings = {
     raceTimeSize: "130px",
     raceTimeLetterSpace: "-2px",
     raceTimeTranslate: "0px,0px",
-    racePaceSize: "54px",
+    racePaceSize: "64px",
     raceGapSubtypeB: "12px",
     raceGapTimeB: "8px",
     raceGapPaceT: "14px"
@@ -130,10 +130,10 @@ export const fontSettings = {
 
     raceTitleSize: "30px",
     raceSubtypeSize: "50px",
-    raceTimeSize: "130px",
-    raceTimeLetterSpace: "-2px",
+    raceTimeSize: "140px",
+    raceTimeLetterSpace: "-1px",
     raceTimeTranslate: "0px,0px",
-    racePaceSize: "52px",
+    racePaceSize: "64px",
     raceGapSubtypeB: "10px",
     raceGapTimeB: "8px",
     raceGapPaceT: "14px"
@@ -145,10 +145,10 @@ export const fontSettings = {
 
     raceTitleSize: "30px",
     raceSubtypeSize: "50px",
-    raceTimeSize: "130px",
-    raceTimeLetterSpace: "-2px",
+    raceTimeSize: "150px",
+    raceTimeLetterSpace: "0px",
     raceTimeTranslate: "0px,0px",
-    racePaceSize: "52px",
+    racePaceSize: "64px",
     raceGapSubtypeB: "8px",
     raceGapTimeB: "8px",
     raceGapPaceT: "12px"
@@ -162,12 +162,12 @@ export const fontSettings = {
     raceTitleSize: "30px",
     raceSubtypeSize: "50px",
     raceTimeSize: "84px",
-    raceTimeLetterSpace: "-3px",
+    raceTimeLetterSpace: "-1px",
     raceTimeTranslate: "0px,0px",
     racePaceSize: "48px",
     raceGapSubtypeB: "8px",
     raceGapTimeB: "8px",
-    raceGapPaceT: "20px"
+    raceGapPaceT: "0px"
   }
 };
 
