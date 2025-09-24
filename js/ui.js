@@ -1,4 +1,9 @@
-// ui.js — race-mode safe font scope + robust schedule loading + live preview
+// ui.js — Daily/Monthly/Race 완전 통합판
+// - 레이스: 월/대회 드롭다운 1:2 배치, '직접입력…' 맨 아래, 선택 즉시 프리뷰 반영
+// - 레이스: Time > Pace 순서, PB 체크 즉시 배지 표시, SUB3/SUB4 자동 표시(풀코스만)
+// - 폰트: Daily/Monthly는 지정 폰트를 앱 전반에(옵션) 적용, Race에선 상단 UI 고정
+// - 크기 조정 포인트: CSS 변수 --race-time-size 등(필요시 fonts.js로 폰트별 튜닝)
+
 import { fontSettings, kmFontScale, applyFontIndents, applyFontStatsOffset } from './fonts.js';
 
 /* =========================
@@ -15,6 +20,7 @@ const raceState = { races: [], dist: null, bg: 'white' };
 /* =========================
    DOM
 ========================= */
+// 공통 UI
 const fontGridEl  = document.getElementById('font-grid');
 const bgRow       = document.getElementById('bg-row');
 const modeRow     = document.getElementById('mode-row');
@@ -29,11 +35,13 @@ const timeWrap    = document.getElementById('time-wrap');
 const uploadLabelText = document.getElementById('upload-label-text');
 const fileInputEl = document.getElementById('file-upload');
 
+// 보드 스위칭
 const dmPanel   = document.getElementById('dm-panel');
 const racePanel = document.getElementById('race-panel');
 const dmBoard   = document.getElementById('dm-board');
 const raceBoard = document.getElementById('race-board');
 
+// Race 입력
 const raceMonthSel     = document.getElementById('race-month');
 const raceListSel      = document.getElementById('race-list');
 const raceNameInput    = document.getElementById('race-name-input');
@@ -50,9 +58,9 @@ const racePaceSS = document.getElementById('race-pace-ss');
 
 const racePB     = document.getElementById('race-pb');
 const racePBMsg  = document.getElementById('race-pb-congrats');
-
 const raceBgRow  = document.getElementById('race-bg-row');
 
+// Race 출력
 const raceTitleEl   = document.getElementById('race-title');
 const raceSubtypeEl = document.getElementById('race-subtype');
 const raceTimeEl    = document.getElementById('race-time');
@@ -61,6 +69,7 @@ const badgePB       = document.getElementById('badge-pb');
 const badgeSub3     = document.getElementById('badge-sub3');
 const badgeSub4     = document.getElementById('badge-sub4');
 
+// 상수
 const MONTH_ABBR = ["JAN.","FEB.","MAR.","APR.","MAY.","JUN.","JUL.","AUG.","SEP.","OCT.","NOV.","DEC."];
 
 /* =========================
@@ -111,7 +120,7 @@ function formatDateText(d){
 ========================= */
 function truncate(value, digits){ const f=Math.pow(10,digits); return Math.floor((Number(value)||0)*f)/f; }
 function formatKm(value){ const v=Math.max(0, Number(value)||0); return (recordType==='monthly') ? truncate(v,1).toFixed(1) : truncate(v,2).toFixed(2); }
-function renderKm(value){ document.getElementById('km').textContent = formatKm(value); }
+function renderKm(value){ const el=document.getElementById('km'); if(el) el.textContent = formatKm(value); }
 
 /* =========================
    레이아웃 (DM)
@@ -124,28 +133,17 @@ function updateGridCols(){
 function layoutStatsGrid(){
   if (layoutType === 'type1'){
     [runsWrap, paceWrap, timeWrap].forEach(el=>{
-      if(!el) return;
-      el.style.gridColumn = '';
-      el.style.transform = '';
-      el.style.marginLeft = '';
+      if(!el) return; el.style.gridColumn=''; el.style.transform=''; el.style.marginLeft='';
     });
     return;
   }
   if (recordType === 'daily'){
-    if (paceWrap) {
-      paceWrap.style.gridColumn = '1 / 2';
-      paceWrap.style.transform = 'translateX(0)';
-      paceWrap.style.marginLeft = '0';
-    }
-    if (timeWrap) {
-      timeWrap.style.gridColumn = '2 / 3';
-      timeWrap.style.transform = `translateX(${getComputedStyle(document.documentElement).getPropertyValue('--statPull').trim()})`;
-      timeWrap.style.marginLeft = '0';
-    }
+    if (paceWrap) { paceWrap.style.gridColumn='1 / 2'; paceWrap.style.transform='translateX(0)'; paceWrap.style.marginLeft='0'; }
+    if (timeWrap) { timeWrap.style.gridColumn='2 / 3'; timeWrap.style.transform=`translateX(${getComputedStyle(document.documentElement).getPropertyValue('--statPull').trim()})`; timeWrap.style.marginLeft='0'; }
   } else if (recordType === 'monthly') {
-    if (runsWrap) { runsWrap.style.gridColumn = '1 / 2'; runsWrap.style.transform = 'translateX(0)'; runsWrap.style.marginLeft = '0'; }
-    if (paceWrap) { paceWrap.style.gridColumn = '2 / 3'; paceWrap.style.transform = `translateX(${getComputedStyle(document.documentElement).getPropertyValue('--statPull').trim()})`; paceWrap.style.marginLeft = '0'; }
-    if (timeWrap) { timeWrap.style.gridColumn = '3 / 4'; timeWrap.style.transform = `translateX(${getComputedStyle(document.documentElement).getPropertyValue('--statPull2').trim()})`; timeWrap.style.marginLeft = '0'; }
+    if (runsWrap) { runsWrap.style.gridColumn='1 / 2'; runsWrap.style.transform='translateX(0)'; }
+    if (paceWrap) { paceWrap.style.gridColumn='2 / 3'; paceWrap.style.transform=`translateX(${getComputedStyle(document.documentElement).getPropertyValue('--statPull').trim()})`; }
+    if (timeWrap) { timeWrap.style.gridColumn='3 / 4'; timeWrap.style.transform=`translateX(${getComputedStyle(document.documentElement).getPropertyValue('--statPull2').trim()})`; }
   }
 }
 
@@ -312,11 +310,11 @@ const WIDE_ALLOW = new Set([
 ]);
 function applyWideFontScope(){
   if (recordType === 'race') {
-    document.body.classList.remove('wide-font'); // 레이스 모드: 전역 강제 적용 OFF
+    document.body.classList.remove('wide-font'); // 레이스: 전역 강제 적용 OFF
     return;
   }
   if (WIDE_ALLOW.has(selectedFont)) {
-    document.body.classList.add('wide-font');    // DM 모드: 요청대로 전역 적용
+    document.body.classList.add('wide-font');    // 데일리/먼슬리: 전역 적용
     document.documentElement.style.setProperty('--wideFontFamily', `"${selectedFont}", sans-serif`);
   } else {
     document.body.classList.remove('wide-font');
@@ -338,7 +336,7 @@ function setFont(font){
     kmEl.style.fontSynthesis = 'none';
   }
 
-  // 레이스 타임에도 선택 폰트 적용 + 폰트별 조절 변수
+  // Race: 시간에 선택 폰트 적용 + 폰트별 튜닝 변수 반영
   if (raceTimeEl){
     raceTimeEl.style.fontFamily = `"${font}", sans-serif`;
     const root = document.documentElement.style;
@@ -350,7 +348,7 @@ function setFont(font){
     if (fs.raceTimeLetterSpace) root.setProperty('--race-time-letter', fs.raceTimeLetterSpace);
   }
 
-  // 날짜는 일부 폰트만
+  // 날짜(일부 폰트만)
   const dateDisp = document.getElementById("date-display");
   const whitelist = new Set(["Helvetica Neue","Anton","Anta","Arvo","Iceberg"]);
   if (dateDisp) {
@@ -367,7 +365,7 @@ function setFont(font){
   // 전역 적용 스코프(레이스 모드에서는 끔)
   applyWideFontScope();
 
-  // 날짜 관련 변수들 유지
+  // 날짜 관련 변수 유지
   const root = document.documentElement.style;
   const dSize = fs.dateSize || "50px";
   const dGap  = fs.dateGap  || "10px";
@@ -395,7 +393,6 @@ function setFont(font){
   renderStats();
 }
 
-/* 배경/모드 전환 */
 function setBackground(color){
   const htmlEl = document.documentElement, bodyEl = document.body;
   if(color==='black'){ htmlEl.classList.replace('bg-white','bg-black'); bodyEl.classList.replace('bg-white','bg-black'); }
@@ -404,6 +401,7 @@ function setBackground(color){
   updateActive(raceBgRow, raceBgRow?.querySelector(`button[data-bg="${cssEsc(color)}"]`));
   raceState.bg = color;
 }
+
 function setRecordType(mode){
   recordType = mode;
   document.body.classList.toggle('mode-daily', mode==='daily');
@@ -431,22 +429,26 @@ function setRecordType(mode){
 
   if (mode==='race') renderRaceBoard(true);
 }
+
 function setLayout(type){
   layoutType = type;
   updateActive(layoutRow, layoutRow?.querySelector(`button[data-layout="${cssEsc(type)}"]`));
   applyLayoutVisual();
 }
+
 function setDateFromInput(){
   const val = dateInput?.value; if(!val) return;
   const [y,m,d] = val.split('-').map(Number);
   selectedDate = new Date(y, m-1, d);
   renderDateDisplay(); syncDateWidth();
 }
+
 function renderDateDisplay(){
   if (dateDisplay) dateDisplay.textContent = formatDateText(selectedDate);
 }
+
 function applyLayoutVisual(){
-  if (recordType === 'race') return;
+  if (recordType === 'race') return; // 레이스는 별도 보드
   if(dateSection){
     dateSection.style.display = (layoutType==='type1' ? (recordType==='monthly'?'grid':'none') : 'grid');
   }
@@ -455,7 +457,9 @@ function applyLayoutVisual(){
     else dateDisplay.style.display='none';
   }
   if(dateInput && !dateInput.value){
-    const t=new Date(); dateInput.value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`; selectedDate=t;
+    const t=new Date();
+    dateInput.value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+    selectedDate=t;
   }
   renderDateDisplay();
 
@@ -471,9 +475,6 @@ function applyLayoutVisual(){
   fitKmRow();
 }
 
-/* =========================
-   DM 스타일 변수 제어
-========================= */
 function setTypeStatsStyle(type, { size, labelSize, gap, pull, pull2 } = {}){
   const root = document.documentElement.style;
   if(type==='type1'){
@@ -518,21 +519,14 @@ function setModeStyle(mode, { kmScale, statGap, kmWordBottomGap } = {}){
 /* =========================
    RACE — schedule & board
 ========================= */
-
-/* JSON5류(주석/트레일링콤마) 허용 파서 */
 function parseLenientJSON(txt){
   if (!txt) return null;
-  // remove BOM
-  txt = txt.replace(/^\uFEFF/, '');
-  // block comments /* ... */
-  txt = txt.replace(/\/\*[\s\S]*?\*\//g, '');
-  // line comments // ...
-  txt = txt.replace(/(^|[^:])\/\/.*$/gm, '$1');
-  // trailing commas in objects/arrays
-  txt = txt.replace(/,\s*([}\]])/g, '$1');
+  txt = txt.replace(/^\uFEFF/, '');               // BOM
+  txt = txt.replace(/\/\*[\s\S]*?\*\//g, '');     // /* ... */
+  txt = txt.replace(/(^|[^:])\/\/.*$/gm, '$1');   // // ...
+  txt = txt.replace(/,\s*([}\]])/g, '$1');        // trailing comma
   try { return JSON.parse(txt); } catch { return null; }
 }
-
 function initRaceMonths(){
   if (!raceMonthSel) return;
   raceMonthSel.innerHTML = '';
@@ -547,8 +541,7 @@ function initRaceMonths(){
 }
 function extractMonthFromRawDate(raw){
   if (!raw) return null;
-  // 9/21(일) or 9\/21(일) 형태 모두 지원
-  const m = String(raw).match(/^(\d{1,2})\s*[/\\]\s*\d{1,2}/);
+  const m = String(raw).match(/^(\d{1,2})\s*[/\\]\s*\d{1,2}/); // 9/21(일) or 9\/21(일)
   if (m) return parseInt(m[1],10);
   const d = new Date(raw);
   return isNaN(d) ? null : (d.getMonth()+1);
@@ -570,7 +563,6 @@ function populateRaceOptions(){
 
   const filtered = (raceState.races||[]).filter(r => r.month === month);
 
-  // 데이터가 있으면 먼저 나열
   filtered.forEach(r=>{
     const o=document.createElement('option');
     o.value=r.name; o.textContent=r.name;
@@ -592,8 +584,7 @@ function populateRaceOptions(){
 function loadInlineScheduleJSON(){
   const script = document.getElementById('race-schedule');
   if (!script) return false;
-  // 주석/트레일링콤마 허용 파싱
-  const arr = parseLenientJSON(script.textContent.trim());
+  const arr = parseLenientJSON((script.textContent || '').trim());
   if (!Array.isArray(arr)) return false;
   raceState.races = arr.map(normalizeRow).filter(r=>r.name);
   populateRaceOptions();
@@ -603,7 +594,7 @@ async function loadRaceScheduleJSON(){
   // 우선 내장 JSON
   if (loadInlineScheduleJSON()) return;
 
-  // 파일 fetch (로컬 환경 제한 대비 여러 경로 시도)
+  // 파일 fetch (철자 오타 포함 다 시도)
   const urls = ['./schedule.json','./data/schedule.json','./schedule.jsaon'];
   for (const u of urls){
     try{
@@ -658,6 +649,7 @@ function computeRacePaceText(){
   const mm = +racePaceMM?.value || 0;
   const ss = +racePaceSS?.value || 0;
   if (mm+ss>0) return `${mm}:${zero2txt(ss)} /km`;
+
   let distKm = null;
   if (raceState.dist==='5K') distKm = 5;
   else if (raceState.dist==='10K') distKm = 10;
@@ -694,14 +686,14 @@ async function runRaceAnimation(){
 /* =========================
    이벤트 바인딩
 ========================= */
-/* 공통 */
+// 공통
 fontGridEl?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-font]'); if(btn) setFont(btn.dataset.font); });
 bgRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-bg]'); if(btn) setBackground(btn.dataset.bg); });
 modeRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-mode]'); if(btn) setRecordType(btn.dataset.mode); });
 layoutRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-layout]'); if(btn) setLayout(btn.dataset.layout); });
 dateInput?.addEventListener('change', setDateFromInput);
 
-/* 레이스: 모든 입력이 프리뷰에 즉시 반영되도록 */
+// 레이스 입력 변화 즉시 반영
 raceMonthSel?.addEventListener('change', ()=>{ populateRaceOptions(); });
 raceListSel?.addEventListener('change', toggleRaceManualField);
 raceNameInput?.addEventListener('input', ()=> renderRaceBoard(true));
@@ -805,13 +797,22 @@ fileInputEl?.addEventListener("change", async (e)=>{
 /* =========================
    초기화
 ========================= */
+function updateUploadLabel(){
+  if(!uploadLabelText) return;
+  uploadLabelText.textContent =
+    recordType === 'monthly'
+      ? 'Upload your mileage for THIS MONTH'
+      : 'Upload your NRC record for TODAY';
+}
+
 window.onload = ()=>{
+  // 기본 모드/레이아웃/배경/폰트
   setRecordType('daily');
   setLayout('type1');
   setBackground('white');
   setFont('Helvetica Neue');
 
-  // 레이스 시간 기본 크기(좀 더 작게)
+  // 레이스 시간 기본 크기 (반으로 축소 느낌)
   document.documentElement.style.setProperty('--race-time-size','88px');
 
   syncPillLikeToPillBtn();
@@ -831,7 +832,7 @@ window.onload = ()=>{
   if (dateInput) dateInput.value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
   selectedDate = t;
 
-  // Race
+  // Race 초기화
   initRaceMonths();
   populateRaceOptions();   // 스케줄 로드 전에도 '직접입력'이 보이도록
   loadRaceScheduleJSON();  // 내장/외부 JSON 로드 시 목록 갱신
