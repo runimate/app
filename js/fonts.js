@@ -23,9 +23,9 @@ export const fontSettings = {
     dateSize: "60px", dateGap: "10px", dateWeight: 700,
 
     // Race tuning (기본 베이스)
-    raceTitleSize: "36px",
+    raceTitleSize: "30px",
     raceSubtypeSize: "50px",
-    raceTimeSize: "140px",
+    raceTimeSize: "130px",
     raceTimeLetterSpace: "0px",
     raceTimeTranslate: "0px,0px",
     racePaceSize: "56px",
@@ -38,10 +38,10 @@ export const fontSettings = {
     base: 200, weight: 700,
     dateSize: "60px", dateGap: "10px", dateWeight: 700,
 
-    raceTitleSize: "48px",
-    raceSubtypeSize: "72px",
-    raceTimeSize: "100px",
-    raceTimeLetterSpace: "-2px",
+    raceTitleSize: "30px",
+    raceSubtypeSize: "50px",
+    raceTimeSize: "120px",
+    raceTimeLetterSpace: "0px",
     raceTimeTranslate: "0px,0px",
     racePaceSize: "58px",
     raceGapSubtypeB: "10px",
