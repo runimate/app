@@ -13,35 +13,44 @@
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="./styles.css">
 
-  <!-- 버튼과 동일 사이즈로 input/select 통일 -->
+  <!-- 버튼/인풋/레이스 출력 레이아웃 보정 -->
   <style>
     :root{
-      --pill-h: 64px;
-      --pill-radius: 22px;
-      --pill-bw: 4px;
-      --pill-fz: 24px;
-      --pill-fw: 800;
-      --gap: 16px;
+      --pill-h: 64px; --pill-radius: 22px; --pill-bw: 4px;
+      --pill-fz: 24px; --pill-fw: 800; --gap: 16px;
     }
     .seg-row.cols-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--gap)}
     .two-col{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap)}
     .pill-like{
-      height:var(--pill-h); box-sizing:border-box; width:100%;
+      height:var(--pill-h); width:100%; box-sizing:border-box;
       border:var(--pill-bw) solid #000; border-radius:var(--pill-radius);
       font-size:var(--pill-fz); font-weight:var(--pill-fw); padding:0 18px; background:#fff;
     }
-    .pill-select{appearance:none; background:#fff; position:relative;}
-    .pill-input{background:#fff;}
-    .num.pill-input{width:120px;}
-    #race-dist-manual.pill-input{width:220px;}
+    .pill-select{appearance:none;background:#fff}
+    .pill-input{background:#fff}
+    .num.pill-input{width:120px}
+    #race-dist-manual.pill-input{width:220px}
+
+    /* Time / Pace 가로 */
     .tp-row{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
     .tp-row .seg-row{display:grid;gap:8px;align-items:center}
     .tp-row .time-grid{grid-template-columns:120px auto 120px auto 120px}
     .tp-row .pace-grid{grid-template-columns:120px auto 120px auto}
     .colon,.quote{display:flex;align-items:center;justify-content:center;font-weight:900;font-size:28px}
-    /* 거리 버튼을 폰트 버튼 그리드처럼 */
+
+    /* 거리 버튼 = 폰트 버튼 스타일 */
     #race-dist-grid.font-grid{grid-template-columns:repeat(4,1fr)}
     #race-dist-grid.font-grid button{font-size:var(--pill-fz);font-weight:var(--pill-fw);height:var(--pill-h)}
+
+    /* ===== Race 출력(두번째 이미지 레이아웃) ===== */
+    #race-board{padding:18px 0}
+    .race-title{font-weight:900;font-size:44px;letter-spacing:-.02em;margin-bottom:6px}
+    .race-subtype{font-weight:900;font-size:66px;line-height:1.05;margin:8px 0 10px}
+    .race-time{font-weight:900;font-size:220px;line-height:.88;letter-spacing:-6px;margin:10px 0 16px}
+    .race-pace-wrap .label{font-size:28px;margin:8px 0 4px}
+    .race-pace{font-weight:900;font-size:54px}
+    .race-badges{display:flex;gap:16px;margin-top:18px}
+    .race-badges img{height:56px}
   </style>
 </head>
 <body class="bg-white type1 mode-daily">
@@ -228,10 +237,10 @@
           <div id="cv-hint" style="display:none;"></div>
         </div>
 
-        <!-- Race 보드 -->
+        <!-- Race 보드 (이미지 레이아웃) -->
         <div id="race-board" style="display:none;">
           <div id="race-title" class="race-title">대회명을 선택하세요</div>
-          <div id="race-subtype" class="race-subtype">종목</div>
+          <div id="race-subtype" class="race-subtype">Half Marathon</div>
           <div id="race-time" class="race-time">0:00</div>
           <div class="race-pace-wrap">
             <div class="label">Pace</div>
