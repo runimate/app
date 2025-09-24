@@ -1,4 +1,4 @@
-// ui.js — daily/monthly + race (direct input, schedule.xlsx auto-load)
+// ui.js — daily/monthly + race(JSON schedule) controller
 import { fontSettings, kmFontScale, applyFontIndents, applyFontStatsOffset } from './fonts.js';
 
 /* =========================
@@ -10,11 +10,10 @@ let layoutType = 'type1';
 let selectedFont = 'Helvetica Neue';
 let selectedDate = new Date();
 
-// race 전용 상태
 const raceState = { races: [], dist: null, bg: 'white' };
 
 /* =========================
-   DOM 공용
+   공용 DOM
 ========================= */
 const fontGridEl  = document.getElementById('font-grid');
 const bgRow       = document.getElementById('bg-row');
@@ -41,18 +40,13 @@ const stageRoot   = document.getElementById('stage');
 const MONTH_ABBR = ["JAN.","FEB.","MAR.","APR.","MAY.","JUN.","JUL.","AUG.","SEP.","OCT.","NOV.","DEC."];
 
 /* =========================
-   DOM (race)
+   Race DOM
 ========================= */
 const raceMonthSel     = document.getElementById('race-month');
 const raceListSel      = document.getElementById('race-list');
-const raceNameInput    = document.createElement('input'); // 동적(직접입력시 표시)
-raceNameInput.id = 'race-name-input';
-raceNameInput.className = 'text';
-raceNameInput.placeholder = '대회명을 직접 입력하세요';
-raceNameInput.style.display = 'none';
-raceListSel?.parentElement?.appendChild(raceNameInput);
+const raceNameInput    = document.getElementById('race-name-input');
 
-const raceDistRow      = document.getElementById('race-dist-row');
+const raceDistGrid     = document.getElementById('race-dist-grid');
 const raceDistManualCk = document.getElementById('race-dist-manual-check');
 const raceDistManualIn = document.getElementById('race-dist-manual');
 
@@ -183,7 +177,7 @@ function renderStats(){
 }
 
 /* =========================
-   스테이지 스케일/애니(DM)
+   스테이지/애니(DM)
 ========================= */
 const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
 function animateNumber(id,start,end,duration){
@@ -260,7 +254,7 @@ function setRecordType(mode){
   updateUploadLabel();
 }
 function setLayout(type){ layoutType=type; updateActive(layoutRow, layoutRow?.querySelector(`button[data-layout="${cssEsc(type)}"]`)); applyLayoutVisual(); }
-function setDateFromInput(){ const val=dateInput?.value; if(!val) return; const [y,m,d]=val.split('-').map(Number); selectedDate=new Date(y,m-1,d); renderDateDisplay(); syncDateWidth(); }
+function setDateFromInput(){ const val=dateInput?.value; if(!val) return; const [y,m,d]=val.split('-').map(Number); selectedDate=new Date(y, m-1, d); renderDateDisplay(); syncDateWidth(); }
 function renderDateDisplay(){ if (dateDisplay) dateDisplay.textContent = formatDateText(selectedDate); }
 function applyLayoutVisual(){
   if (recordType==='race') return;
@@ -285,7 +279,7 @@ function updateUploadLabel(){
 }
 
 /* =========================
-   Race: schedule.xlsx 로딩/필터/출력
+   Race: schedule.json 로딩/필터/출력
 ========================= */
 function initRaceMonths(){
   if (!raceMonthSel) return;
@@ -298,6 +292,27 @@ function initRaceMonths(){
     if (m===cur) opt.selected = true;
     raceMonthSel.appendChild(opt);
   }
+}
+function normalizeRow(row){
+  const pick=(keys)=>{ for(const k of keys){ if(row[k]!=null && String(row[k]).trim()!=='') return row[k]; } return ''; };
+  const date = String(pick(['date','날짜','date_str','DATE'])).slice(0,10);
+  const name = String(pick(['name','대회명','title','TITLE'])).trim();
+  return {date,name};
+}
+async function loadRaceScheduleJSON(){
+  const candidates = ['./schedule.json','./data/schedule.json'];
+  for (const url of candidates){
+    try{
+      const res = await fetch(url, {cache:'no-cache'});
+      if (!res.ok) continue;
+      const arr = await res.json(); // [{date,name}, ...]
+      raceState.races = Array.isArray(arr) ? arr.map(normalizeRow).filter(r=>r.name) : [];
+      populateRaceOptions();
+      return;
+    }catch(e){ /* try next */ }
+  }
+  raceState.races = [];
+  populateRaceOptions();
 }
 function populateRaceOptions(){
   if (!raceListSel) return;
@@ -314,45 +329,20 @@ function toggleRaceManualField(){
   const v = raceListSel.value;
   raceNameInput.style.display = (v==='__manual__'||v==='__manual__2') ? 'block':'none';
 }
-function normalizeRow(row){
-  const pick=(keys)=>{ for(const k of keys){ if(row[k]!=null && String(row[k]).trim()!=='') return row[k]; } return ''; };
-  const date = String(pick(['date','날짜','대회일자','일자','DATE'])).slice(0,10);
-  const name = String(pick(['name','대회명','대회','TITLE'])).trim();
-  return {date,name};
-}
-async function loadRaceSchedule(){
-  const candidates = ['./schedule.xlsx','./data/schedule.xlsx','./marathon_schedule_anchor.xlsx'];
-  for (const url of candidates){
-    try{
-      const res = await fetch(url);
-      if (!res.ok) continue;
-      const ab = await res.arrayBuffer();
-      const wb = window.XLSX.read(ab, {type:'array'});
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = window.XLSX.utils.sheet_to_json(ws, {defval:''});
-      raceState.races = rows.map(normalizeRow).filter(r=>r.name);
-      populateRaceOptions();
-      return;
-    }catch(e){ /* try next */ }
-  }
-  // 로드 실패해도 UI는 동작(직접입력)
-  raceState.races = [];
-  populateRaceOptions();
-}
 
 // 거리/배경/체크 이벤트
 raceMonthSel?.addEventListener('change', populateRaceOptions);
 raceListSel?.addEventListener('change', toggleRaceManualField);
 
-raceDistRow?.addEventListener('click', (e)=>{
+raceDistGrid?.addEventListener('click', (e)=>{
   const btn = e.target.closest('button[data-dist]'); if(!btn) return;
-  [...raceDistRow.querySelectorAll('button')].forEach(b=>b.classList.remove('is-active'));
+  [...raceDistGrid.querySelectorAll('button')].forEach(b=>b.classList.remove('is-active'));
   btn.classList.add('is-active'); raceState.dist = btn.dataset.dist;
   if (raceDistManualCk){ raceDistManualCk.checked=false; raceDistManualIn.style.display='none'; }
 });
 raceDistManualCk?.addEventListener('change', (e)=>{
   const on = e.target.checked; raceDistManualIn.style.display = on ? 'block' : 'none';
-  if (on){ raceState.dist=null; [...(raceDistRow?.querySelectorAll('button')||[])].forEach(b=>b.classList.remove('is-active')); }
+  if (on){ raceState.dist=null; [...(raceDistGrid?.querySelectorAll('button')||[])].forEach(b=>b.classList.remove('is-active')); }
 });
 raceBgRow?.addEventListener('click', (e)=>{
   const btn = e.target.closest('button[data-bg]'); if (btn) setBackground(btn.dataset.bg);
@@ -384,7 +374,7 @@ function renderRaceBoard(){
 }
 
 /* =========================
-   이벤트 공용
+   공용 이벤트
 ========================= */
 fontGridEl?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-font]'); if(btn) setFont(btn.dataset.font); });
 bgRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-bg]'); if(btn) setBackground(btn.dataset.bg); });
@@ -453,9 +443,9 @@ window.onload = ()=>{
   if (di) di.value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
   selectedDate=t;
 
-  // Race: 월 초기화 + schedule.xlsx 로드
+  // Race 초기화
   initRaceMonths();
-  loadRaceSchedule();
+  loadRaceScheduleJSON();
 
   scaleStageCanvas(); applyLayoutVisual(); renderKm(0);
   applyFontIndents(selectedFont, layoutType); applyFontStatsOffset(selectedFont, layoutType, recordType);
