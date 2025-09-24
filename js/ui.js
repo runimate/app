@@ -1,4 +1,3 @@
-// ui.js — Daily/Monthly + Race(JSON) + Race 타임 애니메이션
 import { fontSettings, kmFontScale, applyFontIndents, applyFontStatsOffset } from './fonts.js';
 
 /* ===== 상태 ===== */
@@ -7,10 +6,9 @@ let recordType = 'daily';
 let layoutType = 'type1';
 let selectedFont = 'Helvetica Neue';
 let selectedDate = new Date();
-
 const raceState = { races: [], dist: null, bg: 'white' };
 
-/* ===== DOM 공용 ===== */
+/* ===== DOM ===== */
 const fontGridEl  = document.getElementById('font-grid');
 const bgRow       = document.getElementById('bg-row');
 const modeRow     = document.getElementById('mode-row');
@@ -33,7 +31,7 @@ const raceBoard = document.getElementById('race-board');
 const stageCanvas = document.getElementById('stage-canvas');
 const stageRoot   = document.getElementById('stage');
 
-/* ===== Race DOM ===== */
+/* Race DOM */
 const raceMonthSel     = document.getElementById('race-month');
 const raceListSel      = document.getElementById('race-list');
 const raceNameInput    = document.getElementById('race-name-input');
@@ -74,6 +72,19 @@ function ensureFontReady(fontFamily, weight=700, sizePx=200, style='normal'){
   return document.fonts.load(`${style} ${weight} ${sizePx}px "${fontFamily}"`).catch(()=>{});
 }
 
+/* ===== pill 사이즈를 .pill-btn에서 측정해 인풋/셀렉트에 동일 적용 ===== */
+function syncPillLikeToPillBtn(){
+  const ref = document.querySelector('.pill-btn');
+  if (!ref) return;
+  const cs = getComputedStyle(ref);
+  const root = document.documentElement.style;
+  root.setProperty('--pill-h', cs.height);
+  root.setProperty('--pill-radius', cs.borderTopLeftRadius);
+  root.setProperty('--pill-bw', cs.borderTopWidth);
+  root.setProperty('--pill-fz', cs.fontSize);
+  root.setProperty('--pill-fw', cs.fontWeight);
+}
+
 /* ===== 시간/표시 유틸 ===== */
 function parseTimeToSecFlexible(raw){
   if(!raw) return NaN;
@@ -89,9 +100,6 @@ function getTimeSecFromParsed(pd){
   if (pd.timeRaw){ const sec = parseTimeToSecFlexible(pd.timeRaw); if (isFinite(sec) && sec>0) return sec; }
   return NaN;
 }
-/* Race용: seconds -> 표시 규칙
-   - HH>0: H:MM:SS (H는 0패딩 X)
-   - HH==0: M:SS (M은 0패딩 X) */
 function secToRaceDisplay(sec){
   sec = Math.max(0, Math.floor(sec||0));
   const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
@@ -160,7 +168,6 @@ function renderStats(){
 
 /* ===== 스테이지/애니 ===== */
 const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
-
 function animateNumber(id,start,end,duration){
   return new Promise(resolve=>{
     const el=document.getElementById(id); let t0;
@@ -169,8 +176,6 @@ function animateNumber(id,start,end,duration){
     requestAnimationFrame(step);
   });
 }
-
-/* Race: 타임 애니메이션 */
 function animateRaceTime(id, endSec, duration=2400){
   return new Promise(resolve=>{
     const el = document.getElementById(id); if(!el){ resolve(); return; }
@@ -185,7 +190,6 @@ function animateRaceTime(id, endSec, duration=2400){
     requestAnimationFrame(step);
   });
 }
-
 function scaleStageCanvas(){
   if(!stageCanvas) return;
   const vw = window.innerWidth;
@@ -211,21 +215,16 @@ function fitKmRow(){
 }
 
 async function runAnimation(){
-  // DM 모드 애니
   fitKmRow();
   await new Promise(r=>setTimeout(r, 500));
   const endVal = parseFloat(parsedData.km || 0);
   await animateNumber("km", 0, isNaN(endVal)?0:endVal, 2200);
   fitKmRow();
 }
-
 async function runRaceAnimation(){
-  // 제목/서브타입/페이스 먼저 세팅
   renderRaceBoard(false);
-  // 타임 애니메이션
   const sec = computeRaceSeconds();
   await animateRaceTime('race-time', sec, 2400);
-  // 최종 한번 더 정밀 렌더
   renderRaceBoard(true);
 }
 
@@ -311,18 +310,27 @@ function normalizeRow(row){
 }
 async function loadRaceScheduleJSON(){
   const candidates = ['./schedule.json','./data/schedule.json','./schedule.jsaon']; // 오타까지 시도
-  if (location.protocol === 'file:') console.warn('file://로 열면 fetch가 차단될 수 있어요. 로컬 서버에서 실행을 권장합니다.');
+  if (location.protocol === 'file:') {
+    console.warn('[Race] file://로 열면 fetch가 차단될 수 있습니다. 로컬 서버에서 실행하세요. 예) python -m http.server');
+  }
   for (const url of candidates){
     try{
       const res = await fetch(url, {cache:'no-cache'});
       if (!res.ok) continue;
-      const arr = await res.json();
-      raceState.races = Array.isArray(arr) ? arr.map(normalizeRow).filter(r=>r.name) : [];
+      const data = await res.json();
+      if (!Array.isArray(data)) {
+        console.warn('[Race] schedule.json은 배열 형태여야 합니다. 예: [{"date":"2025-09-07","name":"아자러너 마라톤"}]');
+        continue;
+      }
+      raceState.races = data.map(normalizeRow).filter(r=>r.name);
       populateRaceOptions();
       return;
-    }catch(e){ /* continue */ }
+    }catch(e){
+      // 다음 후보로
+    }
   }
-  raceState.races = []; populateRaceOptions();
+  raceState.races = [];
+  populateRaceOptions();
 }
 function populateRaceOptions(){
   if (!raceListSel) return;
@@ -339,24 +347,7 @@ function toggleRaceManualField(){
   raceNameInput.style.display = (raceListSel.value==='__manual__'||raceListSel.value==='__manual__2') ? 'block':'none';
 }
 
-/* ===== Race 이벤트 ===== */
-raceMonthSel?.addEventListener('change', populateRaceOptions);
-raceListSel?.addEventListener('change', toggleRaceManualField);
-
-raceDistGrid?.addEventListener('click', (e)=>{
-  const btn = e.target.closest('button[data-dist]'); if(!btn) return;
-  [...raceDistGrid.querySelectorAll('button')].forEach(b=>b.classList.remove('is-active'));
-  btn.classList.add('is-active'); raceState.dist = btn.dataset.dist;
-  if (raceDistManualCk){ raceDistManualCk.checked=false; raceDistManualIn.style.display='none'; }
-});
-raceDistManualCk?.addEventListener('change', (e)=>{
-  const on = e.target.checked; raceDistManualIn.style.display = on ? 'block' : 'none';
-  if (on){ raceState.dist=null; [...(raceDistGrid?.querySelectorAll('button')||[])].forEach(b=>b.classList.remove('is-active')); }
-});
-raceBgRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-bg]'); if(btn) setBackground(btn.dataset.bg); });
-racePB?.addEventListener('change', ()=>{ racePBMsg.style.display = racePB.checked ? 'inline' : 'none'; });
-
-/* ===== Race 표시 ===== */
+/* ===== Race 연산/표시 ===== */
 function getRaceSelectedName(){
   const v=raceListSel?.value;
   if (!v) return '대회명 미선택';
@@ -387,7 +378,7 @@ function computeRacePaceText(){
   const mm = +racePaceMM.value || 0;
   const ss = +racePaceSS.value || 0;
   if (mm+ss>0) return `${mm}:${zero2txt(ss)} /km`;
-  // 입력이 없으면 타임/거리로 계산 (가능하면)
+  // 입력 없으면 타임/거리로 계산
   let distKm = null;
   if (raceState.dist==='5K') distKm = 5;
   else if (raceState.dist==='10K') distKm = 10;
@@ -417,12 +408,27 @@ function renderRaceBoard(updateBadges=true){
   }
 }
 
-/* ===== 공용 이벤트 ===== */
+/* ===== 이벤트 ===== */
 fontGridEl?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-font]'); if(btn) setFont(btn.dataset.font); });
 bgRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-bg]'); if(btn) setBackground(btn.dataset.bg); });
 modeRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-mode]'); if(btn) setRecordType(btn.dataset.mode); });
 layoutRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-layout]'); if(btn) setLayout(btn.dataset.layout); });
 dateInput?.addEventListener('change', setDateFromInput);
+
+raceMonthSel?.addEventListener('change', populateRaceOptions);
+raceListSel?.addEventListener('change', toggleRaceManualField);
+raceDistGrid?.addEventListener('click', (e)=>{
+  const btn = e.target.closest('button[data-dist]'); if(!btn) return;
+  [...raceDistGrid.querySelectorAll('button')].forEach(b=>b.classList.remove('is-active'));
+  btn.classList.add('is-active'); raceState.dist = btn.dataset.dist;
+  if (raceDistManualCk){ raceDistManualCk.checked=false; raceDistManualIn.style.display='none'; }
+});
+raceDistManualCk?.addEventListener('change', (e)=>{
+  const on = e.target.checked; raceDistManualIn.style.display = on ? 'block' : 'none';
+  if (on){ raceState.dist=null; [...(raceDistGrid?.querySelectorAll('button')||[])].forEach(b=>b.classList.remove('is-active')); }
+});
+raceBgRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-bg]'); if(btn) setBackground(btn.dataset.bg); });
+racePB?.addEventListener('change', ()=>{ racePBMsg.style.display = racePB.checked ? 'inline' : 'none'; });
 
 /* ===== Run / Focus ===== */
 window.onRun = function onRun(){
@@ -470,25 +476,24 @@ window.onload = ()=>{
   setBackground('white');
   setFont('Helvetica Neue');
 
-  // DM 스타일 튜닝
+  // 버튼 크기를 기준으로 인풋/셀렉트 크기 동기화
+  syncPillLikeToPillBtn();
+
+  // DM 스타일
   setTypeStatsStyle('type1', { size:'40px', labelSize:'18px', gap:'24px', pull:'0px' });
   setTypeKmWordStyle('type1', { size:'36px', gap:'16px' });
   setTypeKmScale('type1', 1.00);
-
   setTypeStatsStyle('type2', { size:'40px', labelSize:'20px', gap:'16px', pull:'50px', pull2:'40px' });
   setTypeKmWordStyle('type2', { size:'36px', gap:'16px' });
   setTypeKmScale('type2', 1.00);
-
   setModeStyle('daily',   { kmScale:1.0 });
   setModeStyle('monthly', { kmScale:1.0 });
 
-  // 날짜 기본값
   const t=new Date();
   const di=document.getElementById('date-input');
   if (di) di.value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
   selectedDate = t;
 
-  // Race 초기화
   initRaceMonths();
   loadRaceScheduleJSON();
 
@@ -504,8 +509,11 @@ window.onload = ()=>{
   updateUploadLabel();
 };
 
-window.addEventListener('resize', ()=>{ scaleStageCanvas(); fitKmRow(); alignStatsBaseline(); });
-window.addEventListener('orientationchange', ()=> { setTimeout(()=>{ scaleStageCanvas(); fitKmRow(); alignStatsBaseline(); }, 50); });
+window.addEventListener('resize', ()=>{
+  syncPillLikeToPillBtn();  // 버튼 기준으로 인풋/셀렉트 재동기화
+  scaleStageCanvas(); fitKmRow(); alignStatsBaseline();
+});
+window.addEventListener('orientationchange', ()=> { setTimeout(()=>{ syncPillLikeToPillBtn(); scaleStageCanvas(); fitKmRow(); alignStatsBaseline(); }, 50); });
 
 /* ===== 디자인 변수 Helpers ===== */
 function setTypeStatsStyle(type, { size, labelSize, gap, pull, pull2 } = {}){ const r=document.documentElement.style;
