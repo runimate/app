@@ -13,24 +13,40 @@
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="./styles.css">
 
-  <!-- 레이스 요구에 맞춘 약간의 크기 튜닝 -->
+  <!-- 버튼과 동일 사이즈로 input/select 통일 -->
   <style>
-    /* 3등분 탭 */
-    .seg-row.cols-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
-    /* 큰 드롭다운 */
-    .select.select-xl{height:60px;font-size:20px;font-weight:800;padding:0 18px}
-    /* Time/Pace 한 줄 배치 */
+    :root{
+      --pill-h: 64px;
+      --pill-radius: 22px;
+      --pill-bw: 4px;
+      --pill-fz: 24px;
+      --pill-fw: 800;
+      --gap: 16px;
+    }
+    .seg-row.cols-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--gap)}
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap)}
+    .pill-like{
+      height:var(--pill-h); box-sizing:border-box; width:100%;
+      border:var(--pill-bw) solid #000; border-radius:var(--pill-radius);
+      font-size:var(--pill-fz); font-weight:var(--pill-fw); padding:0 18px; background:#fff;
+    }
+    .pill-select{appearance:none; background:#fff; position:relative;}
+    .pill-input{background:#fff;}
+    .num.pill-input{width:120px;}
+    #race-dist-manual.pill-input{width:220px;}
     .tp-row{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
-    .tp-row .seg-row{align-items:center}
-    .colon,.quote{display:flex;align-items:center;justify-content:center;font-weight:900;font-size:28px;margin:0 4px}
+    .tp-row .seg-row{display:grid;gap:8px;align-items:center}
+    .tp-row .time-grid{grid-template-columns:120px auto 120px auto 120px}
+    .tp-row .pace-grid{grid-template-columns:120px auto 120px auto}
+    .colon,.quote{display:flex;align-items:center;justify-content:center;font-weight:900;font-size:28px}
     /* 거리 버튼을 폰트 버튼 그리드처럼 */
     #race-dist-grid.font-grid{grid-template-columns:repeat(4,1fr)}
-    #race-dist-grid.font-grid button{font-size:20px;font-weight:800}
+    #race-dist-grid.font-grid button{font-size:var(--pill-fz);font-weight:var(--pill-fw);height:var(--pill-h)}
   </style>
 </head>
 <body class="bg-white type1 mode-daily">
   <header>
-    <h1>RUNIMATE V.1.5</h1>
+    <h1>RUNIMATE V.1.1</h1>
     <div class="subtitle">by JS @runarchive.js</div>
   </header>
 
@@ -38,7 +54,7 @@
     <div class="wrap">
       <div class="row-head"><div class="label">Record Type</div></div>
 
-      <!-- 3등분: Daily / Monthly / Race -->
+      <!-- 3등분 -->
       <div class="seg-row cols-3" id="mode-row">
         <button class="pill-btn" data-mode="daily">Daily</button>
         <button class="pill-btn" data-mode="monthly">Monthly</button>
@@ -81,22 +97,22 @@
 
         <div class="date-row" id="date-section">
           <div class="control-title title-left">Date</div>
-          <input id="date-input" class="date-input" type="date"/>
+          <input id="date-input" class="date-input pill-like pill-input" type="date"/>
         </div>
       </div>
 
-      <!-- ===== Race 전용 패널 ===== -->
+      <!-- ===== Race 패널 ===== -->
       <div id="race-panel" style="display:none;">
-        <!-- 월 / 대회 드롭다운 (크게) -->
+        <!-- 월 / 대회 -->
         <div class="two-col" style="margin-top:12px;">
-          <div><select id="race-month" class="select select-xl"></select></div>
-          <div><select id="race-list" class="select select-xl"><option value="__manual__">직접입력…</option></select></div>
+          <div><select id="race-month" class="pill-like pill-select"></select></div>
+          <div><select id="race-list"  class="pill-like pill-select"><option value="__manual__">직접입력…</option></select></div>
         </div>
         <div style="margin-top:10px;">
-          <input id="race-name-input" class="text" placeholder="대회명을 직접 입력하세요" style="display:none;">
+          <input id="race-name-input" class="pill-like pill-input" placeholder="대회명을 직접 입력하세요" style="display:none;">
         </div>
 
-        <!-- 거리 선택: 폰트 버튼처럼 -->
+        <!-- 거리 -->
         <section class="section" style="margin-top:14px;">
           <div class="font-grid" id="race-dist-grid">
             <button data-dist="5K">5K</button>
@@ -106,30 +122,30 @@
           </div>
           <div class="seg-row cols-3" style="align-items:center;margin-top:10px;">
             <label class="checkbox"><input type="checkbox" id="race-dist-manual-check"> 직접 입력</label>
-            <input id="race-dist-manual" type="number" class="num" placeholder="" style="display:none;">
+            <input id="race-dist-manual" type="number" class="pill-like pill-input" placeholder="" style="display:none;">
             <div style="font-weight:800">K</div>
           </div>
         </section>
 
-        <!-- Time / Pace 가로 정렬 -->
+        <!-- Time / Pace -->
         <div class="tp-row" style="margin-top:4px;">
           <section class="section">
             <div class="control-title title-left">Time</div>
-            <div class="seg-row" style="grid-template-columns:1fr auto 1fr auto 1fr;">
-              <input id="race-hh" type="number" min="0" max="99" class="num" placeholder="">
+            <div class="seg-row time-grid">
+              <input id="race-hh" type="number" min="0" max="99" class="pill-like pill-input" placeholder="">
               <div class="colon">:</div>
-              <input id="race-mm" type="number" min="0" max="59" class="num" placeholder="">
+              <input id="race-mm" type="number" min="0" max="59" class="pill-like pill-input" placeholder="">
               <div class="colon">:</div>
-              <input id="race-ss" type="number" min="0" max="59" class="num" placeholder="">
+              <input id="race-ss" type="number" min="0" max="59" class="pill-like pill-input" placeholder="">
             </div>
           </section>
 
           <section class="section">
             <div class="control-title title-left">Pace</div>
-            <div class="seg-row" style="grid-template-columns:1fr auto 1fr auto;">
-              <input id="race-pace-mm" type="number" min="0" max="59" class="num" placeholder="">
+            <div class="seg-row pace-grid">
+              <input id="race-pace-mm" type="number" min="0" max="59" class="pill-like pill-input" placeholder="">
               <div class="quote">′</div>
-              <input id="race-pace-ss" type="number" min="0" max="59" class="num" placeholder="">
+              <input id="race-pace-ss" type="number" min="0" max="59" class="pill-like pill-input" placeholder="">
               <div class="quote">″</div>
             </div>
           </section>
@@ -144,7 +160,7 @@
           </label>
         </section>
 
-        <!-- BG Color (2분할) -->
+        <!-- BG -->
         <section class="section">
           <div class="control-title">BG Color</div>
           <div class="bg-row" id="race-bg-row">
@@ -154,7 +170,7 @@
         </section>
       </div>
 
-      <!-- Font (공용) -->
+      <!-- Font -->
       <section class="section">
         <div class="control-title">Font</div>
         <div class="font-grid" id="font-grid">
@@ -222,9 +238,9 @@
             <div id="race-pace" class="race-pace">0:00 /km</div>
           </div>
           <div id="race-badges" class="race-badges">
-            <img id="badge-pb"   src="../js/pb.png"   alt="PB"   style="display:none;">
-            <img id="badge-sub3" src="../js/sub3.png" alt="SUB3" style="display:none;">
-            <img id="badge-sub4" src="../js/sub4.png" alt="SUB4" style="display:none;">
+            <img id="badge-pb"   src="./js/pb.png"   alt="PB"   style="display:none;">
+            <img id="badge-sub3" src="./js/sub3.png" alt="SUB3" style="display:none;">
+            <img id="badge-sub4" src="./js/sub4.png" alt="SUB4" style="display:none;">
           </div>
         </div>
       </div>
