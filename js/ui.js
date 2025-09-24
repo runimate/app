@@ -1,20 +1,15 @@
-// ui.js — daily/monthly + race(JSON schedule) controller
+// ui.js — Race(JSON) + 통일된 pill 사이즈
 import { fontSettings, kmFontScale, applyFontIndents, applyFontStatsOffset } from './fonts.js';
 
-/* =========================
-   상태
-========================= */
 let parsedData = { km:null, runs:null, paceMin:null, paceSec:null, timeH:null, timeM:null, timeS:null, timeRaw:null };
-let recordType = 'daily';   // 'daily' | 'monthly' | 'race'
+let recordType = 'daily';
 let layoutType = 'type1';
 let selectedFont = 'Helvetica Neue';
 let selectedDate = new Date();
 
 const raceState = { races: [], dist: null, bg: 'white' };
 
-/* =========================
-   공용 DOM
-========================= */
+/* DOM 공용 */
 const fontGridEl  = document.getElementById('font-grid');
 const bgRow       = document.getElementById('bg-row');
 const modeRow     = document.getElementById('mode-row');
@@ -37,11 +32,7 @@ const raceBoard = document.getElementById('race-board');
 const stageCanvas = document.getElementById('stage-canvas');
 const stageRoot   = document.getElementById('stage');
 
-const MONTH_ABBR = ["JAN.","FEB.","MAR.","APR.","MAY.","JUN.","JUL.","AUG.","SEP.","OCT.","NOV.","DEC."];
-
-/* =========================
-   Race DOM
-========================= */
+/* Race DOM */
 const raceMonthSel     = document.getElementById('race-month');
 const raceListSel      = document.getElementById('race-list');
 const raceNameInput    = document.getElementById('race-name-input');
@@ -70,61 +61,40 @@ const badgePB       = document.getElementById('badge-pb');
 const badgeSub3     = document.getElementById('badge-sub3');
 const badgeSub4     = document.getElementById('badge-sub4');
 
-/* =========================
-   유틸
-========================= */
+/* 유틸 */
+const MONTH_ABBR = ["JAN.","FEB.","MAR.","APR.","MAY.","JUN.","JUL.","AUG.","SEP.","OCT.","NOV.","DEC."];
 const zero2txt = (n)=>String(n).padStart(2,'0');
 const cssEsc = (s)=> (window.CSS && typeof CSS.escape === 'function') ? CSS.escape(s) : String(s).replace(/"/g,'\\"');
 const isFiniteNum = (x)=>Number.isFinite(x);
 
 function ensureFontReady(fontFamily, weight=700, sizePx=200, style='normal'){
   if (!('fonts' in document) || typeof document.fonts.load !== 'function') return Promise.resolve();
-  const fam = `"${fontFamily}"`;
-  return document.fonts.load(`${style} ${weight} ${sizePx}px ${fam}`).catch(()=>{});
+  return document.fonts.load(`${style} ${weight} ${sizePx}px "${fontFamily}"`).catch(()=>{});
 }
-
 function parseTimeToSecFlexible(raw){
   if(!raw) return NaN;
   const t = String(raw).trim().replace(/[’'′]/g,':').replace(/[″"]/g,':').replace(/：/g,':');
-  const m3 = t.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
-  if (m3) return (+m3[1])*3600 + (+m3[2])*60 + (+m3[3]);
-  const m2 = t.match(/^(\d{1,2}):(\d{2})$/);
-  if (m2) return (+m2[1])*60 + (+m2[2]);
+  const m3 = t.match(/^(\d{1,2}):(\d{2}):(\d{2})$/); if (m3) return (+m3[1])*3600 + (+m3[2])*60 + (+m3[3]);
+  const m2 = t.match(/^(\d{1,2}):(\d{2})$/);        if (m2) return (+m2[1])*60 + (+m2[2]);
   return NaN;
 }
 function getTimeSecFromParsed(pd){
   if (pd.timeH!=null || pd.timeM!=null || pd.timeS!=null){
-    const H = pd.timeH||0, M=pd.timeM||0, S=pd.timeS||0;
-    const sec = H*3600 + M*60 + S;
-    if (sec>0) return sec;
+    const H = pd.timeH||0, M=pd.timeM||0, S=pd.timeS||0; const sec = H*3600 + M*60 + S; if (sec>0) return sec;
   }
-  if (pd.timeRaw){
-    const sec = parseTimeToSecFlexible(pd.timeRaw);
-    if (isFinite(sec) && sec>0) return sec;
-  }
+  if (pd.timeRaw){ const sec = parseTimeToSecFlexible(pd.timeRaw); if (isFinite(sec) && sec>0) return sec; }
   return NaN;
 }
 
-/* =========================
-   날짜/표시 (DM)
-========================= */
+/* 날짜/표시(DM) */
 function formatDateText(d){
-  const day = String(d.getDate());
-  const yr  = d.getFullYear();
-  if (recordType === 'daily' && layoutType === 'type2') {
-    const monShort = MONTH_ABBR[d.getMonth()];
-    return `${day} ${monShort} ${yr}`;
-  }
-  if (recordType === 'monthly') {
-    const monLong = d.toLocaleString('en-US', { month: 'long' });
-    return `${monLong} ${yr}`;
-  }
+  const day = String(d.getDate()), yr = d.getFullYear();
+  if (recordType === 'daily' && layoutType === 'type2') return `${day} ${MONTH_ABBR[d.getMonth()]} ${yr}`;
+  if (recordType === 'monthly'){ const monLong = d.toLocaleString('en-US',{month:'long'}); return `${monLong} ${yr}`; }
   return ``;
 }
 
-/* =========================
-   숫자/애니 (DM)
-========================= */
+/* 숫자/애니(DM) */
 function truncate(v,d){ const f=10**d; return Math.floor((Number(v)||0)*f)/f; }
 function formatKm(v){ v=Math.max(0, Number(v)||0); return (recordType==='monthly') ? truncate(v,1).toFixed(1) : truncate(v,2).toFixed(2); }
 function renderKm(v){ const el=document.getElementById('km'); if(el) el.textContent = formatKm(v); }
@@ -146,7 +116,7 @@ function formatPaceByType(){
   let mm, ss;
   if (has){ mm=String(parsedData.paceMin); ss=zero2txt(parsedData.paceSec); }
   else{
-    const tsec=getTimeSecFromParsed(parsedData); const km=parseFloat(parsedData.km);
+    const tsec=getTimeSecFromParsed(parsedData), km=parseFloat(parsedData.km);
     if(isFinite(tsec)&&tsec>0&&isFinite(km)&&km>0){ const p=Math.max(0,Math.round(tsec/km)); mm=String(Math.floor(p/60)); ss=zero2txt(p%60); }
     else return (layoutType==='type1') ? '--:-- /km' : '--:--';
   }
@@ -176,9 +146,7 @@ function renderStats(){
   updateGridCols(); layoutStatsGrid(); alignStatsBaseline();
 }
 
-/* =========================
-   스테이지/애니(DM)
-========================= */
+/* 스테이지/애니(DM) */
 const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
 function animateNumber(id,start,end,duration){
   return new Promise(resolve=>{
@@ -206,9 +174,7 @@ function fitKmRow(){
 }
 async function runAnimation(){ if(recordType==='race') return; fitKmRow(); await new Promise(r=>setTimeout(r,500)); const end=parseFloat(parsedData.km||0); await animateNumber("km",0,isNaN(end)?0:end,2200); fitKmRow(); }
 
-/* =========================
-   폰트/배경/모드/레이아웃
-========================= */
+/* 폰트/배경/모드/레이아웃 */
 function updateActive(groupEl, targetBtn){ if(!groupEl) return; [...groupEl.querySelectorAll('button')].forEach(b=>b.classList.remove('is-active')); targetBtn?.classList?.add('is-active'); }
 function setFont(font){
   selectedFont = font;
@@ -278,9 +244,7 @@ function updateUploadLabel(){
     : 'Upload your NRC record for TODAY';
 }
 
-/* =========================
-   Race: schedule.json 로딩/필터/출력
-========================= */
+/* ===== Race: schedule.json 로딩 ===== */
 function initRaceMonths(){
   if (!raceMonthSel) return;
   raceMonthSel.innerHTML = '';
@@ -300,12 +264,21 @@ function normalizeRow(row){
   return {date,name};
 }
 async function loadRaceScheduleJSON(){
-  const candidates = ['./schedule.json','./data/schedule.json'];
+  // 오타(scheduled.jsaon)와 경로 모두 보정 시도
+  const candidates = [
+    './schedule.json',
+    './data/schedule.json',
+    './schedule.jsaon'   // 오타 대비
+  ];
+  // file:// 로 열었을 때 fetch 제한 안내
+  if (location.protocol === 'file:') {
+    console.warn('[Race] schedule.json은 file:// 로 직접 열면 브라우저 보안정책상 fetch가 차단됩니다. 로컬 서버로 띄워주세요.');
+  }
   for (const url of candidates){
     try{
       const res = await fetch(url, {cache:'no-cache'});
       if (!res.ok) continue;
-      const arr = await res.json(); // [{date,name}, ...]
+      const arr = await res.json();
       raceState.races = Array.isArray(arr) ? arr.map(normalizeRow).filter(r=>r.name) : [];
       populateRaceOptions();
       return;
@@ -330,7 +303,7 @@ function toggleRaceManualField(){
   raceNameInput.style.display = (v==='__manual__'||v==='__manual__2') ? 'block':'none';
 }
 
-// 거리/배경/체크 이벤트
+/* Race 이벤트 */
 raceMonthSel?.addEventListener('change', populateRaceOptions);
 raceListSel?.addEventListener('change', toggleRaceManualField);
 
@@ -344,11 +317,10 @@ raceDistManualCk?.addEventListener('change', (e)=>{
   const on = e.target.checked; raceDistManualIn.style.display = on ? 'block' : 'none';
   if (on){ raceState.dist=null; [...(raceDistGrid?.querySelectorAll('button')||[])].forEach(b=>b.classList.remove('is-active')); }
 });
-raceBgRow?.addEventListener('click', (e)=>{
-  const btn = e.target.closest('button[data-bg]'); if (btn) setBackground(btn.dataset.bg);
-});
+raceBgRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-bg]'); if(btn) setBackground(btn.dataset.bg); });
 racePB?.addEventListener('change', ()=>{ racePBMsg.style.display = racePB.checked ? 'inline' : 'none'; });
 
+/* Race 출력 */
 function formatRaceTime(hh,mm,ss){ const H=+hh||0,M=+mm||0,S=+ss||0; return (H>0)?`${H}:${zero2txt(M)}:${zero2txt(S)}`:`${M}:${zero2txt(S)}`; }
 function getRaceSubtypeLabel(){
   if (raceDistManualCk?.checked){ const v=(raceDistManualIn?.value||'').trim(); return v||'Custom'; }
@@ -373,18 +345,14 @@ function renderRaceBoard(){
   badgeSub4&&(badgeSub4.style.display = (isFull && sec>=3*3600 && sec<4*3600) ? 'inline' : 'none');
 }
 
-/* =========================
-   공용 이벤트
-========================= */
+/* 공용 이벤트 */
 fontGridEl?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-font]'); if(btn) setFont(btn.dataset.font); });
 bgRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-bg]'); if(btn) setBackground(btn.dataset.bg); });
 modeRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-mode]'); if(btn) setRecordType(btn.dataset.mode); });
 layoutRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-layout]'); if(btn) setLayout(btn.dataset.layout); });
 dateInput?.addEventListener('change', setDateFromInput);
 
-/* =========================
-   Run / Focus
-========================= */
+/* Run / Focus */
 window.onRun = function onRun(){
   document.body.classList.add('focus');
   stageCanvas?.scrollIntoView({behavior:'smooth', block:'start'});
@@ -397,9 +365,7 @@ window.exitFocus = function exitFocus(){
   const kmEl=document.getElementById('km'); kmEl&&(kmEl.textContent = recordType==='monthly' ? "0.0" : "0.00");
 };
 
-/* =========================
-   OCR (DM 전용)
-========================= */
+/* OCR (DM) */
 async function runOcrPipeline(imgDataURL){ const OCR=await import('./ocr.js'); return OCR.extractAll(imgDataURL, { recordType }); }
 fileInputEl?.addEventListener("change", async (e)=>{
   if (recordType==='race'){ fileInputEl.value=''; return; }
@@ -425,25 +391,20 @@ fileInputEl?.addEventListener("change", async (e)=>{
   reader.readAsDataURL(file);
 });
 
-/* =========================
-   초기화
-========================= */
+/* 초기화 */
 window.onload = ()=>{
   setRecordType('daily'); setLayout('type1'); setBackground('white'); setFont('Helvetica Neue');
 
-  // DM 스타일 튜닝
   setTypeStatsStyle('type1', { size:'40px', labelSize:'18px', gap:'24px', pull:'0px' });
   setTypeKmWordStyle('type1', { size:'36px', gap:'16px' }); setTypeKmScale('type1', 1.00);
   setTypeStatsStyle('type2', { size:'40px', labelSize:'20px', gap:'16px', pull:'50px', pull2:'40px' });
   setTypeKmWordStyle('type2', { size:'36px', gap:'16px' }); setTypeKmScale('type2', 1.00);
   setModeStyle('daily', { kmScale:1.0 }); setModeStyle('monthly', { kmScale:1.0 });
 
-  // 날짜 기본값
   const t=new Date(); const di=document.getElementById('date-input');
   if (di) di.value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
   selectedDate=t;
 
-  // Race 초기화
   initRaceMonths();
   loadRaceScheduleJSON();
 
@@ -451,11 +412,10 @@ window.onload = ()=>{
   applyFontIndents(selectedFont, layoutType); applyFontStatsOffset(selectedFont, layoutType, recordType);
   fitKmRow(); renderStats(); updateUploadLabel();
 };
-
 window.addEventListener('resize', ()=>{ scaleStageCanvas(); fitKmRow(); alignStatsBaseline(); });
 window.addEventListener('orientationchange', ()=>{ setTimeout(()=>{ scaleStageCanvas(); fitKmRow(); alignStatsBaseline(); }, 50); });
 
-/* ===== 디자인 변수 Helpers ===== */
+/* 디자인 변수 helpers */
 function setTypeStatsStyle(type, { size, labelSize, gap, pull, pull2 } = {}){ const r=document.documentElement.style;
   if(type==='type1'){ if(size)r.setProperty('--t1-statSize',size); if(labelSize)r.setProperty('--t1-labelSize',labelSize); if(gap!=null)r.setProperty('--t1-statGap',gap); if(pull!=null)r.setProperty('--t1-statPull',pull); if(pull2!=null)r.setProperty('--t1-statPull2',pull2); }
   else{ if(size)r.setProperty('--t2-statSize',size); if(labelSize)r.setProperty('--t2-labelSize',labelSize); if(gap!=null)r.setProperty('--t2-statGap',gap); if(pull!=null)r.setProperty('--t2-statPull',pull); if(pull2!=null)r.setProperty('--t2-statPull2',pull2); }
