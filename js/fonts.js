@@ -23,10 +23,10 @@ export const fontSettings = {
     dateSize: "60px", dateGap: "10px", dateWeight: 700,
 
     // Race tuning (기본 베이스)
-    raceTitleSize: "46px",
-    raceSubtypeSize: "66px",
-    raceTimeSize: "96px",
-    raceTimeLetterSpace: "-4px",
+    raceTitleSize: "36px",
+    raceSubtypeSize: "50px",
+    raceTimeSize: "140px",
+    raceTimeLetterSpace: "0px",
     raceTimeTranslate: "0px,0px",
     racePaceSize: "56px",
     raceGapSubtypeB: "10px",
