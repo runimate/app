@@ -10,11 +10,23 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Anta&family=Arvo:ital,wght@0,700;1,700&family=Big+Shoulders+Inline+Text:wght@800&family=Iceberg&family=Londrina+Shadow&family=Permanent+Marker&family=Rock+Salt&family=Tourney:ital,wght@0,800;1,200&display=swap" rel="stylesheet">
 
-  <!-- 파비콘 404 방지 -->
   <link rel="icon" href="data:,">
-
-  <!-- 기존 스타일 -->
   <link rel="stylesheet" href="./styles.css">
+
+  <!-- 레이스 요구에 맞춘 약간의 크기 튜닝 -->
+  <style>
+    /* 3등분 탭 */
+    .seg-row.cols-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+    /* 큰 드롭다운 */
+    .select.select-xl{height:60px;font-size:20px;font-weight:800;padding:0 18px}
+    /* Time/Pace 한 줄 배치 */
+    .tp-row{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+    .tp-row .seg-row{align-items:center}
+    .colon,.quote{display:flex;align-items:center;justify-content:center;font-weight:900;font-size:28px;margin:0 4px}
+    /* 거리 버튼을 폰트 버튼 그리드처럼 */
+    #race-dist-grid.font-grid{grid-template-columns:repeat(4,1fr)}
+    #race-dist-grid.font-grid button{font-size:20px;font-weight:800}
+  </style>
 </head>
 <body class="bg-white type1 mode-daily">
   <header>
@@ -26,14 +38,14 @@
     <div class="wrap">
       <div class="row-head"><div class="label">Record Type</div></div>
 
-      <!-- 2분할 → 3분할: 레이스 버튼 추가 -->
+      <!-- 3등분: Daily / Monthly / Race -->
       <div class="seg-row cols-3" id="mode-row">
         <button class="pill-btn" data-mode="daily">Daily</button>
         <button class="pill-btn" data-mode="monthly">Monthly</button>
         <button class="pill-btn" data-mode="race">Race(Beta)</button>
       </div>
 
-      <!-- ===== Daily/Monthly 패널 (기존 유지) ===== -->
+      <!-- ===== Daily/Monthly 패널 ===== -->
       <div id="dm-panel">
         <section class="section upload-box">
           <label for="file-upload" class="upload-label">
@@ -71,74 +83,64 @@
           <div class="control-title title-left">Date</div>
           <input id="date-input" class="date-input" type="date"/>
         </div>
-      </div><!-- /#dm-panel -->
+      </div>
 
-      <!-- ===== Race 패널 (이미지 레이아웃대로 배치) ===== -->
+      <!-- ===== Race 전용 패널 ===== -->
       <div id="race-panel" style="display:none;">
-        <!-- 월/대회 드롭다운 (한 줄, 2칸) -->
-        <div class="two-col" style="margin-top:10px;">
-          <div>
-            <select id="race-month" class="select"></select>
-          </div>
-          <div>
-            <select id="race-list" class="select">
-              <option value="__manual__">직접입력…</option>
-            </select>
-          </div>
+        <!-- 월 / 대회 드롭다운 (크게) -->
+        <div class="two-col" style="margin-top:12px;">
+          <div><select id="race-month" class="select select-xl"></select></div>
+          <div><select id="race-list" class="select select-xl"><option value="__manual__">직접입력…</option></select></div>
+        </div>
+        <div style="margin-top:10px;">
+          <input id="race-name-input" class="text" placeholder="대회명을 직접 입력하세요" style="display:none;">
         </div>
 
-        <!-- 거리 선택 라인: 5K / 10K / 21K(Half) / Marathon + 직접입력 □ K -->
-        <section class="section" style="margin-top:10px;">
-          <div class="seg-row cols-4 race-radio-row" id="race-dist-radios">
-            <label class="radio"><input type="radio" name="race-dist" value="5K"><span>5K</span></label>
-            <label class="radio"><input type="radio" name="race-dist" value="10K"><span>10K</span></label>
-            <label class="radio"><input type="radio" name="race-dist" value="Half"><span>21K(Half)</span></label>
-            <label class="radio"><input type="radio" name="race-dist" value="Marathon"><span>Marathon</span></label>
+        <!-- 거리 선택: 폰트 버튼처럼 -->
+        <section class="section" style="margin-top:14px;">
+          <div class="font-grid" id="race-dist-grid">
+            <button data-dist="5K">5K</button>
+            <button data-dist="10K">10K</button>
+            <button data-dist="Half">21K(Half)</button>
+            <button data-dist="Marathon">Marathon</button>
           </div>
-
-          <div class="seg-row cols-3" style="align-items:center; gap:14px; margin-top:8px;">
-            <label class="checkbox" style="display:flex;align-items:center;gap:10px;">
-              <input id="race-dist-manual-check" type="checkbox">
-              <span>직접 입력</span>
-            </label>
-            <input id="race-dist-manual-km" class="num" type="number" min="1" step="1" placeholder="" style="max-width:88px;">
-            <div style="font-weight:900;">K</div>
+          <div class="seg-row cols-3" style="align-items:center;margin-top:10px;">
+            <label class="checkbox"><input type="checkbox" id="race-dist-manual-check"> 직접 입력</label>
+            <input id="race-dist-manual" type="number" class="num" placeholder="" style="display:none;">
+            <div style="font-weight:800">K</div>
           </div>
         </section>
 
-        <!-- Time / Pace (두 블록) -->
-        <section class="section">
-          <div class="two-col" style="gap:28px;">
-            <div>
-              <div class="control-title title-left">Time</div>
-              <div class="seg-row cols-5" style="align-items:center;">
-                <input id="race-hh" class="num" type="number" min="0" max="99" placeholder="">
-                <div class="colon">:</div>
-                <input id="race-mm" class="num" type="number" min="0" max="59" placeholder="">
-                <div class="colon">:</div>
-                <input id="race-ss" class="num" type="number" min="0" max="59" placeholder="">
-              </div>
+        <!-- Time / Pace 가로 정렬 -->
+        <div class="tp-row" style="margin-top:4px;">
+          <section class="section">
+            <div class="control-title title-left">Time</div>
+            <div class="seg-row" style="grid-template-columns:1fr auto 1fr auto 1fr;">
+              <input id="race-hh" type="number" min="0" max="99" class="num" placeholder="">
+              <div class="colon">:</div>
+              <input id="race-mm" type="number" min="0" max="59" class="num" placeholder="">
+              <div class="colon">:</div>
+              <input id="race-ss" type="number" min="0" max="59" class="num" placeholder="">
             </div>
+          </section>
 
-            <div>
-              <div class="control-title title-left">Pace</div>
-              <div class="seg-row cols-5" style="align-items:center;">
-                <input id="race-pace-mm" class="num" type="number" min="0" max="59" placeholder="">
-                <div class="primebox">′</div>
-                <input id="race-pace-ss" class="num" type="number" min="0" max="59" placeholder="">
-                <div class="primebox">″</div>
-                <div style="font-weight:900;">/km</div>
-              </div>
+          <section class="section">
+            <div class="control-title title-left">Pace</div>
+            <div class="seg-row" style="grid-template-columns:1fr auto 1fr auto;">
+              <input id="race-pace-mm" type="number" min="0" max="59" class="num" placeholder="">
+              <div class="quote">′</div>
+              <input id="race-pace-ss" type="number" min="0" max="59" class="num" placeholder="">
+              <div class="quote">″</div>
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
 
         <!-- PB -->
-        <section class="section">
-          <label class="checkbox" style="display:flex;align-items:center;gap:10px;">
+        <section class="section" style="margin-top:8px;">
+          <label class="checkbox">
             <input id="race-pb" type="checkbox">
-            <span>PB (Personal Best)</span>
-            <span id="race-pb-congrats" style="display:none;color:#FF6A00;font-weight:900;margin-left:8px;">Congraturation!</span>
+            PB (Personal Best)
+            <span id="race-pb-congrats" style="display:none;color:#FF6A00;font-weight:800;margin-left:10px;">Congraturation!</span>
           </label>
         </section>
 
@@ -150,39 +152,38 @@
             <button class="pill-btn" data-bg="black">Black</button>
           </div>
         </section>
+      </div>
 
-        <!-- Font (기존 10개) -->
-        <section class="section">
-          <div class="control-title">Font</div>
-          <div class="font-grid" id="font-grid">
-            <button data-font="Helvetica Neue" style="font-family:Helvetica, Arial, sans-serif;">Basic</button>
-            <button data-font="Anton" style="font-family:'Anton', sans-serif;">Anton</button>
-            <button data-font="Big Shoulders Inline Text" style="font-family:'Big Shoulders Inline Text', cursive;">Inline</button>
-            <button data-font="Tourney" style="font-family:'Tourney', cursive; font-style:italic; font-weight:200;">Tour</button>
-            <button data-font="Anta" style="font-family:'Anta', sans-serif;">Anta</button>
-            <button data-font="Arvo" style="font-family:'Arvo', serif; font-style:italic; font-weight:700;">Arvo</button>
-            <button data-font="Iceberg" style="font-family:'Iceberg', cursive;">Ice</button>
-            <button data-font="Permanent Marker" style="font-family:'Permanent Marker', cursive;">Marker</button>
-            <button data-font="Londrina Shadow" style="font-family:'Londrina Shadow', cursive;">Lond</button>
-            <button data-font="Rock Salt" style="font-family:'Rock Salt', cursive;">Rock</button>
-          </div>
-        </section>
+      <!-- Font (공용) -->
+      <section class="section">
+        <div class="control-title">Font</div>
+        <div class="font-grid" id="font-grid">
+          <button data-font="Helvetica Neue" style="font-family:Helvetica, Arial, sans-serif;">Basic</button>
+          <button data-font="Anton" style="font-family:'Anton', sans-serif;">Anton</button>
+          <button data-font="Big Shoulders Inline Text" style="font-family:'Big Shoulders Inline Text', cursive;">Inline</button>
+          <button data-font="Tourney" style="font-family:'Tourney', cursive; font-style:italic; font-weight:200;">Tour</button>
+          <button data-font="Anta" style="font-family:'Anta', sans-serif;">Anta</button>
+          <button data-font="Arvo" style="font-family:'Arvo', serif; font-style:italic; font-weight:700;">Arvo</button>
+          <button data-font="Iceberg" style="font-family:'Iceberg', cursive;">Ice</button>
+          <button data-font="Permanent Marker" style="font-family:'Permanent Marker', cursive;">Marker</button>
+          <button data-font="Londrina Shadow" style="font-family:'Londrina Shadow', cursive;">Lond</button>
+          <button data-font="Rock Salt" style="font-family:'Rock Salt', cursive;">Rock</button>
+        </div>
+      </section>
 
-        <!-- RUN -->
-        <section class="section">
-          <button class="run-button" id="run-btn" onclick="onRun()">RUN!!</button>
-        </section>
-      </div><!-- /#race-panel -->
+      <section class="section">
+        <button class="run-button" id="run-btn" onclick="onRun()">RUN!!</button>
+      </section>
     </div>
   </div>
 
   <button id="exit-focus" title="Close" onclick="exitFocus()">✕</button>
 
-  <!-- ===== Stage ===== -->
+  <!-- ===== 출력 스테이지 ===== -->
   <section class="stage-outer">
     <div id="stage-canvas" class="stage-canvas">
       <div class="stage-inner fixed" id="stage">
-        <!-- Daily/Monthly 보드 -->
+        <!-- DM 보드 -->
         <div id="dm-board">
           <div id="km-measure">99.99</div>
           <div id="date-display" class="date-display"></div>
@@ -193,6 +194,7 @@
             </div>
           </div>
           <div id="km-word">Kilometers</div>
+
           <div class="grid" id="stats-grid">
             <div id="runs-wrap" style="display:none;">
               <div class="label">Runs</div>
@@ -210,7 +212,7 @@
           <div id="cv-hint" style="display:none;"></div>
         </div>
 
-        <!-- Race 보드 (두번째 이미지 레이아웃) -->
+        <!-- Race 보드 -->
         <div id="race-board" style="display:none;">
           <div id="race-title" class="race-title">대회명을 선택하세요</div>
           <div id="race-subtype" class="race-subtype">종목</div>
@@ -220,25 +222,18 @@
             <div id="race-pace" class="race-pace">0:00 /km</div>
           </div>
           <div id="race-badges" class="race-badges">
-            <img id="badge-pb" src="../js/pb.png" alt="PB" style="display:none;height:54px;">
-            <img id="badge-sub3" src="../js/sub3.png" alt="SUB3" style="display:none;height:54px;">
-            <img id="badge-sub4" src="../js/sub4.png" alt="SUB4" style="display:none;height:54px;">
+            <img id="badge-pb"   src="../js/pb.png"   alt="PB"   style="display:none;">
+            <img id="badge-sub3" src="../js/sub3.png" alt="SUB3" style="display:none;">
+            <img id="badge-sub4" src="../js/sub4.png" alt="SUB4" style="display:none;">
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- OCR 백업 (DM 전용) -->
+  <!-- OCR (DM용) -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
-
-  <!-- 메인 UI -->
+  <!-- 메인 JS -->
   <script type="module" src="./js/ui.js"></script>
-
-  <!-- (선택) 서버에서 미리 race 데이터를 넣고 싶다면:
-  <script>
-    window.RACE_DATA = [{date:'2025-09-20', name:'2025 아자리너 마라톤'}, ...];
-  </script>
-  -->
 </body>
 </html>
