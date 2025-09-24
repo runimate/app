@@ -87,11 +87,28 @@
     body.wide-font .run-button {
       font-family: var(--wideFontFamily) !important;
     }
+
+    /* ▼ 드롭다운 어포던스 */
+    .select-wrap{ position:relative; }
+    .select-wrap::after{
+      content:"";
+      position:absolute;
+      right:18px;
+      top:50%;
+      transform:translateY(-50%);
+      width:0;height:0;
+      border-left:7px solid transparent;
+      border-right:7px solid transparent;
+      border-top:10px solid #000; /* ▼ */
+      pointer-events:none;
+    }
+    .select-wrap .pill-select{ padding-right:48px; }
+    .bg-black .select-wrap::after{ border-top-color:#fff; }
   </style>
 </head>
 <body class="bg-white type1 mode-daily">
   <header>
-    <h1>RUNIMATE V.1.1</h1>
+    <h1>RUNIMATE V.1.5</h1>
     <div class="subtitle">by JS @runarchive.js</div>
   </header>
 
@@ -149,8 +166,16 @@
       <div id="race-panel" style="display:none;">
         <!-- 1:2 정렬 (Monthly 시작점과 정렬) -->
         <div class="race-select-grid" style="margin-top:12px;">
-          <div class="race-month-cell"><select id="race-month" class="pill-like pill-select"></select></div>
-          <div class="race-list-cell"><select id="race-list" class="pill-like pill-select"></select></div>
+          <div class="race-month-cell">
+            <div class="select-wrap">
+              <select id="race-month" class="pill-like pill-select"></select>
+            </div>
+          </div>
+          <div class="race-list-cell">
+            <div class="select-wrap">
+              <select id="race-list" class="pill-like pill-select"></select>
+            </div>
+          </div>
         </div>
         <div style="margin-top:10px;">
           <input id="race-name-input" class="pill-like pill-input" placeholder="대회명을 직접 입력하세요" style="display:none;">
