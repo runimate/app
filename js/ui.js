@@ -624,12 +624,31 @@ function getRaceSelectedName(){
   return v||'대회명 미선택';
 }
 function getRaceSubtypeLabel(){
+  // 수동 입력이 켜져 있으면 입력값을 기준으로 라벨 생성
   if (raceDistManualCk?.checked){
-    const v=(raceDistManualIn?.value||'').trim();
-    return v ? `${v}K` : 'Custom';
+    const vStr = (raceDistManualIn?.value || '').trim();
+    const km = parseFloat(vStr);
+
+    if (Number.isFinite(km) && km > 0){
+      // 관용 라벨 보정
+      if (Math.abs(km - 21) < 0.6)      return 'Half Marathon';
+      if (Math.abs(km - 42) < 1.2 || Math.abs(km - 42.195) < 1.2) return 'Marathon';
+
+      // 5/10 처럼 딱 떨어지면 정수, 아니면 소수 한 자리
+      const kmText = Math.abs(km - Math.round(km)) < 0.01 ? String(Math.round(km)) : String(km.toFixed(1));
+      return `${kmText}K Race`;
+    }
+    return 'Custom';
   }
-  if (raceState.dist==='Half') return 'Half Marathon';
-  return raceState.dist || '종목';
+
+  // 버튼 선택 시 라벨
+  switch (raceState.dist){
+    case '5K':       return '5K Race';
+    case '10K':      return '10K Race';
+    case 'Half':     return 'Half Marathon';
+    case 'Marathon': return 'Marathon';
+    default:         return '종목';
+  }
 }
 function isFullCourse(){
   if (raceState.dist === 'Marathon') return true;
