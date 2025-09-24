@@ -1,6 +1,7 @@
-// ui.js — Race(JSON) + 통일된 pill 사이즈
+// ui.js — Daily/Monthly + Race(JSON) + Race 타임 애니메이션
 import { fontSettings, kmFontScale, applyFontIndents, applyFontStatsOffset } from './fonts.js';
 
+/* ===== 상태 ===== */
 let parsedData = { km:null, runs:null, paceMin:null, paceSec:null, timeH:null, timeM:null, timeS:null, timeRaw:null };
 let recordType = 'daily';
 let layoutType = 'type1';
@@ -9,7 +10,7 @@ let selectedDate = new Date();
 
 const raceState = { races: [], dist: null, bg: 'white' };
 
-/* DOM 공용 */
+/* ===== DOM 공용 ===== */
 const fontGridEl  = document.getElementById('font-grid');
 const bgRow       = document.getElementById('bg-row');
 const modeRow     = document.getElementById('mode-row');
@@ -32,7 +33,7 @@ const raceBoard = document.getElementById('race-board');
 const stageCanvas = document.getElementById('stage-canvas');
 const stageRoot   = document.getElementById('stage');
 
-/* Race DOM */
+/* ===== Race DOM ===== */
 const raceMonthSel     = document.getElementById('race-month');
 const raceListSel      = document.getElementById('race-list');
 const raceNameInput    = document.getElementById('race-name-input');
@@ -61,8 +62,9 @@ const badgePB       = document.getElementById('badge-pb');
 const badgeSub3     = document.getElementById('badge-sub3');
 const badgeSub4     = document.getElementById('badge-sub4');
 
-/* 유틸 */
 const MONTH_ABBR = ["JAN.","FEB.","MAR.","APR.","MAY.","JUN.","JUL.","AUG.","SEP.","OCT.","NOV.","DEC."];
+
+/* ===== 유틸 ===== */
 const zero2txt = (n)=>String(n).padStart(2,'0');
 const cssEsc = (s)=> (window.CSS && typeof CSS.escape === 'function') ? CSS.escape(s) : String(s).replace(/"/g,'\\"');
 const isFiniteNum = (x)=>Number.isFinite(x);
@@ -71,6 +73,8 @@ function ensureFontReady(fontFamily, weight=700, sizePx=200, style='normal'){
   if (!('fonts' in document) || typeof document.fonts.load !== 'function') return Promise.resolve();
   return document.fonts.load(`${style} ${weight} ${sizePx}px "${fontFamily}"`).catch(()=>{});
 }
+
+/* ===== 시간/표시 유틸 ===== */
 function parseTimeToSecFlexible(raw){
   if(!raw) return NaN;
   const t = String(raw).trim().replace(/[’'′]/g,':').replace(/[″"]/g,':').replace(/：/g,':');
@@ -85,8 +89,16 @@ function getTimeSecFromParsed(pd){
   if (pd.timeRaw){ const sec = parseTimeToSecFlexible(pd.timeRaw); if (isFinite(sec) && sec>0) return sec; }
   return NaN;
 }
+/* Race용: seconds -> 표시 규칙
+   - HH>0: H:MM:SS (H는 0패딩 X)
+   - HH==0: M:SS (M은 0패딩 X) */
+function secToRaceDisplay(sec){
+  sec = Math.max(0, Math.floor(sec||0));
+  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
+  return (h>0) ? `${h}:${zero2txt(m)}:${zero2txt(s)}` : `${m}:${zero2txt(s)}`;
+}
 
-/* 날짜/표시(DM) */
+/* ===== 날짜/표시(DM) ===== */
 function formatDateText(d){
   const day = String(d.getDate()), yr = d.getFullYear();
   if (recordType === 'daily' && layoutType === 'type2') return `${day} ${MONTH_ABBR[d.getMonth()]} ${yr}`;
@@ -94,7 +106,7 @@ function formatDateText(d){
   return ``;
 }
 
-/* 숫자/애니(DM) */
+/* ===== 숫자/애니(DM) ===== */
 function truncate(v,d){ const f=10**d; return Math.floor((Number(v)||0)*f)/f; }
 function formatKm(v){ v=Math.max(0, Number(v)||0); return (recordType==='monthly') ? truncate(v,1).toFixed(1) : truncate(v,2).toFixed(2); }
 function renderKm(v){ const el=document.getElementById('km'); if(el) el.textContent = formatKm(v); }
@@ -146,8 +158,9 @@ function renderStats(){
   updateGridCols(); layoutStatsGrid(); alignStatsBaseline();
 }
 
-/* 스테이지/애니(DM) */
+/* ===== 스테이지/애니 ===== */
 const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+
 function animateNumber(id,start,end,duration){
   return new Promise(resolve=>{
     const el=document.getElementById(id); let t0;
@@ -156,7 +169,30 @@ function animateNumber(id,start,end,duration){
     requestAnimationFrame(step);
   });
 }
-function scaleStageCanvas(){ if(!stageCanvas) return; const vw=window.innerWidth; const logical=(vw<430)?540:720; const s=Math.min(vw/logical,1); stageCanvas.style.transform=`scale(${s})`; }
+
+/* Race: 타임 애니메이션 */
+function animateRaceTime(id, endSec, duration=2400){
+  return new Promise(resolve=>{
+    const el = document.getElementById(id); if(!el){ resolve(); return; }
+    let t0;
+    function step(t){
+      if(!t0) t0=t;
+      const r = Math.min((t - t0)/duration, 1);
+      const cur = Math.round(endSec * easeOutCubic(r));
+      el.textContent = secToRaceDisplay(cur);
+      (r<1) ? requestAnimationFrame(step) : resolve();
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+function scaleStageCanvas(){
+  if(!stageCanvas) return;
+  const vw = window.innerWidth;
+  const logical = (vw < 430) ? 540 : 720;
+  const s = Math.min(vw / logical, 1);
+  stageCanvas.style.transform = `scale(${s})`;
+}
 function syncDateWidth(){ if(layoutType!=='type2') return; const row=document.getElementById('km-row'); if(!row||!dateDisplay) return; dateDisplay.style.width=row.getBoundingClientRect().width+'px'; }
 function fitKmRow(){
   const stage=document.getElementById('stage'), row=document.getElementById('km-row'), measure=document.getElementById('km-measure'), kmEl=document.getElementById('km');
@@ -170,27 +206,37 @@ function fitKmRow(){
   const typeScale=parseFloat(css.getPropertyValue('--kmScale'))||1;
   const modeScale=parseFloat(css.getPropertyValue('--modeKmScale'))||1;
   const fontScale=(kmFontScale[selectedFont]&&kmFontScale[selectedFont][layoutType])?kmFontScale[selectedFont][layoutType]:1;
-  row.style.transform=`scale(${base*typeScale*fontScale*modeScale})`; syncDateWidth();
+  row.style.transform=`scale(${base*typeScale*fontScale*modeScale})`;
+  syncDateWidth();
 }
-async function runAnimation(){ if(recordType==='race') return; fitKmRow(); await new Promise(r=>setTimeout(r,500)); const end=parseFloat(parsedData.km||0); await animateNumber("km",0,isNaN(end)?0:end,2200); fitKmRow(); }
 
-/* 폰트/배경/모드/레이아웃 */
+async function runAnimation(){
+  // DM 모드 애니
+  fitKmRow();
+  await new Promise(r=>setTimeout(r, 500));
+  const endVal = parseFloat(parsedData.km || 0);
+  await animateNumber("km", 0, isNaN(endVal)?0:endVal, 2200);
+  fitKmRow();
+}
+
+async function runRaceAnimation(){
+  // 제목/서브타입/페이스 먼저 세팅
+  renderRaceBoard(false);
+  // 타임 애니메이션
+  const sec = computeRaceSeconds();
+  await animateRaceTime('race-time', sec, 2400);
+  // 최종 한번 더 정밀 렌더
+  renderRaceBoard(true);
+}
+
+/* ===== 폰트/배경/모드/레이아웃 ===== */
 function updateActive(groupEl, targetBtn){ if(!groupEl) return; [...groupEl.querySelectorAll('button')].forEach(b=>b.classList.remove('is-active')); targetBtn?.classList?.add('is-active'); }
 function setFont(font){
   selectedFont = font;
   if (stageRoot){ stageRoot.style.fontFamily=`"${font}", sans-serif`; stageRoot.style.fontSynthesis='none'; }
-  const km=document.getElementById("km"), dateDisp=document.getElementById("date-display"); const fs=fontSettings[font]||{};
-  if (km){ km.style.fontFamily=`"${font}", sans-serif`; km.style.fontSize=(fs.base??200)+"px"; km.style.fontWeight=(fs.weight??700); km.style.transform=fs.translate?`translate(${fs.translate})`:"translate(0,0)"; km.style.fontSynthesis='none'; }
-  const whitelist = new Set(["Helvetica Neue","Anton","Anta","Arvo","Iceberg"]);
-  if (dateDisp){ if (whitelist.has(font)){ dateDisp.style.fontFamily=`"${font}", sans-serif`; dateDisp.style.fontWeight=(fs.dateWeight??700); dateDisp.style.fontSynthesis='none'; } else { dateDisp.style.fontFamily=""; dateDisp.style.fontWeight=700; } }
-  const root=document.documentElement.style;
-  const dSize=fs.dateSize||"50px", dGap=fs.dateGap||"10px", dTrans=fs.dateTranslate||"0px,0px";
-  ["--d2","--m1","--m2"].forEach(p=>{ root.setProperty(`${p}-dateSize`, dSize); root.setProperty(`${p}-dateGap`, dGap); root.setProperty(`${p}-dateTranslate`, dTrans);});
-  if (fs.kmWordGap) document.documentElement.style.setProperty('--kmWordGap', fs.kmWordGap);
-  updateActive(fontGridEl, fontGridEl?.querySelector(`button[data-font="${cssEsc(font)}"]`));
   applyFontIndents(selectedFont, layoutType);
   applyFontStatsOffset(selectedFont, layoutType, recordType);
-  ensureFontReady(font, fs.weight??700, fs.base??200).then(()=>fitKmRow());
+  ensureFontReady(font, 700, 200).then(()=>fitKmRow());
   fitKmRow(); renderStats(); renderDateDisplay();
 }
 function setBackground(color){
@@ -264,16 +310,8 @@ function normalizeRow(row){
   return {date,name};
 }
 async function loadRaceScheduleJSON(){
-  // 오타(scheduled.jsaon)와 경로 모두 보정 시도
-  const candidates = [
-    './schedule.json',
-    './data/schedule.json',
-    './schedule.jsaon'   // 오타 대비
-  ];
-  // file:// 로 열었을 때 fetch 제한 안내
-  if (location.protocol === 'file:') {
-    console.warn('[Race] schedule.json은 file:// 로 직접 열면 브라우저 보안정책상 fetch가 차단됩니다. 로컬 서버로 띄워주세요.');
-  }
+  const candidates = ['./schedule.json','./data/schedule.json','./schedule.jsaon']; // 오타까지 시도
+  if (location.protocol === 'file:') console.warn('file://로 열면 fetch가 차단될 수 있어요. 로컬 서버에서 실행을 권장합니다.');
   for (const url of candidates){
     try{
       const res = await fetch(url, {cache:'no-cache'});
@@ -282,10 +320,9 @@ async function loadRaceScheduleJSON(){
       raceState.races = Array.isArray(arr) ? arr.map(normalizeRow).filter(r=>r.name) : [];
       populateRaceOptions();
       return;
-    }catch(e){ /* try next */ }
+    }catch(e){ /* continue */ }
   }
-  raceState.races = [];
-  populateRaceOptions();
+  raceState.races = []; populateRaceOptions();
 }
 function populateRaceOptions(){
   if (!raceListSel) return;
@@ -299,11 +336,10 @@ function populateRaceOptions(){
 }
 function toggleRaceManualField(){
   if (!raceListSel || !raceNameInput) return;
-  const v = raceListSel.value;
-  raceNameInput.style.display = (v==='__manual__'||v==='__manual__2') ? 'block':'none';
+  raceNameInput.style.display = (raceListSel.value==='__manual__'||raceListSel.value==='__manual__2') ? 'block':'none';
 }
 
-/* Race 이벤트 */
+/* ===== Race 이벤트 ===== */
 raceMonthSel?.addEventListener('change', populateRaceOptions);
 raceListSel?.addEventListener('change', toggleRaceManualField);
 
@@ -320,43 +356,79 @@ raceDistManualCk?.addEventListener('change', (e)=>{
 raceBgRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-bg]'); if(btn) setBackground(btn.dataset.bg); });
 racePB?.addEventListener('change', ()=>{ racePBMsg.style.display = racePB.checked ? 'inline' : 'none'; });
 
-/* Race 출력 */
-function formatRaceTime(hh,mm,ss){ const H=+hh||0,M=+mm||0,S=+ss||0; return (H>0)?`${H}:${zero2txt(M)}:${zero2txt(S)}`:`${M}:${zero2txt(S)}`; }
+/* ===== Race 표시 ===== */
+function getRaceSelectedName(){
+  const v=raceListSel?.value;
+  if (!v) return '대회명 미선택';
+  if (v==='__manual__'||v==='__manual__2'){
+    const t=(raceNameInput?.value||'').trim();
+    return t||'대회명 미입력';
+  }
+  return v;
+}
 function getRaceSubtypeLabel(){
-  if (raceDistManualCk?.checked){ const v=(raceDistManualIn?.value||'').trim(); return v||'Custom'; }
+  if (raceDistManualCk?.checked){
+    const v=(raceDistManualIn?.value||'').trim();
+    return v ? `${v}K` : 'Custom';
+  }
   if (raceState.dist==='Half') return 'Half Marathon';
   return raceState.dist || '종목';
 }
-function getRaceSelectedName(){
-  const v=raceListSel?.value; if(!v) return '대회명 미선택';
-  if (v==='__manual__'||v==='__manual__2'){ const t=(raceNameInput?.value||'').trim(); return t||'대회명 미입력'; }
-  return v;
+function isFullCourse(){
+  if (raceState.dist === 'Marathon') return true;
+  if (raceDistManualCk?.checked){
+    const v = parseFloat(raceDistManualIn?.value||'0');
+    return isFinite(v) && v >= 42;
+  }
+  return false;
 }
 function computeRaceSeconds(){ return (+raceHH.value||0)*3600 + (+raceMM.value||0)*60 + (+raceSS.value||0); }
-function renderRaceBoard(){
+function computeRacePaceText(){
+  const mm = +racePaceMM.value || 0;
+  const ss = +racePaceSS.value || 0;
+  if (mm+ss>0) return `${mm}:${zero2txt(ss)} /km`;
+  // 입력이 없으면 타임/거리로 계산 (가능하면)
+  let distKm = null;
+  if (raceState.dist==='5K') distKm = 5;
+  else if (raceState.dist==='10K') distKm = 10;
+  else if (raceState.dist==='Half') distKm = 21.0975;
+  else if (raceState.dist==='Marathon') distKm = 42.195;
+  else if (raceDistManualCk?.checked){
+    const v = parseFloat(raceDistManualIn?.value||'0');
+    if (isFinite(v) && v>0) distKm = v;
+  }
+  const sec = computeRaceSeconds();
+  if (!distKm || sec<=0) return `0:00 /km`;
+  const p = Math.round(sec / distKm);
+  return `${Math.floor(p/60)}:${zero2txt(p%60)} /km`;
+}
+function renderRaceBoard(updateBadges=true){
   raceTitleEl&&(raceTitleEl.textContent=getRaceSelectedName());
-  const subtype=getRaceSubtypeLabel();
+  const subtype = getRaceSubtypeLabel();
   raceSubtypeEl&&(raceSubtypeEl.textContent=subtype);
-  raceTimeEl&&(raceTimeEl.textContent = formatRaceTime(raceHH.value,raceMM.value,raceSS.value));
-  racePaceEl&&(racePaceEl.textContent = `${(+racePaceMM.value||0)}:${zero2txt(+racePaceSS.value||0)} /km`);
-  const sec=computeRaceSeconds(), isFull=(subtype==='Marathon');
-  badgePB&&(badgePB.style.display = racePB.checked ? 'inline' : 'none');
-  badgeSub3&&(badgeSub3.style.display = (isFull && sec>0 && sec<3*3600) ? 'inline' : 'none');
-  badgeSub4&&(badgeSub4.style.display = (isFull && sec>=3*3600 && sec<4*3600) ? 'inline' : 'none');
+  raceTimeEl&&(raceTimeEl.textContent = secToRaceDisplay(computeRaceSeconds()));
+  racePaceEl&&(racePaceEl.textContent = computeRacePaceText());
+
+  if (updateBadges){
+    const sec=computeRaceSeconds();
+    badgePB&&(badgePB.style.display = racePB.checked ? 'inline' : 'none');
+    badgeSub3&&(badgeSub3.style.display = (isFullCourse() && sec>0 && sec<3*3600) ? 'inline' : 'none');
+    badgeSub4&&(badgeSub4.style.display = (isFullCourse() && sec>=3*3600 && sec<4*3600) ? 'inline' : 'none');
+  }
 }
 
-/* 공용 이벤트 */
+/* ===== 공용 이벤트 ===== */
 fontGridEl?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-font]'); if(btn) setFont(btn.dataset.font); });
 bgRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-bg]'); if(btn) setBackground(btn.dataset.bg); });
 modeRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-mode]'); if(btn) setRecordType(btn.dataset.mode); });
 layoutRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-layout]'); if(btn) setLayout(btn.dataset.layout); });
 dateInput?.addEventListener('change', setDateFromInput);
 
-/* Run / Focus */
+/* ===== Run / Focus ===== */
 window.onRun = function onRun(){
   document.body.classList.add('focus');
   stageCanvas?.scrollIntoView({behavior:'smooth', block:'start'});
-  if (recordType==='race'){ renderRaceBoard(); return; }
+  if (recordType==='race'){ runRaceAnimation(); return; }
   runAnimation();
 };
 window.exitFocus = function exitFocus(){
@@ -365,7 +437,7 @@ window.exitFocus = function exitFocus(){
   const kmEl=document.getElementById('km'); kmEl&&(kmEl.textContent = recordType==='monthly' ? "0.0" : "0.00");
 };
 
-/* OCR (DM) */
+/* ===== OCR (DM) ===== */
 async function runOcrPipeline(imgDataURL){ const OCR=await import('./ocr.js'); return OCR.extractAll(imgDataURL, { recordType }); }
 fileInputEl?.addEventListener("change", async (e)=>{
   if (recordType==='race'){ fileInputEl.value=''; return; }
@@ -391,38 +463,61 @@ fileInputEl?.addEventListener("change", async (e)=>{
   reader.readAsDataURL(file);
 });
 
-/* 초기화 */
+/* ===== 초기화 ===== */
 window.onload = ()=>{
-  setRecordType('daily'); setLayout('type1'); setBackground('white'); setFont('Helvetica Neue');
+  setRecordType('daily');
+  setLayout('type1');
+  setBackground('white');
+  setFont('Helvetica Neue');
 
+  // DM 스타일 튜닝
   setTypeStatsStyle('type1', { size:'40px', labelSize:'18px', gap:'24px', pull:'0px' });
-  setTypeKmWordStyle('type1', { size:'36px', gap:'16px' }); setTypeKmScale('type1', 1.00);
+  setTypeKmWordStyle('type1', { size:'36px', gap:'16px' });
+  setTypeKmScale('type1', 1.00);
+
   setTypeStatsStyle('type2', { size:'40px', labelSize:'20px', gap:'16px', pull:'50px', pull2:'40px' });
-  setTypeKmWordStyle('type2', { size:'36px', gap:'16px' }); setTypeKmScale('type2', 1.00);
-  setModeStyle('daily', { kmScale:1.0 }); setModeStyle('monthly', { kmScale:1.0 });
+  setTypeKmWordStyle('type2', { size:'36px', gap:'16px' });
+  setTypeKmScale('type2', 1.00);
 
-  const t=new Date(); const di=document.getElementById('date-input');
+  setModeStyle('daily',   { kmScale:1.0 });
+  setModeStyle('monthly', { kmScale:1.0 });
+
+  // 날짜 기본값
+  const t=new Date();
+  const di=document.getElementById('date-input');
   if (di) di.value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
-  selectedDate=t;
+  selectedDate = t;
 
+  // Race 초기화
   initRaceMonths();
   loadRaceScheduleJSON();
 
-  scaleStageCanvas(); applyLayoutVisual(); renderKm(0);
-  applyFontIndents(selectedFont, layoutType); applyFontStatsOffset(selectedFont, layoutType, recordType);
-  fitKmRow(); renderStats(); updateUploadLabel();
-};
-window.addEventListener('resize', ()=>{ scaleStageCanvas(); fitKmRow(); alignStatsBaseline(); });
-window.addEventListener('orientationchange', ()=>{ setTimeout(()=>{ scaleStageCanvas(); fitKmRow(); alignStatsBaseline(); }, 50); });
+  scaleStageCanvas();
+  applyLayoutVisual();
 
-/* 디자인 변수 helpers */
+  renderKm(0);
+  applyFontIndents(selectedFont, layoutType);
+  applyFontStatsOffset(selectedFont, layoutType, recordType);
+
+  fitKmRow();
+  renderStats();
+  updateUploadLabel();
+};
+
+window.addEventListener('resize', ()=>{ scaleStageCanvas(); fitKmRow(); alignStatsBaseline(); });
+window.addEventListener('orientationchange', ()=> { setTimeout(()=>{ scaleStageCanvas(); fitKmRow(); alignStatsBaseline(); }, 50); });
+
+/* ===== 디자인 변수 Helpers ===== */
 function setTypeStatsStyle(type, { size, labelSize, gap, pull, pull2 } = {}){ const r=document.documentElement.style;
   if(type==='type1'){ if(size)r.setProperty('--t1-statSize',size); if(labelSize)r.setProperty('--t1-labelSize',labelSize); if(gap!=null)r.setProperty('--t1-statGap',gap); if(pull!=null)r.setProperty('--t1-statPull',pull); if(pull2!=null)r.setProperty('--t1-statPull2',pull2); }
   else{ if(size)r.setProperty('--t2-statSize',size); if(labelSize)r.setProperty('--t2-labelSize',labelSize); if(gap!=null)r.setProperty('--t2-statGap',gap); if(pull!=null)r.setProperty('--t2-statPull',pull); if(pull2!=null)r.setProperty('--t2-statPull2',pull2); }
 }
-function setTypeKmWordStyle(type,{size,gap}={}){ const r=document.documentElement.style; if(type==='type1'){ if(size)r.setProperty('--t1-kmWordSize',size); if(gap)r.setProperty('--t1-kmWordGap',gap);} else{ if(size)r.setProperty('--t2-kmWordSize',size); if(gap)r.setProperty('--t2-kmWordGap',gap);} }
+function setTypeKmWordStyle(type, { size, gap } = {}){ const r=document.documentElement.style;
+  if(type==='type1'){ if (size) r.setProperty('--t1-kmWordSize', size); if (gap) r.setProperty('--t1-kmWordGap', gap); }
+  else{ if (size) r.setProperty('--t2-kmWordSize', size); if (gap) r.setProperty('--t2-kmWordGap', gap); }
+}
 function setTypeKmScale(type, scale){ const r=document.documentElement.style; r.setProperty(type==='type1'?'--t1-kmScale':'--t2-kmScale', String(scale)); fitKmRow(); }
-function setModeStyle(mode,{kmScale,statGap,kmWordBottomGap}={}){ const r=document.documentElement.style;
-  if(mode==='daily'){ if(kmScale!=null)r.setProperty('--d-kmScale',String(kmScale)); if(statGap!=null)r.setProperty('--d-statGap',String(statGap)); if(kmWordBottomGap!=null)r.setProperty('--d-kmWordBottomGap',String(kmWordBottomGap)); }
-  else{ if(kmScale!=null)r.setProperty('--m-kmScale',String(kmScale)); if(statGap!=null)r.setProperty('--m-statGap',String(statGap)); if(kmWordBottomGap!=null)r.setProperty('--m-kmWordBottomGap',String(kmWordBottomGap)); }
+function setModeStyle(mode, { kmScale, statGap, kmWordBottomGap } = {}){ const r=document.documentElement.style;
+  if(mode==='daily'){ if (kmScale!=null) r.setProperty('--d-kmScale', String(kmScale)); if (statGap!=null) r.setProperty('--d-statGap', String(statGap)); if (kmWordBottomGap!=null) r.setProperty('--d-kmWordBottomGap', String(kmWordBottomGap)); }
+  else{ if (kmScale!=null) r.setProperty('--m-kmScale', String(kmScale)); if (statGap!=null) r.setProperty('--m-statGap', String(statGap)); if (kmWordBottomGap!=null) r.setProperty('--m-kmWordBottomGap', String(kmWordBottomGap)); }
 }
