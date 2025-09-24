@@ -1,201 +1,172 @@
-// js/ocr.js — robust extractor (daily + monthly ready)
+// js/ocr.js — daily + monthly 지원 (ES Module)
 
+// 1) Tesseract 보장
 async function ensureTesseract() {
   if (window.Tesseract) return window.Tesseract;
-  await new Promise((res, rej) => {
+  await new Promise((resolve, reject) => {
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
     s.async = true;
-    s.onload = res;
-    s.onerror = () => rej(new Error('Failed to load Tesseract.js CDN'));
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('Failed to load Tesseract.js CDN'));
     document.head.appendChild(s);
   });
   if (!window.Tesseract) throw new Error('Tesseract failed to initialize');
   return window.Tesseract;
 }
 
-// ---- image utils
-function toImage(src){ return new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=src; }); }
-function drawCrop(img, x, y, w, h, scale=2.0){
-  const c=document.createElement('canvas');
-  c.width=Math.round(w*scale); c.height=Math.round(h*scale);
-  const ctx=c.getContext('2d',{willReadFrequently:true});
+// 2) 캔버스 유틸
+function toImage(src){ return new Promise((res, rej)=>{ const img=new Image(); img.onload=()=>res(img); img.onerror=rej; img.src=src; }); }
+function makeCanvas(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
+function drawCrop(img,x,y,w,h,scale=2.2){
+  const c=makeCanvas(Math.round(w*scale), Math.round(h*scale));
+  const ctx=c.getContext('2d', { willReadFrequently:true });
   ctx.imageSmoothingEnabled=false;
-  ctx.drawImage(img, x, y, w, h, 0, 0, c.width, c.height);
+  ctx.drawImage(img, x,y,w,h, 0,0,c.width,c.height);
   return c;
 }
-function cloneCanvas(c){
-  const d=document.createElement('canvas');
-  d.width=c.width; d.height=c.height;
-  d.getContext('2d').drawImage(c,0,0);
-  return d;
-}
 function binarize(canvas, threshold=185){
-  const c=cloneCanvas(canvas);
-  const ctx=c.getContext('2d',{willReadFrequently:true});
-  const im=ctx.getImageData(0,0,c.width,c.height);
-  const d=im.data;
+  const ctx = canvas.getContext('2d', { willReadFrequently:true });
+  const im  = ctx.getImageData(0,0,canvas.width,canvas.height);
+  const d   = im.data;
   for(let i=0;i<d.length;i+=4){
-    const g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
-    const v=g>threshold?255:0;
+    const g = 0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+    const v = g>threshold ? 255 : 0;
     d[i]=d[i+1]=d[i+2]=v;
   }
   ctx.putImageData(im,0,0);
+  return canvas;
+}
+function fillWhite(canvas, rx, ry, rw, rh){
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(canvas.width*rx, canvas.height*ry, canvas.width*rw, canvas.height*rh);
+  return canvas;
+}
+const toURL = (c)=>c.toDataURL('image/png');
+
+// 3) OCR helpers
+async function ocrLine(url, { psm=7, whitelist='0123456789:’\'″"′ ' } = {}){
+  const T = await ensureTesseract();
+  const opts = {
+    tessedit_pageseg_mode: psm,
+    tessedit_char_whitelist: whitelist,
+    preserve_interword_spaces: '1'
+  };
+  const res = await Tesseract.recognize(url, 'eng+kor', opts);
+  return res?.data?.text?.trim() ?? '';
+}
+async function bestTextFrom(canvas){
+  const candidates = [null, 165, 185, 205];
+  const texts = [];
+  for(const th of candidates){
+    const c = th==null ? canvas : binarize(cloneCanvas(canvas), th);
+    texts.push(await ocrLine(toURL(c)));
+  }
+  const score = (s)=> (s.match(/[0-9]/g)||[]).length + (s.match(/[:]/g)||[]).length*2;
+  return texts.sort((a,b)=>score(b)-score(a))[0] || '';
+}
+function cloneCanvas(src){
+  const c = makeCanvas(src.width, src.height);
+  c.getContext('2d').drawImage(src,0,0);
   return c;
 }
-const dataURL = c => c.toDataURL('image/png');
 
-// ---- text helpers
-const norm = s => String(s||'')
-  .replace(/[’'′]/g,':')
-  .replace(/[″"]/g,':')
-  .replace(/：/g,':')
-  .replace(/\s+/g,' ')
-  .trim();
+// 4) ROI들
+function roisDaily(w,h){
+  const top = { x: Math.round(w*0.06), y: Math.round(h*0.06), w: Math.round(w*0.74), h: Math.round(h*0.26) };
+  const barY = Math.round(h*0.48), barH = Math.round(h*0.16);
+  const barX = Math.round(w*0.06), barW = Math.round(w*0.88), cellW = Math.round(barW/3);
+  return {
+    top,
+    pace: { x: barX + 0*cellW, y: barY, w: cellW, h: barH },
+    time: { x: barX + 1*cellW, y: barY, w: cellW, h: barH },
+    runs: null
+  };
+}
+function roisMonthly(w,h){
+  const top = { x: Math.round(w*0.06), y: Math.round(h*0.06), w: Math.round(w*0.80), h: Math.round(h*0.26) };
+  const barY = Math.round(h*0.50), barH = Math.round(h*0.18);
+  const barX = Math.round(w*0.06), barW = Math.round(w*0.88), cellW = Math.round(barW/3);
+  return {
+    top,
+    runs: { x: barX + 0*cellW, y: barY, w: cellW, h: barH },
+    pace: { x: barX + 1*cellW, y: barY, w: cellW, h: barH },
+    time: { x: barX + 2*cellW, y: barY, w: cellW, h: barH },
+  };
+}
 
+// 5) 파서
 function parseDistance(s){
-  // 가장 그럴듯한 소수 한 개 (0.1~200)
-  const m = s.replace(/,/g,'.').match(/(\d{1,3}(?:\.\d{1,2})?)/);
-  if(!m) return null;
-  const v = parseFloat(m[1]);
-  return (v>0.1 && v<200) ? v : null;
+  s = s.replace(/[Oo]/g, '0').replace(/,/g,'.'); // O → 0 보정 포함
+  const matches = [...s.matchAll(/\b(\d{1,4}(?:\.\d{1,2})?)\b/g)];
+  if (!matches.length) return null;
+  let val = parseFloat(matches[0][1]);
+  // 보정: 3자리 이상 정수인데 소수점 없으면 잘못 인식된 걸로 판단
+  if (!matches[0][1].includes('.') && val >= 100){
+    const fixed = (val / 100).toFixed(2);
+    return parseFloat(fixed);
+  }
+  return val;
 }
-function parseMmSs(s){
-  const t = norm(s);
-  const m = t.match(/(\d{1,2})\s*:\s*(\d{2})/);
-  if(!m) return {min:null, sec:null};
-  const mm=+m[1], ss=+m[2];
-  if (mm<0 || mm>59 || ss<0 || ss>59) return {min:null, sec:null};
-  return {min:mm, sec:ss};
+
+function parseRuns(s){
+  const m = s.match(/\b(\d{1,3})\b/);
+  return m ? parseInt(m[1],10) : null;
 }
-function parseTimeFlexible(s){
-  const t = norm(s);
-  const hms = t.match(/\b(\d{1,2})\s*:\s*(\d{2})\s*:\s*(\d{2})\b/);
+
+function parsePace(s){
+  const t = s.replace(/[’′']/g,':').replace(/[″"]/g,':').replace(/：/g,':');
+  const m = t.match(/(\d{1,2})\s*:\s*([0-5]\d)/);
+  if(!m) return { min:null, sec:null };
+  return { min:+m[1], sec:+m[2] };
+}
+
+function parseTime(s){
+  const t = s.replace(/[’′']/g,':').replace(/：/g,':');
+  const hmsWords = t.match(/(\d{1,2})\s*h[^0-9]*(\d{1,2})\s*m[^0-9]*(\d{1,2})\s*s/i);
+  if (hmsWords) return { raw:`${+hmsWords[1]}:${hmsWords[2]}:${hmsWords[3]}`, H:+hmsWords[1], M:+hmsWords[2], S:+hmsWords[3] };
+  const hms = t.match(/\b(\d{1,2})\s*:\s*([0-5]\d)\s*:\s*([0-5]\d)\b/);
   if (hms) return { raw:`${+hms[1]}:${hms[2]}:${hms[3]}`, H:+hms[1], M:+hms[2], S:+hms[3] };
-  const ms  = t.match(/\b(\d{1,2})\s*:\s*(\d{2})\b/);
+  const ms  = t.match(/\b(\d{1,2})\s*:\s*([0-5]\d)\b/);
   if (ms)  return { raw:`${+ms[1]}:${ms[2]}`, H:null, M:+ms[1], S:+ms[2] };
   return { raw:null, H:null, M:null, S:null };
 }
-const toSec = ({H=null,M=null,S=null,raw=null})=>{
-  if (H!=null||M!=null||S!=null){
-    const h=H||0,m=M||0,s=S||0;
-    const v=h*3600+m*60+s;
-    return v>0?v:NaN;
-  }
-  if (raw){
-    const r=parseTimeFlexible(raw);
-    return toSec(r);
-  }
-  return NaN;
-};
-const validPace = s => Number.isFinite(s) && s>=150 && s<=1200; // 2:30~20:00
 
-// ---- ROIs (여유 있게 + 칸별 좁게)
-function rois(w,h){
-  // 상단 큰 거리: 왼쪽 여백을 넉넉히, 로고 영역까지 포함되더라도 숫자 화이트리스트로 보호
-  const top = { x: Math.round(w*0.04), y: Math.round(h*0.06), w: Math.round(w*0.92), h: Math.round(h*0.26) };
-
-  // 하단 정보 바: 세 칸
-  const barY = Math.round(h*0.48);
-  const barH = Math.round(h*0.17);
-  const barX = Math.round(w*0.06);
-  const barW = Math.round(w*0.88);
-  const cell = Math.round(barW/3);
-
-  // 페이스는 왼쪽 칸의 왼쪽 80%만 사용(옆 칸 숫자 유입 차단)
-  const pace = { x: barX + Math.round(cell*0.00), y: barY, w: Math.round(cell*0.80), h: barH };
-  // 시간은 가운데 칸의 중앙 80%
-  const time = { x: barX + Math.round(cell*1.10), y: barY, w: Math.round(cell*0.80), h: barH };
-
-  return { top, pace, time };
-}
-
-// ---- multi-pass OCR (여러 임계값 후보)
-async function ocrBest(canvas, lang, baseCfg){
-  await ensureTesseract();
-  const candidates = [
-    { c: canvas,            note: 'raw' },
-    { c: binarize(canvas,160), note: 'b160' },
-    { c: binarize(canvas,185), note: 'b185' },
-    { c: binarize(canvas,210), note: 'b210' },
-  ];
-  let bestText = '', bestScore = -1;
-  for (const k of candidates){
-    const { data } = await Tesseract.recognize(k.c.toDataURL('image/png'), lang, baseCfg);
-    const txt = data?.text || '';
-    // 간단 스코어: 숫자/콜론 비율 + 길이
-    const digits = (txt.match(/[0-9]/g)||[]).length;
-    const colons = (txt.match(/[:]/g)||[]).length;
-    const score = digits*2 + colons*1 + Math.min(txt.length, 8);
-    if (score > bestScore){ bestScore=score; bestText=txt; }
-  }
-  return bestText.trim();
-}
-
-// ---- public API
+// 6) 공개 API
 export async function extractAll(imgDataURL, { recordType='daily' } = {}){
   const img = await toImage(imgDataURL);
   const { width:w, height:h } = img;
-  const { top, pace, time } = rois(w,h);
 
-  // 거리
-  const topC = drawCrop(img, top.x, top.y, top.w, top.h, 2.6);
-  const kmTxt = await ocrBest(topC, 'eng+kor', {
-    tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
-    preserve_interword_spaces: '1',
-    tessedit_char_whitelist: '0123456789.,'
-  });
-  let km = parseDistance(kmTxt);
+  const R = recordType==='monthly' ? roisMonthly(w,h) : roisDaily(w,h);
 
-  // 페이스
-  const paceC = drawCrop(img, pace.x, pace.y, pace.w, pace.h, 2.6);
-  const paceTxt = norm(await ocrBest(paceC, 'eng+kor', {
-    tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
-    preserve_interword_spaces: '1',
-    tessedit_char_whitelist: "0123456789:'′″\" :"
-  }));
-  let { min:paceMin, sec:paceSec } = parseMmSs(paceTxt);
+  let topC = drawCrop(img, R.top.x, R.top.y, R.top.w, R.top.h, 2.6);
+  topC = fillWhite(topC, 0.68, 0.00, 0.32, 0.45);
+  const kmTxt = await bestTextFrom(binarize(cloneCanvas(topC), 190));
+  const km = parseDistance(kmTxt);
 
-  // 시간
-  const timeC = drawCrop(img, time.x, time.y, time.w, time.h, 2.6);
-  const timeTxt = norm(await ocrBest(timeC, 'eng+kor', {
-    tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
-    preserve_interword_spaces: '1',
-    tessedit_char_whitelist: "0123456789:'′″\" :"
-  }));
-  const T = parseTimeFlexible(timeTxt);
-  const timeSec = toSec(T);
-
-  // 합리성 교정
-  let paceSecTotal = (paceMin!=null && paceSec!=null) ? paceMin*60+paceSec : NaN;
-
-  // pace가 비정상(없음/극단)이고 time, km가 있으면 pace := time/km
-  if ((!validPace(paceSecTotal)) && Number.isFinite(timeSec) && Number.isFinite(km) && km>0){
-    const guess = Math.round(timeSec / km);
-    if (validPace(guess)){
-      paceSecTotal = guess;
-      paceMin = Math.floor(guess/60);
-      paceSec = guess%60;
-    }
+  let paceMin=null, paceSec=null;
+  if (R.pace){
+    const paceC = drawCrop(img, R.pace.x, R.pace.y, R.pace.w, R.pace.h, 2.6);
+    const paceTxt = await bestTextFrom(paceC);
+    const P = parsePace(paceTxt);
+    paceMin = P.min; paceSec = P.sec;
   }
 
-  // km가 없고(time+pace 존재) → 역산
-  if ((!Number.isFinite(km) || km<=0) && Number.isFinite(timeSec) && validPace(paceSecTotal)){
-    km = +(timeSec / paceSecTotal).toFixed(recordType==='monthly' ? 1 : 2);
+  let timeH=null, timeM=null, timeS=null, timeRaw=null;
+  if (R.time){
+    const timeC = drawCrop(img, R.time.x, R.time.y, R.time.w, R.time.h, 2.6);
+    const timeTxt = await bestTextFrom(timeC);
+    const T = parseTime(timeTxt);
+    timeH = T.H; timeM = T.M; timeS = T.S; timeRaw = T.raw;
   }
 
-  // monthly 대비: 추후 'Runs' 라벨을 읽어서 채워 넣을 준비(미입수면 null)
   let runs = null;
-  if (recordType === 'monthly'){
-    // 간단 추정: 상단 숫자 바로 아래 "Kilometers"가 보이면 monthly로 간주
-    // 실제 runs는 별도 ROI/라벨 탐지로 확장 가능
+  if (recordType==='monthly' && R.runs){
+    const runsC = drawCrop(img, R.runs.x, R.runs.y, R.runs.w, R.runs.h, 2.6);
+    const runsTxt = await bestTextFrom(runsC);
+    runs = parseRuns(runsTxt);
   }
 
-  return {
-    km: km ?? 0,
-    runs,
-    paceMin: paceMin ?? null,
-    paceSec: paceSec ?? null,
-    timeH: T.H, timeM: T.M, timeS: T.S, timeRaw: T.raw
-  };
+  return { km: km ?? 0, runs, paceMin, paceSec, timeH, timeM, timeS, timeRaw };
 }
