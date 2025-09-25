@@ -16,6 +16,7 @@ let recordType = 'daily';
 let layoutType = 'type1';
 let selectedFont = 'Helvetica Neue';
 let selectedDate = new Date();
+let isAnimatingRace = false; // ★ 레이스 애니메이션 중 여부
 
 const raceState = { races: [], dist: null, bg: 'white' };
 
@@ -83,6 +84,7 @@ const MONTH_ABBR = ["JAN.","FEB.","MAR.","APR.","MAY.","JUN.","JUL.","AUG.","SEP
 const zero2txt = (n)=>String(n).padStart(2,'0');
 const cssEsc = (s)=> (window.CSS && typeof CSS.escape === 'function') ? CSS.escape(s) : String(s).replace(/"/g,'\\"');
 const isFiniteNum = (x)=>Number.isFinite(x);
+const sleep = (ms)=>new Promise(res=>setTimeout(res, ms));
 
 function ensureFontReady(fontFamily, weight = 700, sizePx = 200, style='normal'){
   if (!('fonts' in document) || typeof document.fonts.load !== 'function') return Promise.resolve();
@@ -299,32 +301,46 @@ function fitKmRow(){
   row.style.transform = `scale(${baseFit * typeScale * fontScale * modeScale})`;
   syncDateWidth();
 }
-// ── 애니메이션 유틸
-const sleep = (ms)=>new Promise(res=>setTimeout(res, ms));
 
-// 뱃지 초기 숨김(레이아웃 차지 X) + 페이드 준비
+/* ──────────────── 뱃지 페이드(레이아웃 유지) ──────────────── */
+// layout shift 방지: display 토글 대신 visibility/opacity 사용
 function prepBadgesForFade(){
   [badgePB, badgeSub3, badgeSub4].forEach(b=>{
     if(!b) return;
-    b.style.display = 'none';        // 처음엔 안 보이게 (공간도 차지 X)
+    if (getComputedStyle(b).display === 'none') b.style.display = 'inline-block'; // 자리 유지
+    b.style.visibility = 'hidden';
     b.style.opacity = '0';
     b.style.transform = 'translateY(-6px)';
+    b.style.transition = 'opacity 420ms ease, transform 420ms ease';
   });
 }
-
-// renderRaceBoard(true)로 표시될 뱃지들을 부드럽게 보이게
 function fadeInVisibleBadges(){
   [badgePB, badgeSub3, badgeSub4].forEach(b=>{
     if(!b) return;
-    if (b.style.display !== 'none'){         // 표시 대상만
-      b.style.transition = 'opacity 420ms ease, transform 420ms ease';
-      // 리플로우 강제 후 투명→보임
-      void b.offsetWidth;
+    if (b.dataset._targetVisible === '1'){
+      b.style.visibility = 'visible';
+      void b.offsetWidth;              // 리플로우
       b.style.opacity = '1';
       b.style.transform = 'translateY(0)';
+    }else{
+      b.style.visibility = 'hidden';
+      b.style.opacity = '0';
+      b.style.transform = 'translateY(-6px)';
     }
   });
 }
+function applyBadgeVisibilityNow(){
+  [badgePB, badgeSub3, badgeSub4].forEach(b=>{
+    if(!b) return;
+    const on = b.dataset._targetVisible === '1';
+    b.style.transition = 'none';
+    b.style.visibility = on ? 'visible' : 'hidden';
+    b.style.opacity    = on ? '1' : '0';
+    b.style.transform  = 'translateY(0)';
+    requestAnimationFrame(()=>{ b.style.transition = 'opacity 420ms ease, transform 420ms ease'; });
+  });
+}
+
 /* =========================
    폰트/배경/모드/레이아웃
 ========================= */
@@ -359,7 +375,6 @@ function applyDmStageFontScope(){
       el.style.fontFamily = `"${selectedFont}", sans-serif`;
       el.style.fontSynthesis = 'none';
     } else {
-      // 예외 폰트는 KM 숫자만 적용 → 나머지는 기본 폰트 복귀
       el.style.fontFamily = '';
       el.style.fontSynthesis = '';
     }
@@ -402,9 +417,7 @@ function applyRaceFontFaces(){
 }
 
 /* ─────────────────────────────────────
-   외부 UI에서 바로 쓸 수 있는 튜닝 유틸
-   - 거리 숫자 자간
-   - 레이스 타이포 크기/간격
+   외부에서 바로 쓸 수 있는 튜닝 유틸
 ───────────────────────────────────── */
 window.setKmLetterSpacing = function setKmLetterSpacing(letter){
   const kmEl = document.getElementById('km');
@@ -415,7 +428,6 @@ window.setKmLetterSpacing = function setKmLetterSpacing(letter){
     kmEl.style.letterSpacing = String(letter);
   }
 };
-
 window.setRaceTypography = function setRaceTypography({ timeSize, paceSize, labelSize, timeLetter, paceLetter } = {}){
   const root = document.documentElement.style;
   if (timeSize)  root.setProperty('--race-time-size', timeSize);
@@ -439,12 +451,11 @@ function setFont(font){
     kmEl.style.fontWeight = (fs.weight ?? 700);
     kmEl.style.transform  = fs.translate ? `translate(${fs.translate})` : "translate(0,0)";
     kmEl.style.fontSynthesis = 'none';
-    // KM 자간(거리 숫자) — fonts.js에 kmLetter 설정 시 우선 반영
     if (fs.kmLetter != null) kmEl.style.letterSpacing = String(fs.kmLetter);
     else kmEl.style.removeProperty('letter-spacing');
   }
 
-  // Race: 시간/페이스에 선택 폰트 적용 + 폰트별 튜닝 변수 반영
+  // Race: 숫자/라벨 프리셋 반영
   if (raceTimeEl){
     raceTimeEl.style.fontFamily = `"${font}", sans-serif`;
     const root = document.documentElement.style;
@@ -456,21 +467,18 @@ function setFont(font){
     if (fs.raceTimeTranslate)   root.setProperty('--race-time-translate', fs.raceTimeTranslate);
     if (fs.raceTimeLetterSpace) root.setProperty('--race-time-letter', fs.raceTimeLetterSpace);
 
-    // ▼ 간격 변수
+    // ▼ 간격 변수 (폰트 프리셋 우선)
     if (fs.raceGapSubtypeB) root.setProperty('--race-gap-subtype-b', fs.raceGapSubtypeB);
     if (fs.raceGapTimeB)    root.setProperty('--race-gap-time-b',    fs.raceGapTimeB);
     if (fs.raceGapPaceT)    root.setProperty('--race-gap-pace-t',    fs.raceGapPaceT);
     if (fs.racePaceLabelSize) root.setProperty('--race-pace-label-size', fs.racePaceLabelSize);
   }
 
-  // Pace 숫자에도 선택 폰트 적용
   if (racePaceEl){
     racePaceEl.style.fontFamily = `"${font}", sans-serif`;
     if (fs.racePaceSize)        racePaceEl.style.fontSize = fs.racePaceSize;
     if (fs.racePaceLetterSpace) racePaceEl.style.letterSpacing = fs.racePaceLetterSpace;
   }
-
-  // ★ Pace 라벨에도 선택 폰트 적용
   if (racePaceLabelEl){
     racePaceLabelEl.style.fontFamily = `"${font}", sans-serif`;
     if (fs.racePaceLabelSize) racePaceLabelEl.style.fontSize = fs.racePaceLabelSize;
@@ -526,6 +534,33 @@ function setFont(font){
 
   // 레이스 숫자 & Pace 라벨 폰트 강제 보정
   applyRaceFontFaces();
+
+  // 레이스 입력 간격 최소화(시각적 압축)
+  tightenRaceGapsHard();
+}
+
+/* 레이스 간격 축소 유틸 */
+function clampCssVarPx(varName, maxPx){
+  const cs = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+  const toNum = v => {
+    const m = String(v).match(/^(-?\d+(\.\d+)?)px$/);
+    return m ? parseFloat(m[1]) : NaN;
+  };
+  const cur = toNum(cs);
+  if (!isFinite(cur) || cur > maxPx){
+    document.documentElement.style.setProperty(varName, `${maxPx}px`);
+  }
+}
+function tightenRaceGapsHard(){
+  clampCssVarPx('--race-gap-subtype-b', 6);
+  clampCssVarPx('--race-gap-time-b',    6);
+  clampCssVarPx('--race-gap-pace-t',    6);
+
+  const subtypeWrap = raceSubtypeEl?.parentElement;
+  if (subtypeWrap) subtypeWrap.style.marginBottom = '6px';
+  const timeWrapEl = raceTimeEl?.parentElement;
+  if (timeWrapEl) timeWrapEl.style.marginBottom = '6px';
+  if (racePaceWrap) racePaceWrap.style.marginTop = '6px';
 }
 
 function setBackground(color){
@@ -569,6 +604,9 @@ function setRecordType(mode){
 
   // 레이스 숫자 & Pace 라벨 폰트 강제 보정
   applyRaceFontFaces();
+
+  // 간격 압축
+  if (mode==='race') tightenRaceGapsHard();
 }
 
 function setLayout(type){
@@ -773,7 +811,6 @@ function getRaceSubtypeLabel(){
     if (Number.isFinite(km) && km > 0){
       if (Math.abs(km - 21) < 0.6)      return 'Half Marathon';
       if (Math.abs(km - 42) < 1.2 || Math.abs(km - 42.195) < 1.2) return 'Marathon';
-
       const kmText = Math.abs(km - Math.round(km)) < 0.01 ? String(Math.round(km)) : String(km.toFixed(1));
       return `${kmText}K Race`;
     }
@@ -829,31 +866,39 @@ function renderRaceBoard(updateBadges=true){
 
   if (updateBadges){
     const sec=computeRaceSeconds();
-    if (badgePB)   badgePB.style.display   = racePB?.checked ? 'inline' : 'none';
-    if (badgeSub3) badgeSub3.style.display = (isFullCourse() && sec>0 && sec<3*3600) ? 'inline' : 'none';
-    if (badgeSub4) badgeSub4.style.display = (isFullCourse() && sec>=3*3600 && sec<4*3600) ? 'inline' : 'none';
+    if (badgePB)   badgePB.dataset._targetVisible = (racePB?.checked ? '1' : '0');
+    if (badgeSub3) badgeSub3.dataset._targetVisible = (isFullCourse() && sec>0 && sec<3*3600) ? '1' : '0';
+    if (badgeSub4) badgeSub4.dataset._targetVisible = (isFullCourse() && sec>=3*3600 && sec<4*3600) ? '1' : '0';
+
+    // 폼 입력 즉시 반영 시에는 즉시 적용(애니메이션 중 X)
+    if (!isAnimatingRace) applyBadgeVisibilityNow();
   }
 
   // 숫자 & Pace 라벨 폰트 강제 보정(텍스트 갱신 직후 재적용)
   applyRaceFontFaces();
 }
 async function runRaceAnimation(){
-  // 0에서 잠깐 멈춤 & 뱃지 숨김 준비
+  isAnimatingRace = true;
+
+  // 0에서 잠깐 멈춤 & 뱃지 숨김(자리 유지)
   if (raceTimeEl) raceTimeEl.textContent = '0:00';
   if (racePaceEl) racePaceEl.textContent = '0:00 /km';
-  prepBadgesForFade();                 // 처음엔 안 보이게
-  await sleep(360);                    // 잠깐 머무름 (원하면 수치 조절)
+  prepBadgesForFade();
+  await sleep(360);
 
   // 시간 숫자 애니메이션
   const end = computeRaceSeconds();
   await animateRaceTime('race-time', end, 2400);
 
-  // 실제 값으로 보드 갱신(여기서 보여줄 뱃지 display가 inline/none으로 결정됨)
+  // 실제 값으로 보드 갱신(표시 대상 뱃지 dataset 세팅)
   renderRaceBoard(true);
 
   // 뱃지 부드럽게 등장
   fadeInVisibleBadges();
+
+  isAnimatingRace = false;
 }
+
 /* =========================
    이벤트 바인딩
 ========================= */
@@ -907,7 +952,7 @@ window.exitFocus = function exitFocus(){
    OCR (DM 전용)
 ========================= */
 async function runOcrPipeline(imgDataURL){
-  const OCR = await import('./ocr.js'); // ← 괄호 오타 수정
+  const OCR = await import('./ocr.js');
   return OCR.extractAll(imgDataURL, { recordType });
 }
 fileInputEl?.addEventListener("change", async (e)=>{
@@ -976,6 +1021,16 @@ function updateUploadLabel(){
       : 'Upload your NRC record for TODAY';
 }
 
+// 최상단 타이틀을 Anta 폰트로 고정
+function setFixedTitleFont(){
+  const title = document.querySelector('#app-title, #page-title, .app-title, .top-title, h1.title');
+  if (title){
+    title.style.fontFamily = '"Anta", sans-serif';
+    title.style.fontWeight = '700';
+    title.style.fontSynthesis = 'none';
+  }
+}
+
 window.onload = ()=>{
   // 기본 모드/레이아웃/배경/폰트
   setRecordType('daily');
@@ -1024,6 +1079,10 @@ window.onload = ()=>{
 
   // 레이스 숫자 & Pace 라벨 폰트 강제 보정
   applyRaceFontFaces();
+
+  // 레이스 입력 간격 축소 & 상단 타이틀 Anta
+  tightenRaceGapsHard();
+  setFixedTitleFont();
 };
 
 window.addEventListener('resize', ()=>{ syncPillLikeToPillBtn(); scaleStageCanvas(); fitKmRow(); });
