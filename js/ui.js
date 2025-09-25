@@ -299,7 +299,32 @@ function fitKmRow(){
   row.style.transform = `scale(${baseFit * typeScale * fontScale * modeScale})`;
   syncDateWidth();
 }
+// ── 애니메이션 유틸
+const sleep = (ms)=>new Promise(res=>setTimeout(res, ms));
 
+// 뱃지 초기 숨김(레이아웃 차지 X) + 페이드 준비
+function prepBadgesForFade(){
+  [badgePB, badgeSub3, badgeSub4].forEach(b=>{
+    if(!b) return;
+    b.style.display = 'none';        // 처음엔 안 보이게 (공간도 차지 X)
+    b.style.opacity = '0';
+    b.style.transform = 'translateY(-6px)';
+  });
+}
+
+// renderRaceBoard(true)로 표시될 뱃지들을 부드럽게 보이게
+function fadeInVisibleBadges(){
+  [badgePB, badgeSub3, badgeSub4].forEach(b=>{
+    if(!b) return;
+    if (b.style.display !== 'none'){         // 표시 대상만
+      b.style.transition = 'opacity 420ms ease, transform 420ms ease';
+      // 리플로우 강제 후 투명→보임
+      void b.offsetWidth;
+      b.style.opacity = '1';
+      b.style.transform = 'translateY(0)';
+    }
+  });
+}
 /* =========================
    폰트/배경/모드/레이아웃
 ========================= */
@@ -813,11 +838,22 @@ function renderRaceBoard(updateBadges=true){
   applyRaceFontFaces();
 }
 async function runRaceAnimation(){
-  renderRaceBoard(false);
-  await animateRaceTime('race-time', computeRaceSeconds(), 2400);
-  renderRaceBoard(true);
-}
+  // 0에서 잠깐 멈춤 & 뱃지 숨김 준비
+  if (raceTimeEl) raceTimeEl.textContent = '0:00';
+  if (racePaceEl) racePaceEl.textContent = '0:00 /km';
+  prepBadgesForFade();                 // 처음엔 안 보이게
+  await sleep(360);                    // 잠깐 머무름 (원하면 수치 조절)
 
+  // 시간 숫자 애니메이션
+  const end = computeRaceSeconds();
+  await animateRaceTime('race-time', end, 2400);
+
+  // 실제 값으로 보드 갱신(여기서 보여줄 뱃지 display가 inline/none으로 결정됨)
+  renderRaceBoard(true);
+
+  // 뱃지 부드럽게 등장
+  fadeInVisibleBadges();
+}
 /* =========================
    이벤트 바인딩
 ========================= */
@@ -857,7 +893,7 @@ racePB?.addEventListener('change', ()=>{ if (racePBMsg) racePBMsg.style.display 
 window.onRun = function onRun(){
   document.body.classList.add('focus');
   document.getElementById('stage-canvas')?.scrollIntoView({behavior:'smooth', block:'start'});
-  if (recordType==='race'){ runRaceAnimation(); return; }
+  if (recordType==='race'){ prepBadgesForFade(); runRaceAnimation(); return; }
   runAnimation();
 };
 window.exitFocus = function exitFocus(){
