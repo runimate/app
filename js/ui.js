@@ -337,16 +337,24 @@ function setFont(font){
   }
 
   // Race: 시간에 선택 폰트 적용 + 폰트별 튜닝 변수 반영
-  if (raceTimeEl){
-    raceTimeEl.style.fontFamily = `"${font}", sans-serif`;
-    const root = document.documentElement.style;
-    if (fs.raceTimeSize)        root.setProperty('--race-time-size', fs.raceTimeSize);
-    if (fs.raceTitleSize)       root.setProperty('--race-title-size', fs.raceTitleSize);
-    if (fs.raceSubtypeSize)     root.setProperty('--race-subtype-size', fs.raceSubtypeSize);
-    if (fs.racePaceSize)        root.setProperty('--race-pace-size', fs.racePaceSize);
-    if (fs.raceTimeTranslate)   root.setProperty('--race-time-translate', fs.raceTimeTranslate);
-    if (fs.raceTimeLetterSpace) root.setProperty('--race-time-letter', fs.raceTimeLetterSpace);
-  }
+if (raceTimeEl){
+  raceTimeEl.style.fontFamily = `"${font}", sans-serif`;
+  const root = document.documentElement.style;
+  if (fs.raceTimeSize)        root.setProperty('--race-time-size', fs.raceTimeSize);
+  if (fs.raceTitleSize)       root.setProperty('--race-title-size', fs.raceTitleSize);
+  if (fs.raceSubtypeSize)     root.setProperty('--race-subtype-size', fs.raceSubtypeSize);
+  if (fs.racePaceSize)        root.setProperty('--race-pace-size', fs.racePaceSize);
+  if (fs.raceTimeTranslate)   root.setProperty('--race-time-translate', fs.raceTimeTranslate);
+  if (fs.raceTimeLetterSpace) root.setProperty('--race-time-letter', fs.raceTimeLetterSpace);
+
+  // ★ 추가: 레이스 섹션 간 세로 간격(종목↔시간, 시간↔Pace, Pace 라벨 위) 변수 주입
+  if (fs.raceGapSubtypeB) root.setProperty('--race-gap-subtype-b', fs.raceGapSubtypeB);
+  if (fs.raceGapTimeB)    root.setProperty('--race-gap-time-b',    fs.raceGapTimeB);
+  if (fs.raceGapPaceT)    root.setProperty('--race-gap-pace-t',    fs.raceGapPaceT);
+
+  // (선택) Pace 라벨 글자 크기를 폰트별로 달리 쓰고 싶으면 이 줄도 사용
+  if (fs.racePaceLabelSize) root.setProperty('--race-pace-label-size', fs.racePaceLabelSize);
+}
 
   // 날짜(일부 폰트만)
   const dateDisp = document.getElementById("date-display");
