@@ -164,9 +164,9 @@ export const fontSettings = {
     raceTimeSize: "84px",
     raceTimeLetterSpace: "-1px",
     raceTimeTranslate: "0px,0px",
-    racePaceSize: "48px",
+    racePaceSize: "60px",
     raceGapSubtypeB: "40px",
-    raceGapTimeB: "50px",
+    raceGapTimeB: "80px",
     raceGapPaceT: "50px"
   }
 };
