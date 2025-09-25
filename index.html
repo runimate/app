@@ -144,6 +144,29 @@
 
     /* 상단 타이틀 Anta 고정 */
     header h1#app-title{ font-family:'Anta', sans-serif; font-weight:700; letter-spacing:.02em; }
+    /* ===== Kilometers 라벨 복구 & 폰트별 스케일/간격 반영 ===== */
+#dm-board #km-word{
+  display:block;
+  font-weight:900;
+  line-height:1;
+  margin-left: var(--kmWordIndent, 0px);           /* fonts.js → applyFontIndents */
+  /* 아래 margin-top과 font-size는 타입별 변수 사용 */
+}
+
+/* Type1 (Daily/Monthly 공통) */
+body.type1 #km-word{
+  font-size: var(--t1-kmWordSize, 36px);           /* ui.js → setTypeKmWordStyle('type1', { size }) */
+  margin-top: var(--t1-kmWordGap, 12px);           /* ui.js → setTypeKmWordStyle('type1', { gap }) */
+}
+
+/* Type2 (Daily/Monthly 공통) */
+body.type2 #km-word{
+  font-size: var(--t2-kmWordSize, 36px);           /* ui.js → setTypeKmWordStyle('type2', { size }) */
+  margin-top: var(--t2-kmWordGap, 12px);           /* ui.js → setTypeKmWordStyle('type2', { gap }) */
+}
+
+/* 배경색 전환 시 가독성 보정(선택) */
+.bg-black #km-word{ color:#fff; }
   </style>
 </head>
 <body class="bg-white type1 mode-daily">
