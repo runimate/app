@@ -32,8 +32,8 @@ export const fontSettings = {
     raceTimeLetterSpace: "0px",
     raceTimeTranslate: "0px,0px",
     racePaceSize: "56px",
-    racePaceLetterSpace: "20px",
-    raceGapSubtypeB: "8px",
+    racePaceLetterSpace: "0px",
+    raceGapSubtypeB: "18px",
     raceGapTimeB: "8px",
     raceGapPaceT: "6px",
     racePaceLabelSize: "22px"
