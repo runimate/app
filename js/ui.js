@@ -358,32 +358,32 @@ function setFont(font){
     else kmEl.style.removeProperty('letter-spacing');
   }
 
-  // Race: 시간(숫자)에 선택 폰트 적용 + 폰트별 튜닝 변수 반영
-  if (raceTimeEl){
-    raceTimeEl.style.fontFamily = `"${font}", sans-serif`;
-    raceTimeEl.style.fontSynthesis = 'none';
-    const root = document.documentElement.style;
-    if (fs.raceTimeSize)        root.setProperty('--race-time-size', fs.raceTimeSize);
-    if (fs.raceTitleSize)       root.setProperty('--race-title-size', fs.raceTitleSize);
-    if (fs.raceSubtypeSize)     root.setProperty('--race-subtype-size', fs.raceSubtypeSize);
-    if (fs.racePaceSize)        root.setProperty('--race-pace-size', fs.racePaceSize);
-    if (fs.raceTimeTranslate)   root.setProperty('--race-time-translate', fs.raceTimeTranslate);
-    if (fs.raceTimeLetterSpace) root.setProperty('--race-time-letter', fs.raceTimeLetterSpace);
-    // 세로 간격(종목↔시간, 시간↔Pace, Pace 위 여백) — CSS 훅이 없어도 inline으로 강제
-    if (fs.raceGapSubtypeB && raceSubtypeEl) raceSubtypeEl.style.marginBottom = fs.raceGapSubtypeB;
-    if (fs.raceGapTimeB    && raceTimeEl)    raceTimeEl.style.marginBottom    = fs.raceGapTimeB;
-    if (fs.raceGapPaceT && (racePaceWrap || racePaceEl)) {
-      if (racePaceWrap) racePaceWrap.style.marginTop = fs.raceGapPaceT;
-      else              racePaceEl.style.marginTop    = fs.raceGapPaceT;
-    }
-    if (fs.racePaceLabelSize) document.documentElement.style.setProperty('--race-pace-label-size', fs.racePaceLabelSize);
-  }
+// Race: 시간/페이스에 선택 폰트 적용 + 폰트별 튜닝 변수 반영
+if (raceTimeEl){
+  raceTimeEl.style.fontFamily = `"${font}", sans-serif`;
+  const root = document.documentElement.style;
 
-  // Race: 페이스 "숫자"도 선택 폰트 (라벨 'Pace' 및 타이틀/종목은 현행 유지)
-  if (racePaceEl){
-    racePaceEl.style.fontFamily = `"${font}", sans-serif`;
-    racePaceEl.style.fontSynthesis = 'none';
-  }
+  if (fs.raceTimeSize)        root.setProperty('--race-time-size', fs.raceTimeSize);
+  if (fs.raceTitleSize)       root.setProperty('--race-title-size', fs.raceTitleSize);
+  if (fs.raceSubtypeSize)     root.setProperty('--race-subtype-size', fs.raceSubtypeSize);
+  if (fs.racePaceSize)        root.setProperty('--race-pace-size', fs.racePaceSize);
+  if (fs.raceTimeTranslate)   root.setProperty('--race-time-translate', fs.raceTimeTranslate);
+  if (fs.raceTimeLetterSpace) root.setProperty('--race-time-letter', fs.raceTimeLetterSpace);
+
+  // ▼ 간격 변수(이미 쓰고 있으면 유지)
+  if (fs.raceGapSubtypeB) root.setProperty('--race-gap-subtype-b', fs.raceGapSubtypeB);
+  if (fs.raceGapTimeB)    root.setProperty('--race-gap-time-b',    fs.raceGapTimeB);
+  if (fs.raceGapPaceT)    root.setProperty('--race-gap-pace-t',    fs.raceGapPaceT);
+  if (fs.racePaceLabelSize) root.setProperty('--race-pace-label-size', fs.racePaceLabelSize);
+}
+
+// ★ 추가: 레이스 "Pace 숫자"에도 선택 폰트 적용
+if (racePaceEl){
+  racePaceEl.style.fontFamily = `"${font}", sans-serif`;
+  // (선택) 사이즈/자간을 인라인로도 꽂아 확실히 반영하고 싶으면 아래 2줄 활성화
+  if (fs.racePaceSize)        racePaceEl.style.fontSize = fs.racePaceSize;
+  if (fs.racePaceLetterSpace) racePaceEl.style.letterSpacing = fs.racePaceLetterSpace;
+}
 
   // 날짜(일부 폰트만) — 유지
   const dateDisp = document.getElementById("date-display");
