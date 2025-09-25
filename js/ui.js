@@ -709,12 +709,66 @@ function openWheelPicker({ title='Select', cols=3, fields=[/* {label,min,max,val
     if (onOK) onOK(vals);
   });
 }
+// ───────────────────────────────────────────────
+//  모바일 휠피커 (스크롤 오작동 방지: 탭 제스처 전용)
+// ───────────────────────────────────────────────
 function enableMobileWheelPickers(){
   if (!isMobile()) return;
 
-  const preventKeyboard = (inp)=>{ if (!inp) return; inp.readOnly = true; inp.setAttribute('inputmode','none'); };
+  const setTapToOpen = (inp, openFn)=>{
+    if (!inp) return;
 
-  [raceHH,raceMM,raceSS,racePaceMM,racePaceSS].forEach(preventKeyboard);
+    // 키보드 막고 스크롤은 허용
+    inp.readOnly = true;
+    inp.setAttribute('inputmode','none');
+    inp.style.touchAction = 'pan-y';
+
+    let startX=0, startY=0, startT=0, moved=false, pid=null, openedAt=0, openedByPointer=false;
+    const TAP_MOVE_PX = 10;   // 이동 임계치(px)
+    const TAP_TIME_MS = 400;  // 탭 최대 시간(ms)
+
+    // 터치(pointer) 기반 탭 감지
+    inp.addEventListener('pointerdown', (e)=>{
+      if (e.pointerType !== 'touch') return; // 마우스/펜은 아래 click 처리
+      pid = e.pointerId;
+      startX = e.clientX; startY = e.clientY; startT = e.timeStamp;
+      moved = false; openedByPointer = false;
+      inp.setPointerCapture?.(pid);
+    });
+
+    inp.addEventListener('pointermove', (e)=>{
+      if (e.pointerId !== pid) return;
+      if (Math.abs(e.clientX-startX) > TAP_MOVE_PX || Math.abs(e.clientY-startY) > TAP_MOVE_PX) {
+        moved = true; // 스크롤 의도
+      }
+    });
+
+    inp.addEventListener('pointercancel', ()=>{
+      pid = null;
+      moved = true; // 취소는 스크롤로 간주
+    });
+
+    inp.addEventListener('pointerup', (e)=>{
+      if (e.pointerId !== pid) return;
+      const dt = e.timeStamp - startT;
+      const isTap = !moved && dt <= TAP_TIME_MS;
+      pid = null;
+
+      if (isTap) {
+        e.preventDefault();           // 포커스/클릭 연쇄 방지
+        openedByPointer = true;
+        openedAt = Date.now();
+        openFn();
+      }
+    });
+
+    // 예외 케이스/데스크톱: click fallback
+    inp.addEventListener('click', (e)=>{
+      // 방금 pointerup로 열었으면 무시(중복 방지)
+      if (openedByPointer && (Date.now() - openedAt) < 350) return;
+      openFn();
+    });
+  };
 
   const openTime = ()=>{
     const h  = +raceHH?.value || 0;
@@ -738,6 +792,7 @@ function enableMobileWheelPickers(){
       }
     });
   };
+
   const openPace = ()=>{
     const m  = +racePaceMM?.value || 0;
     const s  = +racePaceSS?.value || 0;
@@ -758,17 +813,9 @@ function enableMobileWheelPickers(){
     });
   };
 
-  // 모바일에선 포커스/클릭/터치로 휠피커 오픈
-  [raceHH,raceMM,raceSS].forEach(inp=>{
-    inp?.addEventListener('focus', (e)=>{ e.preventDefault(); openTime(); });
-    inp?.addEventListener('click', (e)=>{ e.preventDefault(); openTime(); });
-    inp?.addEventListener('touchend', (e)=>{ e.preventDefault(); openTime(); }, {passive:false});
-  });
-  [racePaceMM,racePaceSS].forEach(inp=>{
-    inp?.addEventListener('focus', (e)=>{ e.preventDefault(); openPace(); });
-    inp?.addEventListener('click', (e)=>{ e.preventDefault(); openPace(); });
-    inp?.addEventListener('touchend', (e)=>{ e.preventDefault(); openPace(); }, {passive:false});
-  });
+  // ★ 포커스/터치엔드 바인딩 제거! 탭(click/포인터탭)만 허용
+  [raceHH, raceMM, raceSS].forEach(inp => setTapToOpen(inp, openTime));
+  [racePaceMM, racePaceSS].forEach(inp => setTapToOpen(inp, openPace));
 }
 
 /* =========================
