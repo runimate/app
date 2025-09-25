@@ -130,7 +130,7 @@ export const fontSettings = {
   },
 
   "Iceberg": {
-    base: 220, weight: 700,
+    base: 220, weight: 900,
     dateSize: "42px", dateGap: "10px", dateWeight: 700, dateTranslate: "12px, 30px",
     kmLetter: "-4px",
 
