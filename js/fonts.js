@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────────────────────────
 // 1) fontSettings
 //    - 공통: base, weight, dateSize/Gap/Translate, translate, kmWordGap
+//    - NEW:  kmLetter               → 데일리/먼쓸리 "거리 숫자(#km)" 자간(letter-spacing)
 //    - 레이스 전용(모두 선택적):
 //      • raceTitleSize        → 대회명 폰트 크기
 //      • raceSubtypeSize      → 종목(Half Marathon 등) 폰트 크기
@@ -14,13 +15,14 @@
 //      • raceGapSubtypeB      → “종목 ↔ 시간” 세로 간격 (종목 아래 margin-bottom)
 //      • raceGapTimeB         → “시간 ↔ Pace” 세로 간격 (시간 아래 margin-bottom)
 //      • raceGapPaceT         → Pace 블록 위쪽 여백 (Pace wrap margin-top)
-//
+//      • racePaceLabelSize    → "Pace" 라벨의 폰트 크기(선택)
 //    ※ 값 예: "88px", "-2px", "0px, -6px", "12px"
 // ─────────────────────────────────────────────────────────────
 export const fontSettings = {
   "Helvetica Neue": {
     base: 200, weight: 900,
     dateSize: "60px", dateGap: "10px", dateWeight: 700,
+    kmLetter: "0px",
 
     // Race tuning (기본 베이스)
     raceTitleSize: "30px",
@@ -31,12 +33,14 @@ export const fontSettings = {
     racePaceSize: "56px",
     raceGapSubtypeB: "10px",
     raceGapTimeB: "8px",
-    raceGapPaceT: "14px"
+    raceGapPaceT: "14px",
+    racePaceLabelSize: "22px"
   },
 
   "Anton": {
     base: 200, weight: 700,
     dateSize: "60px", dateGap: "10px", dateWeight: 700,
+    kmLetter: "-1px",
 
     raceTitleSize: "30px",
     raceSubtypeSize: "50px",
@@ -46,12 +50,14 @@ export const fontSettings = {
     racePaceSize: "64px",
     raceGapSubtypeB: "10px",
     raceGapTimeB: "10px",
-    raceGapPaceT: "14px"
+    raceGapPaceT: "14px",
+    racePaceLabelSize: "22px"
   },
 
   "Big Shoulders Inline Text": {
     base: 200, weight: 800,
     dateSize: "40px", dateGap: "20px", dateWeight: 800, dateTranslate: "8px, 0px",
+    kmLetter: "-1px",
 
     raceTitleSize: "30px",
     raceSubtypeSize: "50px",
@@ -61,12 +67,14 @@ export const fontSettings = {
     racePaceSize: "64px",
     raceGapSubtypeB: "12px",
     raceGapTimeB: "8px",
-    raceGapPaceT: "14px"
+    raceGapPaceT: "14px",
+    racePaceLabelSize: "22px"
   },
 
   "Tourney": {
     base: 200, weight: 800,
     dateSize: "40px", dateGap: "-20px", dateWeight: 800, dateTranslate: "8px, 0px",
+    kmLetter: "-1px",
 
     raceTitleSize: "30px",
     raceSubtypeSize: "50px",
@@ -76,12 +84,14 @@ export const fontSettings = {
     racePaceSize: "64px",
     raceGapSubtypeB: "10px",
     raceGapTimeB: "8px",
-    raceGapPaceT: "12px"
+    raceGapPaceT: "12px",
+    racePaceLabelSize: "22px"
   },
 
   "Anta": {
     base: 160, weight: 700,
     dateSize: "38px", dateGap: "10px", dateWeight: 700, dateTranslate: "10px, 20px",
+    kmLetter: "-0.5px",
 
     raceTitleSize: "30px",
     raceSubtypeSize: "50px",
@@ -91,12 +101,14 @@ export const fontSettings = {
     racePaceSize: "64px",
     raceGapSubtypeB: "10px",
     raceGapTimeB: "8px",
-    raceGapPaceT: "12px"
+    raceGapPaceT: "12px",
+    racePaceLabelSize: "21px"
   },
 
   "Arvo": {
     base: 180, weight: 700,
     dateSize: "38px", dateGap: "10px", dateWeight: 700, dateTranslate: "10px, 20px",
+    kmLetter: "0px",
 
     raceTitleSize: "30px",
     raceSubtypeSize: "50px",
@@ -106,12 +118,14 @@ export const fontSettings = {
     racePaceSize: "64px",
     raceGapSubtypeB: "10px",
     raceGapTimeB: "8px",
-    raceGapPaceT: "12px"
+    raceGapPaceT: "12px",
+    racePaceLabelSize: "21px"
   },
 
   "Iceberg": {
-    base: 200, weight: 700,
+    base: 240, weight: 700,
     dateSize: "42px", dateGap: "10px", dateWeight: 700, dateTranslate: "7px, 20px",
+    kmLetter: "-2px",
 
     raceTitleSize: "30px",
     raceSubtypeSize: "50px",
@@ -121,12 +135,14 @@ export const fontSettings = {
     racePaceSize: "64px",
     raceGapSubtypeB: "12px",
     raceGapTimeB: "8px",
-    raceGapPaceT: "14px"
+    raceGapPaceT: "14px",
+    racePaceLabelSize: "22px"
   },
 
   "Permanent Marker": {
     base: 190, weight: 700,
     dateSize: "44px", dateGap: "0px", dateWeight: 700, dateTranslate: "7px, 20px",
+    kmLetter: "-0.5px",
 
     raceTitleSize: "30px",
     raceSubtypeSize: "50px",
@@ -136,12 +152,14 @@ export const fontSettings = {
     racePaceSize: "64px",
     raceGapSubtypeB: "10px",
     raceGapTimeB: "8px",
-    raceGapPaceT: "14px"
+    raceGapPaceT: "14px",
+    racePaceLabelSize: "22px"
   },
 
   "Londrina Shadow": {
     base: 190, weight: 700,
     dateSize: "44px", dateGap: "0px", dateWeight: 700, dateTranslate: "7px, 20px",
+    kmLetter: "-1px",   // KM 숫자만 적용(데일리/먼쓸리). 나머지는 기본 폰트 유지
 
     raceTitleSize: "30px",
     raceSubtypeSize: "50px",
@@ -151,13 +169,15 @@ export const fontSettings = {
     racePaceSize: "64px",
     raceGapSubtypeB: "8px",
     raceGapTimeB: "8px",
-    raceGapPaceT: "12px"
+    raceGapPaceT: "12px",
+    racePaceLabelSize: "22px"
   },
 
   "Rock Salt": {
     base: 140, weight: 700,
     dateSize: "36px", dateGap: "40px", dateWeight: 600,
     kmWordGap: "40px", translate: "25px,-25px", dateTranslate: "20px,0px",
+    kmLetter: "-1px", // KM 숫자만 적용(데일리/먼쓸리). 나머지는 기본 폰트 유지
 
     raceTitleSize: "30px",
     raceSubtypeSize: "50px",
@@ -167,7 +187,8 @@ export const fontSettings = {
     racePaceSize: "36px",
     raceGapSubtypeB: "40px",
     raceGapTimeB: "50px",
-    raceGapPaceT: "50px"
+    raceGapPaceT: "50px",
+    racePaceLabelSize: "18px"
   }
 };
 
