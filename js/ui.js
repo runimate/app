@@ -1,4 +1,4 @@
-// ui.js — Daily/Monthly/Race 통합 (폰트/사이즈/위치 제어는 fonts.js로 이관)
+// ui.js — Daily/Monthly/Race 통합 + 모바일 휠피커 + Time→Pace(↔︎) 자동계산
 /* eslint-disable */
 
 import { kmFontScale, applyFontTheme } from './fonts.js';
@@ -14,6 +14,8 @@ let selectedDate = new Date();
 let isAnimatingRace = false;
 
 const raceState = { races: [], dist: null, bg: 'white' };
+const AUTO_SYNC = { timeToPace: true, paceToTime: true }; // 원하면 false로 끄면 됨
+let isSyncing = false; // 루프 방지
 
 /* =========================
    DOM
@@ -66,7 +68,6 @@ const racePaceEl      = document.getElementById('race-pace');
 const badgePB         = document.getElementById('badge-pb');
 const badgeSub3       = document.getElementById('badge-sub3');
 const badgeSub4       = document.getElementById('badge-sub4');
-// Pace 래퍼(간격 조정용)
 const racePaceWrap    = document.querySelector('.race-pace-wrap');
 
 /* =========================
@@ -78,6 +79,7 @@ const zero2txt = (n)=>String(n).padStart(2,'0');
 const cssEsc   = (s)=> (window.CSS && typeof CSS.escape === 'function') ? CSS.escape(s) : String(s).replace(/"/g,'\\"');
 const isFiniteNum = (x)=>Number.isFinite(x);
 const sleep = (ms)=>new Promise(res=>setTimeout(res, ms));
+const isMobile = ()=> /Android|iPhone|iPad|iPod|Mobile|SamsungBrowser|Windows Phone|Opera Mini/i.test(navigator.userAgent);
 
 function ensureFontReady(fontFamily, weight = 700, sizePx = 200, style='normal'){
   if (!('fonts' in document) || typeof document.fonts.load !== 'function') return Promise.resolve();
@@ -376,171 +378,260 @@ function applyDmStageFontScope(){
   });
 }
 
-/* ─────────────────────────────────────
-   레이스 입력/보드 간격 축소 유틸
-───────────────────────────────────── */
-function clampCssVarPx(varName, maxPx){
-  const cs = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-  const toNum = v => { const m = String(v).match(/^(-?\d+(\.\d+)?)px$/); return m ? parseFloat(m[1]) : NaN; };
-  const cur = toNum(cs);
-  if (!isFinite(cur) || cur > maxPx) document.documentElement.style.setProperty(varName, `${maxPx}px`);
-}
-function tightenRaceGapsHard(){
-  clampCssVarPx('--race-gap-subtype-b', 6);
-  clampCssVarPx('--race-gap-time-b',    6);
-  clampCssVarPx('--race-gap-pace-t',    6);
-
-  const subtypeWrap = raceSubtypeEl?.parentElement;
-  if (subtypeWrap) subtypeWrap.style.marginBottom = '6px';
-  const timeWrapEl = raceTimeEl?.parentElement;
-  if (timeWrapEl) timeWrapEl.style.marginBottom = '6px';
-  if (racePaceWrap) racePaceWrap.style.marginTop = '6px';
-}
-
-/* ★ 입력 패널 자체 간격 압축(스크린샷 빨간영역 해결) */
-function squeezeRacePanel(){
-  const panel = racePanel; if(!panel) return;
-
-  panel.style.setProperty('--gap', '10px');
-  const selGrid = panel.querySelector('.race-select-grid');
-  if (selGrid) selGrid.style.gap = '10px';
-
-  const manualRow = panel.querySelector('.seg-row.cols-3');
-  if (manualRow) {
-    manualRow.style.marginTop = '6px';
-    manualRow.style.alignItems = 'center';
-    manualRow.style.columnGap = '10px';
-  }
-  if (raceNameInput?.parentElement) raceNameInput.parentElement.style.marginTop = '6px';
-
-  const tpCol = panel.querySelector('.tp-col'); if (tpCol) tpCol.style.gap = '8px';
-  const timeGrid = panel.querySelector('.time-grid'); if (timeGrid) timeGrid.style.gap = '6px';
-  const paceGrid = panel.querySelector('.pace-grid'); if (paceGrid) paceGrid.style.gap = '6px';
-
-  panel.querySelectorAll('.section.seg').forEach(el=>{
-    el.style.marginTop = '6px';
-    el.style.marginBottom = '0';
-  });
-  panel.querySelectorAll('label.checkbox').forEach(l=>{ l.style.marginTop='6px'; l.style.marginBottom='0'; });
-
-  const bgSec = panel.querySelector('#race-bg-row')?.closest('.section');
-  if (bgSec) { bgSec.style.marginTop = '8px'; bgSec.style.marginBottom = '0'; }
-}
-
-function setBackground(color){
-  const htmlEl = document.documentElement, bodyEl = document.body;
-  if(color==='black'){ htmlEl.classList.replace('bg-white','bg-black'); bodyEl.classList.replace('bg-white','bg-black'); }
-  else { htmlEl.classList.replace('bg-black','bg-white'); bodyEl.classList.replace('bg-black','bg-white'); }
-  updateActive(bgRow, bgRow?.querySelector(`button[data-bg="${cssEsc(color)}"]`));
-  updateActive(raceBgRow, raceBgRow?.querySelector(`button[data-bg="${cssEsc(color)}"]`));
-  raceState.bg = color;
-}
-
-function setRecordType(mode){
-  recordType = mode;
-  document.body.classList.toggle('mode-daily', mode==='daily');
-  document.body.classList.toggle('mode-monthly', mode==='monthly');
-  document.body.classList.toggle('mode-race', mode==='race');
-  updateActive(modeRow, modeRow?.querySelector(`button[data-mode="${cssEsc(mode)}"]`));
-
-  // 패널/보드 전환
-  if (dmPanel)   dmPanel.style.display   = (mode==='race') ? 'none'  : 'block';
-  if (racePanel) racePanel.style.display = (mode==='race') ? 'block' : 'none';
-  if (dmBoard)   dmBoard.style.display   = (mode==='race') ? 'none'  : 'block';
-  if (raceBoard) raceBoard.style.display = (mode==='race') ? 'block' : 'none';
-
-  // 상단 UI는 항상 고정
-  applyWideFontScope();
-
-  if (runsWrap) runsWrap.style.display = (mode==='monthly') ? 'block' : 'none';
-  renderKm(document.getElementById('km')?.textContent?.replace(/[^\d.]/g,'') || 0);
-  renderStats();
-  updateGridCols();
-  fitKmRow();
-  applyLayoutVisual();
-  updateUploadLabel();
-
-  // 폰트 테마 일괄 적용
-  applyFontTheme(selectedFont, layoutType, recordType);
-
-  if (mode==='race') {
-    renderRaceBoard(true);
-    tightenRaceGapsHard();
-    squeezeRacePanel();
-  }
-
-  // DM 전체 정보(예외 2종 제외)에 선택 폰트 적용/해제
-  applyDmStageFontScope();
-}
-
-function setLayout(type){
-  layoutType = type;
-  updateActive(layoutRow, layoutRow?.querySelector(`button[data-layout="${cssEsc(type)}"]`));
-  applyLayoutVisual();
-}
-
-function setDateFromInput(){
-  const val = dateInput?.value; if(!val) return;
-  const [y,m,d] = val.split('-').map(Number);
-  selectedDate = new Date(y, m-1, d);
-  renderDateDisplay(); syncDateWidth();
-}
-
-function applyLayoutVisual(){
-  if (recordType === 'race') return; // 레이스는 별도 보드
-  if(dateSection){
-    dateSection.style.display = (layoutType==='type1' ? (recordType==='monthly'?'grid':'none') : 'grid');
-  }
-  if (dateDisplay){
-    if (layoutType==='type2' || (layoutType==='type1' && recordType==='monthly')) dateDisplay.style.display='block';
-    else dateDisplay.style.display='none';
-  }
-  if(dateInput && !dateInput.value){
-    const t=new Date();
-    dateInput.value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
-    selectedDate=t;
-  }
-  renderDateDisplay();
-
-  document.body.classList.remove('type1','type2');
-  document.body.classList.add(layoutType);
-
-  // 폰트 테마 재적용
-  applyFontTheme(selectedFont, layoutType, recordType);
-
-  renderStats();
-  updateGridCols();
-  fitKmRow();
-
-  // DM 전체 정보(예외 2종 제외)에 선택 폰트 적용/해제
-  applyDmStageFontScope();
-}
-
 /* =========================
-   폰트 선택
+   거리/시간/페이스 계산 유틸
 ========================= */
-function setFont(font){
-  selectedFont = font;
+function getCurrentDistKm(){
+  if (raceState.dist==='5K') return 5;
+  if (raceState.dist==='10K') return 10;
+  if (raceState.dist==='Half') return 21.0975;
+  if (raceState.dist==='Marathon') return 42.195;
+  if (raceDistManualCk?.checked){
+    const v = parseFloat(raceDistManualIn?.value||'');
+    if (isFinite(v) && v>0) return v;
+  }
+  return null;
+}
+function computeRaceSeconds(){ return (+raceHH?.value||0)*3600 + (+raceMM?.value||0)*60 + (+raceSS?.value||0); }
+function secToRaceDisplay(sec){
+  sec = Math.max(0, Math.floor(sec||0));
+  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
+  return (h>0) ? `${h}:${zero2txt(m)}:${zero2txt(s)}` : `${m}:${zero2txt(s)}`;
+}
+function computeRacePaceText(){
+  const mm = +racePaceMM?.value || 0;
+  const ss = +racePaceSS?.value || 0;
+  if (mm+ss>0) return `${mm}:${zero2txt(ss)} /km`;
+  const distKm = getCurrentDistKm();
+  const sec = computeRaceSeconds();
+  if (!distKm || sec<=0) return `0:00 /km`;
+  const p = Math.round(sec / distKm);
+  return `${Math.floor(p/60)}:${zero2txt(p%60)} /km`;
+}
 
-  // 폰트 테마(크기/위치/간격) 한 방에 적용
-  applyFontTheme(selectedFont, layoutType, recordType);
+/* ───────── 자동 동기화: Time → Pace (↔︎ Pace → Time) ───────── */
+function syncPaceFromTime(){
+  if (!AUTO_SYNC.timeToPace || isSyncing) return;
+  const distKm = getCurrentDistKm(); if (!distKm) return;
+  const sec = computeRaceSeconds(); if (sec<=0) return;
 
-  const targetBtn = fontGridEl?.querySelector(`button[data-font="${cssEsc(font)}"]`);
-  updateActive(fontGridEl, targetBtn);
+  const p = Math.max(0, Math.round(sec / distKm));
+  const mm = Math.floor(p/60), ss = p%60;
 
-  // Daily/Monthly 전체 정보(예외 2종 제외)에 선택 폰트 적용/해제
-  applyDmStageFontScope();
+  isSyncing = true;
+  if (racePaceMM) racePaceMM.value = String(mm);
+  if (racePaceSS) racePaceSS.value = String(ss);
+  isSyncing = false;
+}
+function syncTimeFromPace(){
+  if (!AUTO_SYNC.paceToTime || isSyncing) return;
+  const distKm = getCurrentDistKm(); if (!distKm) return;
 
-  ensureFontReady(font, 700, 200).then(()=>{ fitKmRow(); });
-  fitKmRow();
-  renderStats();
+  const mm = +racePaceMM?.value || 0;
+  const ss = +racePaceSS?.value || 0;
+  const psec = mm*60 + ss;
+  if (psec<=0) return;
 
-  // 레이스 입력/보드 간격 최소화
-  if (recordType === 'race') { tightenRaceGapsHard(); squeezeRacePanel(); }
+  const tot = Math.round(psec * distKm);
+  const H = Math.floor(tot/3600), M = Math.floor((tot%3600)/60), S = tot%60;
+
+  isSyncing = true;
+  if (raceHH) raceHH.value = String(H);
+  if (raceMM) raceMM.value = String(M);
+  if (raceSS) raceSS.value = String(S);
+  isSyncing = false;
 }
 
 /* =========================
-   RACE — schedule & board
+   모바일 휠피커 (네이티브 select 활용)
+========================= */
+function injectPickerCSS(){
+  if (document.getElementById('wheel-picker-style')) return;
+  const css = `
+  .picker-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:9999;display:flex;align-items:flex-end;}
+  .picker-panel{background:#fff;width:100%;border-top-left-radius:16px;border-top-right-radius:16px;box-shadow:0 -8px 24px rgba(0,0,0,.2);padding:12px;animation:slideUp .18s ease-out;}
+  .picker-head{display:flex;justify-content:space-between;align-items:center;padding:6px 4px 10px;}
+  .picker-title{font-weight:700}
+  .picker-actions button{appearance:none;border:none;background:#111;color:#fff;border-radius:10px;padding:8px 14px;font-weight:700}
+  .picker-actions .cancel{background:#e5e5e5;color:#111;margin-right:6px}
+  .picker-grid{display:grid;grid-template-columns: repeat(var(--cols,3),1fr);gap:8px;padding:6px 0 2px}
+  .picker-grid label{font-size:12px;color:#555;display:block;margin-bottom:4px}
+  .picker-grid select{width:100%;padding:10px;border-radius:12px;border:1px solid #e4e4e7;font-size:18px}
+  @keyframes slideUp{from{transform:translateY(12px);opacity:.6}to{transform:translateY(0);opacity:1}}
+  `;
+  const style = document.createElement('style');
+  style.id = 'wheel-picker-style';
+  style.textContent = css;
+  document.head.appendChild(style);
+}
+function buildSelect(min,max,cur,pad2=true){
+  const sel = document.createElement('select');
+  for(let v=min; v<=max; v++){
+    const opt = document.createElement('option');
+    opt.value = String(v);
+    opt.textContent = pad2 ? String(v).padStart(2,'0') : String(v);
+    if (v===cur) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  return sel;
+}
+function openWheelPicker({ title='Select', cols=3, fields=[/* {label,min,max,value,pad2} */], onCancel, onOK }){
+  injectPickerCSS();
+  const ov = document.createElement('div'); ov.className='picker-overlay';
+  const panel = document.createElement('div'); panel.className='picker-panel'; panel.style.setProperty('--cols', String(cols));
+  const head = document.createElement('div'); head.className='picker-head';
+  const hTitle = document.createElement('div'); hTitle.className='picker-title'; hTitle.textContent = title;
+  const hActions = document.createElement('div'); hActions.className='picker-actions';
+  const btnCancel = document.createElement('button'); btnCancel.className='cancel'; btnCancel.textContent='Cancel';
+  const btnOK = document.createElement('button'); btnOK.textContent='Done';
+  hActions.appendChild(btnCancel); hActions.appendChild(btnOK);
+  head.appendChild(hTitle); head.appendChild(hActions);
+
+  const grid = document.createElement('div'); grid.className='picker-grid';
+  const selects = [];
+  fields.forEach(f=>{
+    const wrap = document.createElement('div');
+    const lab = document.createElement('label'); lab.textContent = f.label||'';
+    const sel = buildSelect(f.min, f.max, f.value, f.pad2!==false);
+    wrap.appendChild(lab); wrap.appendChild(sel);
+    grid.appendChild(wrap);
+    selects.push(sel);
+  });
+
+  panel.appendChild(head); panel.appendChild(grid);
+  ov.appendChild(panel);
+  document.body.appendChild(ov);
+
+  const close = ()=>{
+    ov.remove();
+    if (onCancel) onCancel();
+  };
+  btnCancel.addEventListener('click', close);
+  ov.addEventListener('click', (e)=>{ if (e.target===ov) close(); });
+
+  btnOK.addEventListener('click', ()=>{
+    const vals = selects.map(s=> +s.value);
+    ov.remove();
+    if (onOK) onOK(vals);
+  });
+}
+function enableMobileWheelPickers(){
+  if (!isMobile()) return;
+
+  const preventKeyboard = (inp)=>{ if (!inp) return; inp.readOnly = true; inp.setAttribute('inputmode','none'); };
+
+  [raceHH,raceMM,raceSS,racePaceMM,racePaceSS].forEach(preventKeyboard);
+
+  const openTime = ()=>{
+    const h  = +raceHH?.value || 0;
+    const m  = +raceMM?.value || 0;
+    const s  = +raceSS?.value || 0;
+    openWheelPicker({
+      title:'Finish Time',
+      cols:3,
+      fields:[
+        {label:'HH', min:0, max:99, value:h},
+        {label:'MM', min:0, max:59, value:m},
+        {label:'SS', min:0, max:59, value:s},
+      ],
+      onOK(vals){
+        const [H,M,S] = vals;
+        if (raceHH) raceHH.value = String(H);
+        if (raceMM) raceMM.value = String(M);
+        if (raceSS) raceSS.value = String(S);
+        // 자동 동기화 & 보드 갱신
+        syncPaceFromTime();
+        renderRaceBoard(true);
+      }
+    });
+  };
+  const openPace = ()=>{
+    const m  = +racePaceMM?.value || 0;
+    const s  = +racePaceSS?.value || 0;
+    openWheelPicker({
+      title:'Pace (/km)',
+      cols:2,
+      fields:[
+        {label:'MM', min:0, max:15, value:m},
+        {label:'SS', min:0, max:59, value:s},
+      ],
+      onOK(vals){
+        const [M,S] = vals;
+        if (racePaceMM) racePaceMM.value = String(M);
+        if (racePaceSS) racePaceSS.value = String(S);
+        // 자동 동기화 & 보드 갱신
+        syncTimeFromPace();
+        renderRaceBoard(true);
+      }
+    });
+  };
+
+  // 입력 포커스/클릭 시 휠피커 오픈
+  [raceHH,raceMM,raceSS].forEach(inp=>{
+    inp?.addEventListener('focus', (e)=>{ e.preventDefault(); openTime(); });
+    inp?.addEventListener('click', (e)=>{ e.preventDefault(); openTime(); });
+  });
+  [racePaceMM,racePaceSS].forEach(inp=>{
+    inp?.addEventListener('focus', (e)=>{ e.preventDefault(); openPace(); });
+    inp?.addEventListener('click', (e)=>{ e.preventDefault(); openPace(); });
+  });
+}
+
+/* =========================
+   레이스 보드 렌더링
+========================= */
+function getRaceSelectedName(){
+  if (!raceListSel) return '대회명 미선택';
+  const v=raceListSel.value;
+  if (v==='__manual__'){
+    const t=(raceNameInput?.value||'').trim();
+    return t||'대회명 미입력';
+  }
+  return v||'대회명 미선택';
+}
+function getRaceSubtypeLabel(){
+  if (raceDistManualCk?.checked){
+    const vStr = (raceDistManualIn?.value || '').trim();
+    const km = parseFloat(vStr);
+
+    if (Number.isFinite(km) && km > 0){
+      if (Math.abs(km - 21) < 0.6)      return 'Half Marathon';
+      if (Math.abs(km - 42) < 1.2 || Math.abs(km - 42.195) < 1.2) return 'Marathon';
+      const kmText = Math.abs(km - Math.round(km)) < 0.01 ? String(Math.round(km)) : String(km.toFixed(1));
+      return `${kmText}K Race`;
+    }
+    return 'Custom';
+  }
+
+  switch (raceState.dist){
+    case '5K':       return '5K Race';
+    case '10K':      return '10K Race';
+    case 'Half':     return 'Half Marathon';
+    case 'Marathon': return 'Marathon';
+    default:         return 'Race Type?';
+  }
+}
+function isFullCourse(){
+  const v = getCurrentDistKm();
+  return isFinite(v) && v >= 42;
+}
+function renderRaceBoard(updateBadges=true){
+  if (raceTitleEl)   raceTitleEl.textContent = getRaceSelectedName();
+  if (raceSubtypeEl) raceSubtypeEl.textContent = getRaceSubtypeLabel();
+  if (raceTimeEl)    raceTimeEl.textContent = secToRaceDisplay(computeRaceSeconds());
+  if (racePaceEl)    racePaceEl.textContent = computeRacePaceText();
+
+  if (updateBadges){
+    const sec=computeRaceSeconds();
+    if (badgePB)   badgePB.dataset._targetVisible = (racePB?.checked ? '1' : '0');
+    if (badgeSub3) badgeSub3.dataset._targetVisible = (isFullCourse() && sec>0 && sec<3*3600) ? '1' : '0';
+    if (badgeSub4) badgeSub4.dataset._targetVisible = (isFullCourse() && sec>=3*3600 && sec<4*3600) ? '1' : '0';
+    if (!isAnimatingRace) applyBadgeVisibilityNow();
+  }
+}
+
+/* =========================
+   레이스 스케줄
 ========================= */
 function parseLenientJSON(txt){
   if (!txt) return null;
@@ -632,133 +723,113 @@ async function loadRaceScheduleJSON(){
   populateRaceOptions();
 }
 
-function getRaceSelectedName(){
-  if (!raceListSel) return '대회명 미선택';
-  const v=raceListSel.value;
-  if (v==='__manual__'){
-    const t=(raceNameInput?.value||'').trim();
-    return t||'대회명 미입력';
-  }
-  return v||'대회명 미선택';
-}
-function getRaceSubtypeLabel(){
-  if (raceDistManualCk?.checked){
-    const vStr = (raceDistManualIn?.value || '').trim();
-    const km = parseFloat(vStr);
-
-    if (Number.isFinite(km) && km > 0){
-      if (Math.abs(km - 21) < 0.6)      return 'Half Marathon';
-      if (Math.abs(km - 42) < 1.2 || Math.abs(km - 42.195) < 1.2) return 'Marathon';
-      const kmText = Math.abs(km - Math.round(km)) < 0.01 ? String(Math.round(km)) : String(km.toFixed(1));
-      return `${kmText}K Race`;
-    }
-    return 'Custom';
-  }
-
-  switch (raceState.dist){
-    case '5K':       return '5K Race';
-    case '10K':      return '10K Race';
-    case 'Half':     return 'Half Marathon';
-    case 'Marathon': return 'Marathon';
-    default:         return '종목';
-  }
-}
-function isFullCourse(){
-  if (raceState.dist === 'Marathon') return true;
-  if (raceDistManualCk?.checked){
-    const v = parseFloat(raceDistManualIn?.value||'0');
-    return isFinite(v) && v >= 42;
-  }
-  return false;
-}
-function computeRaceSeconds(){ return (+raceHH?.value||0)*3600 + (+raceMM?.value||0)*60 + (+raceSS?.value||0); }
-function secToRaceDisplay(sec){
-  sec = Math.max(0, Math.floor(sec||0));
-  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
-  return (h>0) ? `${h}:${zero2txt(m)}:${zero2txt(s)}` : `${m}:${zero2txt(s)}`;
-}
-function computeRacePaceText(){
-  const mm = +racePaceMM?.value || 0;
-  const ss = +racePaceSS?.value || 0;
-  if (mm+ss>0) return `${mm}:${zero2txt(ss)} /km`;
-
-  let distKm = null;
-  if (raceState.dist==='5K') distKm = 5;
-  else if (raceState.dist==='10K') distKm = 10;
-  else if (raceState.dist==='Half') distKm = 21.0975;
-  else if (raceState.dist==='Marathon') distKm = 42.195;
-  else if (raceDistManualCk?.checked){
-    const v = parseFloat(raceDistManualIn?.value||'0');
-    if (isFinite(v) && v>0) distKm = v;
-  }
-  const sec = computeRaceSeconds();
-  if (!distKm || sec<=0) return `0:00 /km`;
-  const p = Math.round(sec / distKm);
-  return `${Math.floor(p/60)}:${zero2txt(p%60)} /km`;
-}
-function renderRaceBoard(updateBadges=true){
-  if (raceTitleEl)   raceTitleEl.textContent = getRaceSelectedName();
-  if (raceSubtypeEl) raceSubtypeEl.textContent = getRaceSubtypeLabel();
-  if (raceTimeEl)    raceTimeEl.textContent = secToRaceDisplay(computeRaceSeconds());
-  if (racePaceEl)    racePaceEl.textContent = computeRacePaceText();
-
-  if (updateBadges){
-    const sec=computeRaceSeconds();
-    if (badgePB)   badgePB.dataset._targetVisible = (racePB?.checked ? '1' : '0');
-    if (badgeSub3) badgeSub3.dataset._targetVisible = (isFullCourse() && sec>0 && sec<3*3600) ? '1' : '0';
-    if (badgeSub4) badgeSub4.dataset._targetVisible = (isFullCourse() && sec>=3*3600 && sec<4*3600) ? '1' : '0';
-    if (!isAnimatingRace) applyBadgeVisibilityNow();
-  }
-}
-async function runRaceAnimation(){
-  isAnimatingRace = true;
-
-  if (raceTimeEl) raceTimeEl.textContent = '0:00';
-  if (racePaceEl) racePaceEl.textContent = '0:00 /km';
-  prepBadgesForFade();
-  await sleep(360);
-
-  const end = computeRaceSeconds();
-  await animateRaceTime('race-time', end, 2400);
-
-  renderRaceBoard(true);
-  fadeInVisibleBadges();
-
-  isAnimatingRace = false;
-}
-
 /* =========================
    이벤트 바인딩
 ========================= */
-// 공통
-fontGridEl?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-font]'); if(btn) setFont(btn.dataset.font); });
-bgRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-bg]'); if(btn) setBackground(btn.dataset.bg); });
-modeRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-mode]'); if(btn) setRecordType(btn.dataset.mode); });
-layoutRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-layout]'); if(btn) setLayout(btn.dataset.layout); });
-dateInput?.addEventListener('change', setDateFromInput);
+// 폰트/배경/모드/레이아웃
+function updateActiveUI(){
+  updateActive(modeRow,  modeRow?.querySelector(`button[data-mode="${cssEsc(recordType)}"]`));
+  updateActive(layoutRow,layoutRow?.querySelector(`button[data-layout="${cssEsc(layoutType)}"]`));
+}
+function setBackground(color){
+  const htmlEl = document.documentElement, bodyEl = document.body;
+  if(color==='black'){ htmlEl.classList.replace('bg-white','bg-black'); bodyEl.classList.replace('bg-white','bg-black'); }
+  else { htmlEl.classList.replace('bg-black','bg-white'); bodyEl.classList.replace('bg-black','bg-white'); }
+  updateActive(bgRow, bgRow?.querySelector(`button[data-bg="${cssEsc(color)}"]`));
+  updateActive(raceBgRow, raceBgRow?.querySelector(`button[data-bg="${cssEsc(color)}"]`));
+  raceState.bg = color;
+}
+function setRecordType(mode){
+  recordType = mode;
+  document.body.classList.toggle('mode-daily', mode==='daily');
+  document.body.classList.toggle('mode-monthly', mode==='monthly');
+  document.body.classList.toggle('mode-race', mode==='race');
+  updateActive(modeRow, modeRow?.querySelector(`button[data-mode="${cssEsc(mode)}"]`));
 
-// 레이스 입력 변화 즉시 반영
-raceMonthSel?.addEventListener('change', ()=>{ populateRaceOptions(); });
-raceListSel?.addEventListener('change', toggleRaceManualField);
-raceNameInput?.addEventListener('input', ()=> renderRaceBoard(true));
+  // 패널/보드 전환
+  if (dmPanel)   dmPanel.style.display   = (mode==='race') ? 'none'  : 'block';
+  if (racePanel) racePanel.style.display = (mode==='race') ? 'block' : 'none';
+  if (dmBoard)   dmBoard.style.display   = (mode==='race') ? 'none'  : 'block';
+  if (raceBoard) raceBoard.style.display = (mode==='race') ? 'block' : 'none';
 
-raceDistGrid?.addEventListener('click', (e)=>{
-  const btn = e.target.closest('button[data-dist]'); if(!btn) return;
-  [...raceDistGrid.querySelectorAll('button')].forEach(b=>b.classList.remove('is-active'));
-  btn.classList.add('is-active'); raceState.dist = btn.dataset.dist;
-  if (raceDistManualCk){ raceDistManualCk.checked=false; raceDistManualIn.style.display='none'; }
-  renderRaceBoard(true);
-});
-raceDistManualCk?.addEventListener('change', (e)=>{
-  const on=e.target.checked; if (raceDistManualIn) raceDistManualIn.style.display=on?'block':'none';
-  if (on){ raceState.dist=null; [...(raceDistGrid?.querySelectorAll('button')||[])].forEach(b=>b.classList.remove('is-active')); }
-  renderRaceBoard(true);
-});
-raceDistManualIn?.addEventListener('input', ()=> renderRaceBoard(true));
+  applyWideFontScope();
 
-[raceHH,raceMM,raceSS,racePaceMM,racePaceSS].forEach(inp=>inp?.addEventListener('input', ()=> renderRaceBoard(true)));
-raceBgRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-bg]'); if(btn) setBackground(btn.dataset.bg); });
-racePB?.addEventListener('change', ()=>{ if (racePBMsg) racePBMsg.style.display = racePB.checked ? 'inline' : 'none'; renderRaceBoard(true); });
+  if (runsWrap) runsWrap.style.display = (mode==='monthly') ? 'block' : 'none';
+  renderKm(document.getElementById('km')?.textContent?.replace(/[^\d.]/g,'') || 0);
+  renderStats();
+  updateGridCols();
+  fitKmRow();
+  applyLayoutVisual();
+  updateUploadLabel();
+
+  // 폰트 테마 일괄 적용
+  applyFontTheme(selectedFont, layoutType, recordType);
+
+  if (mode==='race') {
+    renderRaceBoard(true);
+    tightenRaceGapsHard();
+    squeezeRacePanel();
+  }
+
+  applyDmStageFontScope();
+}
+function setLayout(type){
+  layoutType = type;
+  updateActive(layoutRow, layoutRow?.querySelector(`button[data-layout="${cssEsc(type)}"]`));
+  applyLayoutVisual();
+}
+function setDateFromInput(){
+  const val = dateInput?.value; if(!val) return;
+  const [y,m,d] = val.split('-').map(Number);
+  selectedDate = new Date(y, m-1, d);
+  renderDateDisplay(); syncDateWidth();
+}
+function applyLayoutVisual(){
+  if (recordType === 'race') return;
+  if(dateSection){
+    dateSection.style.display = (layoutType==='type1' ? (recordType==='monthly'?'grid':'none') : 'grid');
+  }
+  if (dateDisplay){
+    if (layoutType==='type2' || (layoutType==='type1' && recordType==='monthly')) dateDisplay.style.display='block';
+    else dateDisplay.style.display='none';
+  }
+  if(dateInput && !dateInput.value){
+    const t=new Date();
+    dateInput.value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+    selectedDate=t;
+  }
+  renderDateDisplay();
+
+  document.body.classList.remove('type1','type2');
+  document.body.classList.add(layoutType);
+
+  applyFontTheme(selectedFont, layoutType, recordType);
+
+  renderStats();
+  updateGridCols();
+  fitKmRow();
+  applyDmStageFontScope();
+}
+
+/* =========================
+   폰트 선택
+========================= */
+function setFont(font){
+  selectedFont = font;
+
+  applyFontTheme(selectedFont, layoutType, recordType);
+
+  const targetBtn = fontGridEl?.querySelector(`button[data-font="${cssEsc(font)}"]`);
+  updateActive(fontGridEl, targetBtn);
+
+  applyDmStageFontScope();
+
+  ensureFontReady(font, 700, 200).then(()=>{ fitKmRow(); });
+  fitKmRow();
+  renderStats();
+
+  if (recordType === 'race') { tightenRaceGapsHard(); squeezeRacePanel(); }
+}
 
 /* =========================
    Run / Focus
@@ -886,14 +957,58 @@ window.onload = ()=>{
   renderStats();
   updateUploadLabel();
 
-  // DM 전체 정보 폰트 적용/해제
   applyDmStageFontScope();
-
-  // 레이스 입력 간격 축소 & 상단 타이틀 Anta
   tightenRaceGapsHard();
   squeezeRacePanel();
   setFixedTitleFont();
+
+  // 모바일 휠피커 활성화
+  enableMobileWheelPickers();
 };
+
+/* ====== 입력 이벤트: 자동계산 & 즉시 렌더 ====== */
+// 기존 단일 리스너를 대체 (Time/ Pace 변경 시 동기화)
+[raceHH,raceMM,raceSS].forEach(inp=>inp?.addEventListener('input', ()=>{
+  syncPaceFromTime();
+  renderRaceBoard(true);
+}));
+[racePaceMM,racePaceSS].forEach(inp=>inp?.addEventListener('input', ()=>{
+  syncTimeFromPace();
+  renderRaceBoard(true);
+}));
+
+/* 탭/버튼 이벤트 */
+fontGridEl?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-font]'); if(btn) setFont(btn.dataset.font); });
+bgRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-bg]'); if(btn) setBackground(btn.dataset.bg); });
+modeRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-mode]'); if(btn) setRecordType(btn.dataset.mode); });
+layoutRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-layout]'); if(btn) setLayout(btn.dataset.layout); });
+dateInput?.addEventListener('change', setDateFromInput);
+
+// 레이스 입력 변화 즉시 반영
+raceMonthSel?.addEventListener('change', ()=>{ populateRaceOptions(); });
+raceListSel?.addEventListener('change', toggleRaceManualField);
+raceNameInput?.addEventListener('input', ()=> renderRaceBoard(true));
+
+raceDistGrid?.addEventListener('click', (e)=>{
+  const btn = e.target.closest('button[data-dist]'); if(!btn) return;
+  [...raceDistGrid.querySelectorAll('button')].forEach(b=>b.classList.remove('is-active'));
+  btn.classList.add('is-active'); raceState.dist = btn.dataset.dist;
+  if (raceDistManualCk){ raceDistManualCk.checked=false; raceDistManualIn.style.display='none'; }
+  syncPaceFromTime(); // 거리 바뀌면 페이스/타임 재계산
+  syncTimeFromPace();
+  renderRaceBoard(true);
+});
+raceDistManualCk?.addEventListener('change', (e)=>{
+  const on=e.target.checked; if (raceDistManualIn) raceDistManualIn.style.display=on?'block':'none';
+  if (on){ raceState.dist=null; [...(raceDistGrid?.querySelectorAll('button')||[])].forEach(b=>b.classList.remove('is-active')); }
+  syncPaceFromTime();
+  syncTimeFromPace();
+  renderRaceBoard(true);
+});
+raceDistManualIn?.addEventListener('input', ()=>{ syncPaceFromTime(); syncTimeFromPace(); renderRaceBoard(true); });
+
+raceBgRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-bg]'); if(btn) setBackground(btn.dataset.bg); });
+racePB?.addEventListener('change', ()=>{ if (racePBMsg) racePBMsg.style.display = racePB.checked ? 'inline' : 'none'; renderRaceBoard(true); });
 
 window.addEventListener('resize', ()=>{ syncPillLikeToPillBtn(); scaleStageCanvas(); fitKmRow(); });
 window.addEventListener('orientationchange', ()=> { setTimeout(()=>{ syncPillLikeToPillBtn(); scaleStageCanvas(); fitKmRow(); }, 50); });
