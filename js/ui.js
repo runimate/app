@@ -659,12 +659,18 @@ function injectPickerCSS(){
   document.head.appendChild(style);
 }
 function buildSelect(min,max,cur,pad2=true){
+  // ⚙️ 안전하게 숫자로 강제변환 + step 지원
+  const _min  = Number(min);
+  const _max  = Number(max);
+  const step  = 1; // 필요하면 f.step으로 빼서 사용 가능
+  const _cur  = Number(cur);
+
   const sel = document.createElement('select');
-  for(let v=min; v<=max; v++){
+  for(let v=_min; v<=_max; v+=step){
     const opt = document.createElement('option');
     opt.value = String(v);
     opt.textContent = pad2 ? String(v).padStart(2,'0') : String(v);
-    if (v===cur) opt.selected = true;
+    if (v===_cur) opt.selected = true;
     sel.appendChild(opt);
   }
   return sel;
@@ -770,48 +776,52 @@ function enableMobileWheelPickers(){
     });
   };
 
-  const openTime = ()=>{
-    const h  = +raceHH?.value || 0;
-    const m  = +raceMM?.value || 0;
-    const s  = +raceSS?.value || 0;
-    openWheelPicker({
-      title:'Finish Time',
-      cols:3,
-      fields:[
-        {label:'HH', min:0, max:99,  value:h},
-        {label:'MM', min:0, max:59, value:m},
-        {label:'SS', min:0, max:59, value:s},
-      ],
-      onOK(vals){
-        const [H,M,S] = vals;
-        if (raceHH) raceHH.value = String(H);
-        if (raceMM) raceMM.value = String(M);
-        if (raceSS) raceSS.value = String(S);
-        syncPaceFromTime();
-        renderRaceBoard(true);
-      }
-    });
-  };
+const openTime = ()=>{
+  const h  = Math.max(0, Math.min(99, +raceHH?.value || 0));
+  const m  = Math.max(0, Math.min(59, +raceMM?.value || 0));
+  const s  = Math.max(0, Math.min(59, +raceSS?.value || 0));
 
-  const openPace = ()=>{
-    const m  = +racePaceMM?.value || 0;
-    const s  = +racePaceSS?.value || 0;
-    openWheelPicker({
-      title:'Pace (/km)',
-      cols:2,
-      fields:[
-        {label:'MM', min:0, max:20, value:m},
-        {label:'SS', min:0, max:59, value:s},
-      ],
-      onOK(vals){
-        const [M,S] = vals;
-        if (racePaceMM) racePaceMM.value = String(M);
-        if (racePaceSS) racePaceSS.value = String(S);
-        syncTimeFromPace();
-        renderRaceBoard(true);
-      }
-    });
-  };
+  openWheelPicker({
+    title:'Finish Time',
+    cols:3,
+    fields:[
+      {label:'HH', min:0, max:99,  value:h},  // ✅ 0~99
+      {label:'MM', min:0, max:59, value:m},
+      {label:'SS', min:0, max:59, value:s},
+    ],
+    onOK(vals){
+      const [H,M,S] = vals;
+      if (raceHH) raceHH.value = String(H);
+      if (raceMM) raceMM.value = String(M);
+      if (raceSS) raceSS.value = String(S);
+      syncPaceFromTime();
+      renderRaceBoard(true);
+      applyRaceFontFaces(); // 폰트 유지
+    }
+  });
+};
+
+const openPace = ()=>{
+  const m  = Math.max(0, Math.min(20, +racePaceMM?.value || 0)); // ✅ 0~20
+  const s  = Math.max(0, Math.min(59, +racePaceSS?.value || 0));
+
+  openWheelPicker({
+    title:'Pace (/km)',
+    cols:2,
+    fields:[
+      {label:'MM', min:0, max:20, value:m},   // ✅ 0~20
+      {label:'SS', min:0, max:59, value:s},
+    ],
+    onOK(vals){
+      const [M,S] = vals;
+      if (racePaceMM) racePaceMM.value = String(M);
+      if (racePaceSS) racePaceSS.value = String(S);
+      syncTimeFromPace();
+      renderRaceBoard(true);
+      applyRaceFontFaces(); // 폰트 유지
+    }
+  });
+};
 
   // ★ 포커스/터치엔드 바인딩 제거! 탭(click/포인터탭)만 허용
   [raceHH, raceMM, raceSS].forEach(inp => setTapToOpen(inp, openTime));
