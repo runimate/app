@@ -30,7 +30,7 @@ export const fontSettings = {
     raceSubtypeSize: "50px",
     raceTimeSize: "150px",
     raceTimeLetterSpace: "0px",
-    raceTimeTranslate: "0px,0px",
+    raceTimeTranslate: "0px,-10px",
     racePaceSize: "56px",
     racePaceLetterSpace: "0px",
     raceGapSubtypeB: "18px",
@@ -46,12 +46,12 @@ export const fontSettings = {
 
     raceTitleSize: "30px",
     raceSubtypeSize: "50px",
-    raceTimeSize: "130px",
+    raceTimeSize: "140px",
     raceTimeLetterSpace: "2px",
     raceTimeTranslate: "0px,0px",
     racePaceSize: "58px",
     racePaceLetterSpace: "1px",
-    raceGapSubtypeB: "8px",
+    raceGapSubtypeB: "18px",
     raceGapTimeB: "8px",
     raceGapPaceT: "6px",
     racePaceLabelSize: "22px"
