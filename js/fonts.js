@@ -22,7 +22,7 @@
 export const fontSettings = {
   "Helvetica Neue": {
     base: 200, weight: 900,
-    dateSize: "50px", dateGap: "10px", dateWeight: 700, dateTranslate: "0px, 5px",
+    dateSize: "50px", dateGap: "10px", dateWeight: 700, dateTranslate: "5px, 15px",
     kmLetter: "0px",
 
     // Race tuning (기본 베이스)
