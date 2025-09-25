@@ -157,7 +157,6 @@ export const fontSettings = {
   "Rock Salt": {
     base: 140, weight: 700,
     dateSize: "36px", dateGap: "40px", dateWeight: 600,
-    kmWordGap: "40px", translate: "25px,-25px", dateTranslate: "20px,0px",
 
     raceTitleSize: "30px",
     raceSubtypeSize: "50px",
