@@ -326,3 +326,113 @@ body.focus .stage-canvas{ margin-left:0; margin-right:0; }
 @media (max-width: 480px){
   #cv-hint{ margin-top: 64px; }
 }
+/* =========================
+   RACE BOARD – 변수 & 스타일
+   (폰트별 미세조정은 fonts.js → race* 키로 넣고,
+    ui.js setFont()가 아래 CSS 변수에 주입합니다)
+========================= */
+
+/* 1) 레이스 전용 CSS 변수(기본값) */
+:root{
+  --race-title-size:   44px;      /* 대회명 */
+  --race-subtype-size: 66px;      /* 종목(Half/Marathon 등) */
+  --race-time-size:   110px;      /* 시간 숫자 */
+  --race-pace-size:    56px;      /* Pace 숫자 */
+
+  --race-time-translate: 0px,0px; /* 시간 숫자 위치 미세 이동 */
+  --race-time-letter:  -4px;      /* 시간 자간(letter-spacing) */
+
+  /* 세로 간격 조절 포인트 */
+  --race-gap-subtype-b: 12px;     /* 종목 아래 margin-bottom */
+  --race-gap-time-b:     8px;     /* 시간 아래(= Pace 위) margin-bottom */
+  --race-gap-pace-t:     0px;     /* Pace 라벨 위 margin-top */
+}
+
+/* 2) 레이스 보드 구성요소 */
+#race-board{ padding:18px 0; }
+.race-title{
+  font-weight:900;
+  font-size:var(--race-title-size);
+  letter-spacing:-.02em;
+  margin:0 0 6px 0;
+}
+.race-subtype{
+  font-family:Helvetica, Arial, sans-serif !important;
+  font-weight:900;
+  font-size:var(--race-subtype-size);
+  line-height:1.05;
+  margin:8px 0 var(--race-gap-subtype-b);
+}
+.race-time{
+  font-weight:900;
+  font-size:var(--race-time-size);
+  line-height:.9;
+  letter-spacing:var(--race-time-letter);
+  margin:10px 0 var(--race-gap-time-b);
+  transform:translate(var(--race-time-translate));
+}
+.race-pace-wrap{
+  display:block;
+  margin-top:0; /* margin-collapse 방지: 간격은 변수로 제어 */
+}
+.race-pace-wrap .label{
+  font-family:Helvetica, Arial, sans-serif !important;
+  font-size:28px;                 /* ← Pace 타이틀 크기 */
+  margin:var(--race-gap-pace-t) 0 4px; /* 위쪽 간격 가변 */
+}
+.race-pace{
+  font-family:Helvetica, Arial, sans-serif !important;
+  font-weight:900;
+  font-size:clamp(32px, 6.5vw, var(--race-pace-size));
+  line-height:1.1;
+}
+.race-badges{ display:flex; gap:16px; margin-top:18px; flex-wrap:wrap; }
+.race-badges img{ height:56px; }
+
+/* 3) 레이스 드롭다운 1:2 레이아웃 */
+.race-select-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr; /* 위의 Daily/Monthly/Race 3등분 기준 */
+  gap:10px;
+  align-items:start;
+}
+.race-month-cell{ grid-column:1 / 2; }  /* 1칸 */
+.race-list-cell { grid-column:2 / 4; }  /* 2칸 */
+
+/* 4) 거리 버튼(5K/10K/Half/Marathon) pill 규격 맞추기 */
+#race-dist-grid.font-grid{ grid-template-columns:repeat(4, 1fr); }
+#race-dist-grid.font-grid button{
+  height:48px;
+  font-size:16px;
+  font-weight:800;
+}
+
+/* 5) 셀렉트 오른쪽 드롭다운 삼각형(어포던스) */
+.pill-select{
+  -webkit-appearance:none;
+  appearance:none;
+  padding-right:42px;                       /* 삼각형 들어갈 여백 */
+  background:
+    linear-gradient(var(--bg), var(--bg)) padding-box, /* 배경색 보정 */
+    url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'>\
+<path d='M1 1l6 6 6-6' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>\
+</svg>") no-repeat right 14px center;
+  background-size:14px 9px;
+}
+html.bg-black .pill-select{
+  background-image:
+    linear-gradient(var(--bg), var(--bg)),
+    url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'>\
+<path d='M1 1l6 6 6-6' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>\
+</svg>");
+}
+
+/* 6) 레이스 입력 블록(콜론, 따옴표) 시각 균형 */
+.colon, .quote{
+  display:flex; align-items:center; justify-content:center;
+  font-weight:900; font-size:28px;
+}
+.time-grid{ display:grid; grid-template-columns:1fr auto 1fr auto 1fr; gap:8px; align-items:center; }
+.pace-grid{ display:grid; grid-template-columns:1fr auto 1fr auto;   gap:8px; align-items:center; }
