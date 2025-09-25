@@ -1,22 +1,17 @@
-// ui.js — Daily/Monthly/Race 완전 통합판
-// - 레이스: 월/대회 드롭다운 1:2 배치, '직접입력…' 맨 아래, 선택 즉시 프리뷰 반영
-// - 레이스: Time > Pace 순서, PB 체크 즉시 배지 표시, SUB3/SUB4 자동 표시(풀코스만)
-// - 폰트: Daily/Monthly는 선택 폰트를 전체 정보에 적용(단, Londrina Shadow / Rock Salt는 KM 숫자만)
-//         Race에선 "시간·페이스 숫자 + Pace 라벨"은 선택 폰트, 대회명/종목은 현행 유지
-// - 상단 UI(버튼/인풋 등)는 어떤 모드/폰트 선택에도 폰트가 바뀌지 않음(항상 고정)
-// - 크기 조정 포인트: CSS 변수 --race-time-size 등(필요시 fonts.js로 폰트별 튜닝)
+// ui.js — Daily/Monthly/Race 완전 통합판 (압축 간격 + 레이스 변수 재적용 + Pace 라벨 폰트 + 타이틀 Anta)
+/* eslint-disable */
 
 import { fontSettings, kmFontScale, applyFontIndents, applyFontStatsOffset } from './fonts.js';
 
 /* =========================
    상태
 ========================= */
-let parsedData = { km:null, runs:null, paceMin:null, paceSec:null, timeH:null, timeM:null, timeS:null, timeRaw:null };
-let recordType = 'daily';
-let layoutType = 'type1';
+let parsedData   = { km:null, runs:null, paceMin:null, paceSec:null, timeH:null, timeM:null, timeS:null, timeRaw:null };
+let recordType   = 'daily';
+let layoutType   = 'type1';
 let selectedFont = 'Helvetica Neue';
 let selectedDate = new Date();
-let isAnimatingRace = false; // ★ 레이스 애니메이션 중 여부
+let isAnimatingRace = false;
 
 const raceState = { races: [], dist: null, bg: 'white' };
 
@@ -68,12 +63,11 @@ const raceTitleEl     = document.getElementById('race-title');
 const raceSubtypeEl   = document.getElementById('race-subtype');
 const raceTimeEl      = document.getElementById('race-time');
 const racePaceEl      = document.getElementById('race-pace');
-const racePaceLabelEl = document.getElementById('race-pace-label'); // ★ Pace 라벨
+let   racePaceLabelEl = document.getElementById('race-pace-label'); // 있을 수도/없을 수도
 const badgePB         = document.getElementById('badge-pb');
 const badgeSub3       = document.getElementById('badge-sub3');
 const badgeSub4       = document.getElementById('badge-sub4');
-// Pace 래퍼(간격 조정용)
-const racePaceWrap  = document.querySelector('.race-pace-wrap');
+const racePaceWrap    = document.querySelector('.race-pace-wrap');
 
 // 상수
 const MONTH_ABBR = ["JAN.","FEB.","MAR.","APR.","MAY.","JUN.","JUL.","AUG.","SEP.","OCT.","NOV.","DEC."];
@@ -82,7 +76,7 @@ const MONTH_ABBR = ["JAN.","FEB.","MAR.","APR.","MAY.","JUN.","JUL.","AUG.","SEP
    유틸
 ========================= */
 const zero2txt = (n)=>String(n).padStart(2,'0');
-const cssEsc = (s)=> (window.CSS && typeof CSS.escape === 'function') ? CSS.escape(s) : String(s).replace(/"/g,'\\"');
+const cssEsc   = (s)=> (window.CSS && typeof CSS.escape === 'function') ? CSS.escape(s) : String(s).replace(/"/g,'\\"');
 const isFiniteNum = (x)=>Number.isFinite(x);
 const sleep = (ms)=>new Promise(res=>setTimeout(res, ms));
 
@@ -302,12 +296,11 @@ function fitKmRow(){
   syncDateWidth();
 }
 
-/* ──────────────── 뱃지 페이드(레이아웃 유지) ──────────────── */
-// layout shift 방지: display 토글 대신 visibility/opacity 사용
+/* ──────────────── 배지 페이드(레이아웃 유지) ──────────────── */
 function prepBadgesForFade(){
   [badgePB, badgeSub3, badgeSub4].forEach(b=>{
     if(!b) return;
-    if (getComputedStyle(b).display === 'none') b.style.display = 'inline-block'; // 자리 유지
+    if (getComputedStyle(b).display === 'none') b.style.display = 'inline-block';
     b.style.visibility = 'hidden';
     b.style.opacity = '0';
     b.style.transform = 'translateY(-6px)';
@@ -319,7 +312,7 @@ function fadeInVisibleBadges(){
     if(!b) return;
     if (b.dataset._targetVisible === '1'){
       b.style.visibility = 'visible';
-      void b.offsetWidth;              // 리플로우
+      void b.offsetWidth;
       b.style.opacity = '1';
       b.style.transform = 'translateY(0)';
     }else{
@@ -362,8 +355,6 @@ const DM_FONT_EXCEPT = new Set(["Londrina Shadow", "Rock Salt"]);
 function applyDmStageFontScope(){
   if (recordType === 'race') return;
   const useAll = !DM_FONT_EXCEPT.has(selectedFont);
-
-  // 날짜, "Kilometers" 단어, 통계 라벨/숫자
   const targets = [
     document.getElementById('date-display'),
     document.getElementById('km-word'),
@@ -382,6 +373,25 @@ function applyDmStageFontScope(){
 }
 
 /* ─────────────────────────────────────
+   레이스 변수 재적용 (fonts.js → CSS 변수)
+───────────────────────────────────── */
+function applyRaceVarsFromFont(){
+  const fs   = fontSettings[selectedFont] || {};
+  const root = document.documentElement.style;
+
+  root.setProperty('--race-time-translate', fs.raceTimeTranslate || '0px,0px');
+  root.setProperty('--race-gap-subtype-b',  fs.raceGapSubtypeB  || '0px');
+  root.setProperty('--race-gap-time-b',     fs.raceGapTimeB     || '0px');
+  root.setProperty('--race-gap-pace-t',     fs.raceGapPaceT     || '0px');
+
+  if (fs.raceTimeSize)    root.setProperty('--race-time-size', fs.raceTimeSize);
+  if (fs.racePaceSize)    root.setProperty('--race-pace-size', fs.racePaceSize);
+  if (fs.raceTitleSize)   root.setProperty('--race-title-size', fs.raceTitleSize);
+  if (fs.raceSubtypeSize) root.setProperty('--race-subtype-size', fs.raceSubtypeSize);
+  if (fs.racePaceLabelSize) root.setProperty('--race-pace-label-size', fs.racePaceLabelSize);
+}
+
+/* ─────────────────────────────────────
    레이스 숫자(시간/페이스) + Pace 라벨에 선택 폰트를 강제 적용
 ───────────────────────────────────── */
 function applyRaceFontFaces(){
@@ -391,42 +401,30 @@ function applyRaceFontFaces(){
 
   if (raceTimeEl) {
     raceTimeEl.style.setProperty('font-family', fam, 'important');
-    if (fs.raceTimeLetterSpace != null) {
-      raceTimeEl.style.setProperty('letter-spacing', String(fs.raceTimeLetterSpace), 'important');
-    }
-    if (fs.raceTimeSize) {
-      raceTimeEl.style.setProperty('font-size', fs.raceTimeSize, 'important');
-    }
+    if (fs.raceTimeLetterSpace != null) raceTimeEl.style.setProperty('letter-spacing', String(fs.raceTimeLetterSpace), 'important');
+    if (fs.raceTimeSize) raceTimeEl.style.setProperty('font-size', fs.raceTimeSize, 'important');
   }
   if (racePaceEl) {
     racePaceEl.style.setProperty('font-family', fam, 'important');
-    if (fs.racePaceLetterSpace != null) {
-      racePaceEl.style.setProperty('letter-spacing', String(fs.racePaceLetterSpace), 'important');
-    }
-    if (fs.racePaceSize) {
-      racePaceEl.style.setProperty('font-size', fs.racePaceSize, 'important');
-    }
+    if (fs.racePaceLetterSpace != null) racePaceEl.style.setProperty('letter-spacing', String(fs.racePaceLetterSpace), 'important');
+    if (fs.racePaceSize) racePaceEl.style.setProperty('font-size', fs.racePaceSize, 'important');
   }
-  // ★ Pace 라벨도 선택 폰트
+  // Pace 라벨(Label 엘리먼트가 id가 없으면 클래스 선택)
+  if (!racePaceLabelEl) racePaceLabelEl = raceBoard?.querySelector('.race-pace-wrap .label') || null;
   if (racePaceLabelEl) {
     racePaceLabelEl.style.setProperty('font-family', fam, 'important');
-    if (fs.racePaceLabelSize) {
-      racePaceLabelEl.style.setProperty('font-size', fs.racePaceLabelSize, 'important');
-    }
+    if (fs.racePaceLabelSize) racePaceLabelEl.style.setProperty('font-size', fs.racePaceLabelSize, 'important');
   }
 }
 
 /* ─────────────────────────────────────
-   외부에서 바로 쓸 수 있는 튜닝 유틸
+   외부 즉시 튜닝 유틸
 ───────────────────────────────────── */
 window.setKmLetterSpacing = function setKmLetterSpacing(letter){
   const kmEl = document.getElementById('km');
   if (!kmEl) return;
-  if (letter === null || letter === undefined || letter === '') {
-    kmEl.style.removeProperty('letter-spacing');
-  } else {
-    kmEl.style.letterSpacing = String(letter);
-  }
+  if (letter === null || letter === undefined || letter === '') kmEl.style.removeProperty('letter-spacing');
+  else kmEl.style.letterSpacing = String(letter);
 };
 window.setRaceTypography = function setRaceTypography({ timeSize, paceSize, labelSize, timeLetter, paceLetter } = {}){
   const root = document.documentElement.style;
@@ -455,36 +453,16 @@ function setFont(font){
     else kmEl.style.removeProperty('letter-spacing');
   }
 
-  // Race: 숫자/라벨 프리셋 반영
+  // 레이스 변수/폰트 프리셋
+  applyRaceVarsFromFont();
+
   if (raceTimeEl){
-    raceTimeEl.style.fontFamily = `"${font}", sans-serif`;
     const root = document.documentElement.style;
-
-    if (fs.raceTimeSize)        root.setProperty('--race-time-size', fs.raceTimeSize);
-    if (fs.raceTitleSize)       root.setProperty('--race-title-size', fs.raceTitleSize);
-    if (fs.raceSubtypeSize)     root.setProperty('--race-subtype-size', fs.raceSubtypeSize);
-    if (fs.racePaceSize)        root.setProperty('--race-pace-size', fs.racePaceSize);
-    if (fs.raceTimeTranslate)   root.setProperty('--race-time-translate', fs.raceTimeTranslate);
     if (fs.raceTimeLetterSpace) root.setProperty('--race-time-letter', fs.raceTimeLetterSpace);
-
-    // ▼ 간격 변수 (폰트 프리셋 우선)
-    if (fs.raceGapSubtypeB) root.setProperty('--race-gap-subtype-b', fs.raceGapSubtypeB);
-    if (fs.raceGapTimeB)    root.setProperty('--race-gap-time-b',    fs.raceGapTimeB);
-    if (fs.raceGapPaceT)    root.setProperty('--race-gap-pace-t',    fs.raceGapPaceT);
-    if (fs.racePaceLabelSize) root.setProperty('--race-pace-label-size', fs.racePaceLabelSize);
   }
+  if (racePaceEl && fs.racePaceLetterSpace) racePaceEl.style.letterSpacing = fs.racePaceLetterSpace;
 
-  if (racePaceEl){
-    racePaceEl.style.fontFamily = `"${font}", sans-serif`;
-    if (fs.racePaceSize)        racePaceEl.style.fontSize = fs.racePaceSize;
-    if (fs.racePaceLetterSpace) racePaceEl.style.letterSpacing = fs.racePaceLetterSpace;
-  }
-  if (racePaceLabelEl){
-    racePaceLabelEl.style.fontFamily = `"${font}", sans-serif`;
-    if (fs.racePaceLabelSize) racePaceLabelEl.style.fontSize = fs.racePaceLabelSize;
-  }
-
-  // 날짜(일부 폰트만) — 유지
+  // 날짜(일부 폰트만)
   const dateDisp = document.getElementById("date-display");
   const whitelist = new Set(["Helvetica Neue","Anton","Anta","Arvo","Iceberg"]);
   if (dateDisp) {
@@ -502,7 +480,7 @@ function setFont(font){
   // 상단 UI는 항상 고정
   applyWideFontScope();
 
-  // 날짜 관련 변수 유지
+  // 날짜 관련 변수
   const root = document.documentElement.style;
   const dSize = fs.dateSize || "50px";
   const dGap  = fs.dateGap  || "10px";
@@ -535,21 +513,18 @@ function setFont(font){
   // 레이스 숫자 & Pace 라벨 폰트 강제 보정
   applyRaceFontFaces();
 
-  // 레이스 입력 간격 최소화(시각적 압축)
-  tightenRaceGapsHard();
+  // 레이스 입력/보드 간격 최소화
+  if (recordType === 'race') { tightenRaceGapsHard(); squeezeRacePanel(); }
 }
 
-/* 레이스 간격 축소 유틸 */
+/* ─────────────────────────────────────
+   레이스 입력/보드 간격 축소 유틸
+───────────────────────────────────── */
 function clampCssVarPx(varName, maxPx){
   const cs = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-  const toNum = v => {
-    const m = String(v).match(/^(-?\d+(\.\d+)?)px$/);
-    return m ? parseFloat(m[1]) : NaN;
-  };
+  const toNum = v => { const m = String(v).match(/^(-?\d+(\.\d+)?)px$/); return m ? parseFloat(m[1]) : NaN; };
   const cur = toNum(cs);
-  if (!isFinite(cur) || cur > maxPx){
-    document.documentElement.style.setProperty(varName, `${maxPx}px`);
-  }
+  if (!isFinite(cur) || cur > maxPx) document.documentElement.style.setProperty(varName, `${maxPx}px`);
 }
 function tightenRaceGapsHard(){
   clampCssVarPx('--race-gap-subtype-b', 6);
@@ -561,6 +536,46 @@ function tightenRaceGapsHard(){
   const timeWrapEl = raceTimeEl?.parentElement;
   if (timeWrapEl) timeWrapEl.style.marginBottom = '6px';
   if (racePaceWrap) racePaceWrap.style.marginTop = '6px';
+}
+
+/* ★ 입력 패널 자체 간격 압축(스크린샷 빨간영역 해결) */
+function squeezeRacePanel(){
+  const panel = racePanel; if(!panel) return;
+
+  // 레이스 패널 내부 기본 gap 축소
+  panel.style.setProperty('--gap', '10px');
+
+  // 상단 드롭다운 1:2 그리드 gap 축소
+  const selGrid = panel.querySelector('.race-select-grid');
+  if (selGrid) selGrid.style.gap = '10px';
+
+  // "직접 입력" 줄
+  const manualRow = panel.querySelector('.seg-row.cols-3');
+  if (manualRow) {
+    manualRow.style.marginTop = '6px';
+    manualRow.style.alignItems = 'center';
+    manualRow.style.columnGap = '10px';
+  }
+
+  // 직접입력 인풋 상단 여백 축소
+  if (raceNameInput) raceNameInput.parentElement && (raceNameInput.parentElement.style.marginTop = '6px');
+
+  // Time/Pace 섹션 간격/내부 gap 축소
+  const tpCol = panel.querySelector('.tp-col'); if (tpCol) tpCol.style.gap = '8px';
+  const timeGrid = panel.querySelector('.time-grid'); if (timeGrid) timeGrid.style.gap = '6px';
+  const paceGrid = panel.querySelector('.pace-grid'); if (paceGrid) paceGrid.style.gap = '6px';
+
+  panel.querySelectorAll('.section.seg').forEach(el=>{
+    el.style.marginTop = '6px';
+    el.style.marginBottom = '0';
+  });
+
+  // 체크박스/메시지 행 여백 축소
+  panel.querySelectorAll('label.checkbox').forEach(l=>{ l.style.marginTop='6px'; l.style.marginBottom='0'; });
+
+  // BG Color 행 여백 축소
+  const bgSec = panel.querySelector('#race-bg-row')?.closest('.section');
+  if (bgSec) { bgSec.style.marginTop = '8px'; bgSec.style.marginBottom = '0'; }
 }
 
 function setBackground(color){
@@ -597,16 +612,18 @@ function setRecordType(mode){
   applyFontStatsOffset(selectedFont, layoutType, recordType);
   updateUploadLabel();
 
-  if (mode==='race') renderRaceBoard(true);
+  if (mode==='race') {
+    applyRaceVarsFromFont();
+    renderRaceBoard(true);
+    tightenRaceGapsHard();
+    squeezeRacePanel();
+  }
 
-  // Daily/Monthly 전체 정보(예외 2종 제외)에 선택 폰트 적용/해제
+  // DM 전체 정보 폰트 적용/해제
   applyDmStageFontScope();
 
   // 레이스 숫자 & Pace 라벨 폰트 강제 보정
   applyRaceFontFaces();
-
-  // 간격 압축
-  if (mode==='race') tightenRaceGapsHard();
 }
 
 function setLayout(type){
@@ -653,7 +670,7 @@ function applyLayoutVisual(){
   updateGridCols();
   fitKmRow();
 
-  // Daily/Monthly 전체 정보(예외 2종 제외)에 선택 폰트 적용/해제
+  // DM 전체 정보 폰트 적용/해제
   applyDmStageFontScope();
 
   // 레이스 숫자 & Pace 라벨 폰트 강제 보정
@@ -706,10 +723,10 @@ function setModeStyle(mode, { kmScale, statGap, kmWordBottomGap } = {}){
 ========================= */
 function parseLenientJSON(txt){
   if (!txt) return null;
-  txt = txt.replace(/^\uFEFF/, '');               // BOM
-  txt = txt.replace(/\/\*[\s\S]*?\*\//g, '');     // /* ... */
-  txt = txt.replace(/(^|[^:])\/\/.*$/gm, '$1');   // // ...
-  txt = txt.replace(/,\s*([}\]])/g, '$1');        // trailing comma
+  txt = txt.replace(/^\uFEFF/, '');
+  txt = txt.replace(/\/\*[\s\S]*?\*\//g, '');
+  txt = txt.replace(/(^|[^:])\/\/.*$/gm, '$1');
+  txt = txt.replace(/,\s*([}\]])/g, '$1');
   try { return JSON.parse(txt); } catch { return null; }
 }
 function initRaceMonths(){
@@ -870,30 +887,25 @@ function renderRaceBoard(updateBadges=true){
     if (badgeSub3) badgeSub3.dataset._targetVisible = (isFullCourse() && sec>0 && sec<3*3600) ? '1' : '0';
     if (badgeSub4) badgeSub4.dataset._targetVisible = (isFullCourse() && sec>=3*3600 && sec<4*3600) ? '1' : '0';
 
-    // 폼 입력 즉시 반영 시에는 즉시 적용(애니메이션 중 X)
     if (!isAnimatingRace) applyBadgeVisibilityNow();
   }
 
-  // 숫자 & Pace 라벨 폰트 강제 보정(텍스트 갱신 직후 재적용)
+  // 글꼴 변수를 매번 보정
+  applyRaceVarsFromFont();
   applyRaceFontFaces();
 }
 async function runRaceAnimation(){
   isAnimatingRace = true;
 
-  // 0에서 잠깐 멈춤 & 뱃지 숨김(자리 유지)
   if (raceTimeEl) raceTimeEl.textContent = '0:00';
   if (racePaceEl) racePaceEl.textContent = '0:00 /km';
   prepBadgesForFade();
   await sleep(360);
 
-  // 시간 숫자 애니메이션
   const end = computeRaceSeconds();
   await animateRaceTime('race-time', end, 2400);
 
-  // 실제 값으로 보드 갱신(표시 대상 뱃지 dataset 세팅)
   renderRaceBoard(true);
-
-  // 뱃지 부드럽게 등장
   fadeInVisibleBadges();
 
   isAnimatingRace = false;
@@ -902,7 +914,6 @@ async function runRaceAnimation(){
 /* =========================
    이벤트 바인딩
 ========================= */
-// 공통
 fontGridEl?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-font]'); if(btn) setFont(btn.dataset.font); });
 bgRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-bg]'); if(btn) setBackground(btn.dataset.bg); });
 modeRow?.addEventListener('click', (e)=>{ const btn=e.target.closest('button[data-mode]'); if(btn) setRecordType(btn.dataset.mode); });
@@ -1021,9 +1032,9 @@ function updateUploadLabel(){
       : 'Upload your NRC record for TODAY';
 }
 
-// 최상단 타이틀을 Anta 폰트로 고정
+// 최상단 타이틀을 Anta 폰트로 고정 (header h1 포함)
 function setFixedTitleFont(){
-  const title = document.querySelector('#app-title, #page-title, .app-title, .top-title, h1.title');
+  const title = document.querySelector('header h1, #app-title, #page-title, .app-title, .top-title, h1.title');
   if (title){
     title.style.fontFamily = '"Anta", sans-serif';
     title.style.fontWeight = '700';
@@ -1074,14 +1085,16 @@ window.onload = ()=>{
   renderStats();
   updateUploadLabel();
 
-  // Daily/Monthly 전체 정보(예외 2종 제외)에 선택 폰트 적용/해제
+  // DM 전체 정보 폰트 적용/해제
   applyDmStageFontScope();
 
-  // 레이스 숫자 & Pace 라벨 폰트 강제 보정
+  // 레이스 숫자 & Pace 라벨 폰트
+  applyRaceVarsFromFont();
   applyRaceFontFaces();
 
   // 레이스 입력 간격 축소 & 상단 타이틀 Anta
   tightenRaceGapsHard();
+  squeezeRacePanel();
   setFixedTitleFont();
 };
 
