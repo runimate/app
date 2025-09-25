@@ -778,7 +778,7 @@ function enableMobileWheelPickers(){
       title:'Finish Time',
       cols:3,
       fields:[
-        {label:'HH', min:0, max:9,  value:h},
+        {label:'HH', min:0, max:99,  value:h},
         {label:'MM', min:0, max:59, value:m},
         {label:'SS', min:0, max:59, value:s},
       ],
@@ -800,7 +800,7 @@ function enableMobileWheelPickers(){
       title:'Pace (/km)',
       cols:2,
       fields:[
-        {label:'MM', min:0, max:15, value:m},
+        {label:'MM', min:0, max:20, value:m},
         {label:'SS', min:0, max:59, value:s},
       ],
       onOK(vals){
