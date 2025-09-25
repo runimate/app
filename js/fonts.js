@@ -22,7 +22,7 @@
 export const fontSettings = {
   "Helvetica Neue": {
     base: 200, weight: 900,
-    dateSize: "60px", dateGap: "10px", dateWeight: 700,
+    dateSize: "50px", dateGap: "10px", dateWeight: 700, dateTranslate: "0px, 5px",
     kmLetter: "0px",
 
     // Race tuning (기본 베이스)
@@ -59,7 +59,7 @@ export const fontSettings = {
 
   "Big Shoulders Inline Text": {
     base: 200, weight: 800,
-    dateSize: "40px", dateGap: "20px", dateWeight: 800, dateTranslate: "8px, 10px",
+    dateSize: "40px", dateGap: "20px", dateWeight: 800, dateTranslate: "8px, 0px",
     kmLetter: "-1px",
 
     raceTitleSize: "30px",
