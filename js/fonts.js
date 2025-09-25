@@ -225,14 +225,14 @@ export const kmFontScale = {
 export const fontIndentMap = {
   "Helvetica Neue": { type1: { grid: 10,  kmWord: 10 },  type2: { grid: 10,  kmWord: 10 } },
   "Anton":          { type1: { grid: 10,  kmWord: 10 },  type2: { grid: 10,  kmWord: 10 } },
-  "Big Shoulders Inline Text": { type1: { grid: 14, kmWord: 3 }, type2: { grid: 12, kmWord: 3 } },
-  "Tourney":        { type1: { grid: 10,  kmWord: 2 },  type2: { grid: 12,  kmWord: 2 } },
-  "Anta":           { type1: { grid: 14,  kmWord: 0 },  type2: { grid: 12,  kmWord: 0 } },
-  "Arvo":           { type1: { grid: 10,  kmWord: 0 },  type2: { grid: 14,  kmWord: 0 } },
-  "Iceberg":        { type1: { grid: 14,  kmWord: 1 },  type2: { grid: 14,  kmWord: 1 } },
-  "Permanent Marker":{type1:{ grid: 14,  kmWord: 1 },  type2: { grid: 8,  kmWord: 1 } },
-  "Londrina Shadow":{ type1: { grid: 14,  kmWord: 2 },  type2: { grid: 5,  kmWord: 2 } },
-  "Rock Salt":      { type1: { grid: 25, kmWord: 0 },  type2: { grid: 25, kmWord: 0 } }
+  "Big Shoulders Inline Text": { type1: { grid: 14, kmWord: 14 }, type2: { grid: 12, kmWord: 12 } },
+  "Tourney":        { type1: { grid: 10,  kmWord: 10 },  type2: { grid: 12,  kmWord: 12 } },
+  "Anta":           { type1: { grid: 14,  kmWord: 14 },  type2: { grid: 12,  kmWord: 12 } },
+  "Arvo":           { type1: { grid: 10,  kmWord: 10 },  type2: { grid: 14,  kmWord: 14 } },
+  "Iceberg":        { type1: { grid: 14,  kmWord: 14 },  type2: { grid: 14,  kmWord: 14 } },
+  "Permanent Marker":{type1:{ grid: 14,  kmWord: 14 },  type2: { grid: 8,  kmWord: 8 } },
+  "Londrina Shadow":{ type1: { grid: 14,  kmWord: 14 },  type2: { grid: 5,  kmWord: 5 } },
+  "Rock Salt":      { type1: { grid: 25, kmWord: 25 },  type2: { grid: 25, kmWord: 25 } }
 };
 
 // ─────────────────────────────────────────────────────────────
