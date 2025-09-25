@@ -28,11 +28,11 @@ export const fontSettings = {
     // Race tuning (기본 베이스)
     raceTitleSize: "30px",
     raceSubtypeSize: "50px",
-    raceTimeSize: "130px",
+    raceTimeSize: "150px",
     raceTimeLetterSpace: "0px",
     raceTimeTranslate: "0px,0px",
     racePaceSize: "56px",
-    racePaceLetterSpace: "0px",
+    racePaceLetterSpace: "20px",
     raceGapSubtypeB: "8px",
     raceGapTimeB: "8px",
     raceGapPaceT: "6px",
