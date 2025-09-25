@@ -59,7 +59,7 @@ export const fontSettings = {
 
   "Big Shoulders Inline Text": {
     base: 200, weight: 800,
-    dateSize: "40px", dateGap: "20px", dateWeight: 800, dateTranslate: "8px, 0px",
+    dateSize: "40px", dateGap: "20px", dateWeight: 800, dateTranslate: "8px, 10px",
     kmLetter: "-1px",
 
     raceTitleSize: "30px",
