@@ -131,15 +131,15 @@ export const fontSettings = {
 
   "Iceberg": {
     base: 220, weight: 700,
-    dateSize: "42px", dateGap: "10px", dateWeight: 700, dateTranslate: "7px, 20px",
-    kmLetter: "-2px",
+    dateSize: "42px", dateGap: "10px", dateWeight: 700, dateTranslate: "12px, 30px",
+    kmLetter: "-4px",
 
     raceTitleSize: "30px",
     raceSubtypeSize: "50px",
     raceTimeSize: "160px",
     raceTimeLetterSpace: "-2px",
     raceTimeTranslate: "0px,0px",
-    racePaceSize: "64px",
+    racePaceSize: "72px",
     racePaceLetterSpace: "-1px",
     raceGapSubtypeB: "10px",
     raceGapTimeB: "8px",
