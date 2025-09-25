@@ -223,15 +223,15 @@ export const kmFontScale = {
 // 3) 폰트별 들여쓰기 보정(기존)
 // ─────────────────────────────────────────────────────────────
 export const fontIndentMap = {
-  "Helvetica Neue": { type1: { grid: 5,  kmWord: 0 },  type2: { grid: 5,  kmWord: 0 } },
-  "Anton":          { type1: { grid: 5,  kmWord: 0 },  type2: { grid: 5,  kmWord: 0 } },
-  "Big Shoulders Inline Text": { type1: { grid: 8, kmWord: 3 }, type2: { grid: 8, kmWord: 3 } },
-  "Tourney":        { type1: { grid: 6,  kmWord: 2 },  type2: { grid: 6,  kmWord: 2 } },
-  "Anta":           { type1: { grid: 8,  kmWord: 0 },  type2: { grid: 6,  kmWord: 0 } },
-  "Arvo":           { type1: { grid: 4,  kmWord: 0 },  type2: { grid: 4,  kmWord: 0 } },
-  "Iceberg":        { type1: { grid: 8,  kmWord: 1 },  type2: { grid: 8,  kmWord: 1 } },
-  "Permanent Marker":{type1:{ grid: 8,  kmWord: 1 },  type2: { grid: 8,  kmWord: 1 } },
-  "Londrina Shadow":{ type1: { grid: 5,  kmWord: 2 },  type2: { grid: 5,  kmWord: 2 } },
+  "Helvetica Neue": { type1: { grid: 10,  kmWord: 0 },  type2: { grid: 10,  kmWord: 0 } },
+  "Anton":          { type1: { grid: 10,  kmWord: 0 },  type2: { grid: 10,  kmWord: 0 } },
+  "Big Shoulders Inline Text": { type1: { grid: 14, kmWord: 3 }, type2: { grid: 12, kmWord: 3 } },
+  "Tourney":        { type1: { grid: 10,  kmWord: 2 },  type2: { grid: 12,  kmWord: 2 } },
+  "Anta":           { type1: { grid: 14,  kmWord: 0 },  type2: { grid: 12,  kmWord: 0 } },
+  "Arvo":           { type1: { grid: 10,  kmWord: 0 },  type2: { grid: 14,  kmWord: 0 } },
+  "Iceberg":        { type1: { grid: 14,  kmWord: 1 },  type2: { grid: 14,  kmWord: 1 } },
+  "Permanent Marker":{type1:{ grid: 14,  kmWord: 1 },  type2: { grid: 8,  kmWord: 1 } },
+  "Londrina Shadow":{ type1: { grid: 14,  kmWord: 2 },  type2: { grid: 5,  kmWord: 2 } },
   "Rock Salt":      { type1: { grid: 25, kmWord: 0 },  type2: { grid: 25, kmWord: 0 } }
 };
 
