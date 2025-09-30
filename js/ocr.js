@@ -1,4 +1,4 @@
-// js/ocr.js — daily + monthly 지원 (ES Module, robust KM & Monthly ROIs)
+// js/ocr.js — daily + monthly 지원 (ES Module, robust KM & Daily/Monthly ROIs)
 
 /* 1) Tesseract 보장 */
 async function ensureTesseract() {
@@ -68,19 +68,26 @@ async function bestTextFrom(canvas, thresholds=[null, 165, 180, 190, 205]){
 }
 
 /* 4) ROI들 */
-function roisDaily(w,h){
+
+/* ✅ Daily: 기기/버전에 따라 하단 3열 위치가 조금 다름 → 후보 세트 3개
+   순서는 Runs(0) | Pace(1) | Time(2) 로 고정 */
+function roisDailyVariants(w,h){
   const top = { x: Math.round(w*0.06), y: Math.round(h*0.06), w: Math.round(w*0.74), h: Math.round(h*0.26) };
-  const barY = Math.round(h*0.48), barH = Math.round(h*0.16);
   const barX = Math.round(w*0.06), barW = Math.round(w*0.88), cellW = Math.round(barW/3);
-  return {
+  const mk = (barYRatio, barHRatio)=>({
     top,
-    pace: { x: barX + 0*cellW, y: barY, w: cellW, h: barH },
-    time: { x: barX + 1*cellW, y: barY, w: cellW, h: barH },
-    runs: null
-  };
+    runs: { x: barX + 0*cellW, y: Math.round(h*barYRatio), w: cellW, h: Math.round(h*barHRatio) },
+    pace: { x: barX + 1*cellW, y: Math.round(h*barYRatio), w: cellW, h: Math.round(h*barHRatio) },
+    time: { x: barX + 2*cellW, y: Math.round(h*barYRatio), w: cellW, h: Math.round(h*barHRatio) },
+  });
+  return [
+    mk(0.48, 0.16),  // 기본
+    mk(0.52, 0.16),  // 조금 아래
+    mk(0.56, 0.18),  // 더 아래 + 살짝 높이
+  ];
 }
 
-/* 월간: 기기/버전에 따라 하단 3열의 세로 위치가 조금씩 다름 → 후보 세트 3개 */
+/* Monthly: 기기/버전에 따라 하단 3열의 세로 위치가 조금씩 다름 → 후보 세트 3개 */
 function roisMonthlyVariants(w,h){
   const top = { x: Math.round(w*0.06), y: Math.round(h*0.06), w: Math.round(w*0.80), h: Math.round(h*0.26) };
   const barX = Math.round(w*0.06), barW = Math.round(w*0.88), cellW = Math.round(barW/3);
@@ -110,19 +117,16 @@ function normalizeDigits(s){
 function parseDistance(raw){
   if (!raw) return null;
   const s = normalizeDigits(raw);
-  // 소수점이 2개 이상이면 첫 번째만 남김
   const s1 = s.replace(/(\d)\.(?=.*\.)/g, '$1'); // 여분 점 제거
   const matches = [...s1.matchAll(/\b(\d{1,4}(?:\.\d{1,2})?)\b/g)];
   if (!matches.length) return null;
   const pick = (arr)=>arr.sort((a,b)=>{
     const A=a[1], B=b[1];
-    // 길이가 길고(자리수 많고) 소수점 있는 쪽 가산
     const lenScore = B.replace('.','').length - A.replace('.','').length;
     const dotScore = (B.includes('.')?1:0) - (A.includes('.')?1:0);
     return lenScore || dotScore;
   })[0];
   let val = parseFloat(pick(matches)[1]);
-  // 예외: 3자리 정수인데 점 없고 100 이상이면 /100 보정
   if (!String(val).includes('.') && val >= 100) val = parseFloat((val/100).toFixed(2));
   return val;
 }
@@ -153,21 +157,17 @@ function parseTime(s){
 /* KM 텍스트를 여러 후보로 읽고 최적 채택 */
 async function bestKmFromTopCanvas(topCanvas, recordType){
   const candidates = [];
-
-  // 1) 원본
+  // 원본
   candidates.push(await bestTextFrom(cloneCanvas(topCanvas)));
-
-  // 2) 오른쪽 상단 마스킹 (라벨/점잡음 제거용) — 크기 2종
+  // 오른쪽 상단 마스킹(라벨/점잡음 제거)
   for (const rw of [0.22, 0.30]) {
     const c = fillWhite(cloneCanvas(topCanvas), 1-rw, 0, rw, 0.50);
     candidates.push(await bestTextFrom(c));
   }
-
-  // 3) 하단 라벨(킬로미터/Kilometers) 마스킹
+  // 하단 라벨(킬로미터/Kilometers) 마스킹
   const cBottom = fillWhite(cloneCanvas(topCanvas), 0.00, 0.60, 1.00, 0.40);
   candidates.push(await bestTextFrom(cBottom));
 
-  // 점수: 파싱 가능한 거리값 + 자리수/소수점 보너스
   const scored = candidates.map(txt=>{
     const val = parseDistance(txt);
     if (val==null) return {score:-1, val:null};
@@ -185,8 +185,9 @@ export async function extractAll(imgDataURL, { recordType='daily' } = {}){
   const img = await toImage(imgDataURL);
   const { width:w, height:h } = img;
 
+  const dailySets   = recordType==='daily'   ? roisDailyVariants(w,h)   : null;
   const monthlySets = recordType==='monthly' ? roisMonthlyVariants(w,h) : null;
-  const setsToTry = monthlySets || [roisDaily(w,h)];
+  const setsToTry   = dailySets || monthlySets || roFallback(w,h);
 
   let best = { score:-1, out:null };
 
@@ -236,4 +237,17 @@ export async function extractAll(imgDataURL, { recordType='daily' } = {}){
   }
 
   return best.out ?? { km:0, runs:null, paceMin:null, paceSec:null, timeH:null, timeM:null, timeS:null, timeRaw:null };
+}
+
+/* (안전망) 구버전 일간 ROI 하나 넣어둠 — 급한 fallback */
+function roFallback(w,h){
+  const top = { x: Math.round(w*0.06), y: Math.round(h*0.06), w: Math.round(w*0.74), h: Math.round(h*0.26) };
+  const barX = Math.round(w*0.06), barW = Math.round(w*0.88), cellW = Math.round(barW/3);
+  const barY = Math.round(h*0.48), barH = Math.round(h*0.16);
+  return [{
+    top,
+    runs: { x: barX + 0*cellW, y: barY, w: cellW, h: barH },
+    pace: { x: barX + 1*cellW, y: barY, w: cellW, h: barH },
+    time: { x: barX + 2*cellW, y: barY, w: cellW, h: barH },
+  }];
 }
