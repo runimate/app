@@ -74,14 +74,15 @@ function cloneCanvas(src){
 
 // 4) ROI들
 function roisDaily(w,h){
+  // 상단 거리, 하단 3칸(좌: Runs / 중: Pace / 우: Time)
   const top = { x: Math.round(w*0.06), y: Math.round(h*0.06), w: Math.round(w*0.74), h: Math.round(h*0.26) };
   const barY = Math.round(h*0.48), barH = Math.round(h*0.16);
   const barX = Math.round(w*0.06), barW = Math.round(w*0.88), cellW = Math.round(barW/3);
   return {
     top,
-    pace: { x: barX + 0*cellW, y: barY, w: cellW, h: barH },
-    time: { x: barX + 1*cellW, y: barY, w: cellW, h: barH },
-    runs: null
+    runs: { x: barX + 0*cellW, y: barY, w: cellW, h: barH }, // 참고용(파싱은 안 씀)
+    pace: { x: barX + 1*cellW, y: barY, w: cellW, h: barH }, // 가운데
+    time: { x: barX + 2*cellW, y: barY, w: cellW, h: barH }, // 오른쪽
   };
 }
 function roisMonthly(w,h){
@@ -133,6 +134,25 @@ function parseTime(s){
   return { raw:null, H:null, M:null, S:null };
 }
 
+// --- 폴백 스코어러(데일리에서만 사용) ---
+function scorePace(text){
+  const p = parsePace(text);
+  if (p.min==null) return -1;
+  let s = 0;
+  if (p.min>=2 && p.min<=20) s += 3;
+  if (p.sec>=0 && p.sec<=59) s += 2;
+  if (/[’′'″"]/.test(text)) s += 1;
+  return s;
+}
+function scoreTime(text){
+  const t = parseTime(text);
+  if (!t.raw) return -1;
+  let s = (text.match(/:/g)||[]).length * 2;
+  if ((t.M??0) < 60 && (t.S??0) < 60) s += 2;
+  if ((t.H??0) <= 24) s += 1;
+  return s;
+}
+
 // 6) 공개 API
 export async function extractAll(imgDataURL, { recordType='daily' } = {}){
   const img = await toImage(imgDataURL);
@@ -140,20 +160,22 @@ export async function extractAll(imgDataURL, { recordType='daily' } = {}){
 
   const R = recordType==='monthly' ? roisMonthly(w,h) : roisDaily(w,h);
 
+  // ── 상단 거리 ──
   let topC = drawCrop(img, R.top.x, R.top.y, R.top.w, R.top.h, 2.6);
   topC = fillWhite(topC, 0.68, 0.00, 0.32, 0.45);
   const kmTxt = await bestTextFrom(binarize(cloneCanvas(topC), 190));
   const km = parseDistance(kmTxt);
 
+  // ── Pace / Time ──
   let paceMin=null, paceSec=null;
+  let timeH=null, timeM=null, timeS=null, timeRaw=null;
+
   if (R.pace){
     const paceC = drawCrop(img, R.pace.x, R.pace.y, R.pace.w, R.pace.h, 2.6);
     const paceTxt = await bestTextFrom(paceC);
     const P = parsePace(paceTxt);
     paceMin = P.min; paceSec = P.sec;
   }
-
-  let timeH=null, timeM=null, timeS=null, timeRaw=null;
   if (R.time){
     const timeC = drawCrop(img, R.time.x, R.time.y, R.time.w, R.time.h, 2.6);
     const timeTxt = await bestTextFrom(timeC);
@@ -161,6 +183,31 @@ export async function extractAll(imgDataURL, { recordType='daily' } = {}){
     timeH = T.H; timeM = T.M; timeS = T.S; timeRaw = T.raw;
   }
 
+  // ── 데일리 폴백: 세 칸을 모두 스캔해서 가장 가능성 높은 Pace/Time 선택 ──
+  if (recordType !== 'monthly' && (!timeRaw || paceMin==null)){
+    const cells = [R.runs, R.pace, R.time].filter(Boolean);
+    const texts = [];
+    for (const c of cells){
+      const cc = drawCrop(img, c.x, c.y, c.w, c.h, 2.6);
+      texts.push(await bestTextFrom(cc));
+    }
+
+    if (paceMin==null){
+      let bestI=-1, bestS=-1, bestP=null;
+      texts.forEach((t,i)=>{ const sc=scorePace(t); if(sc>bestS){ bestS=sc; bestI=i; bestP=parsePace(t);} });
+      if (bestS>=0 && bestP){ paceMin = bestP.min; paceSec = bestP.sec; }
+    }
+
+    if (!timeRaw){
+      let bestI=-1, bestS=-1, bestT=null;
+      texts.forEach((t,i)=>{ const sc=scoreTime(t); if(sc>bestS){ bestS=sc; bestI=i; bestT=parseTime(t);} });
+      if (bestS>=0 && bestT){
+        timeH = bestT.H; timeM = bestT.M; timeS = bestT.S; timeRaw = bestT.raw;
+      }
+    }
+  }
+
+  // ── Runs(월간 전용) ──
   let runs = null;
   if (recordType==='monthly' && R.runs){
     const runsC = drawCrop(img, R.runs.x, R.runs.y, R.runs.w, R.runs.h, 2.6);
