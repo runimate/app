@@ -1,6 +1,6 @@
-// js/ocr.js — daily + monthly 지원 (ES Module)
+// js/ocr.js — daily + monthly 지원 (ES Module, robust KM & Monthly ROIs)
 
-// 1) Tesseract 보장
+/* 1) Tesseract 보장 */
 async function ensureTesseract() {
   if (window.Tesseract) return window.Tesseract;
   await new Promise((resolve, reject) => {
@@ -15,9 +15,10 @@ async function ensureTesseract() {
   return window.Tesseract;
 }
 
-// 2) 캔버스 유틸
+/* 2) 캔버스 유틸 */
 function toImage(src){ return new Promise((res, rej)=>{ const img=new Image(); img.onload=()=>res(img); img.onerror=rej; img.src=src; }); }
 function makeCanvas(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
+function cloneCanvas(src){ const c = makeCanvas(src.width, src.height); c.getContext('2d').drawImage(src,0,0); return c; }
 function drawCrop(img,x,y,w,h,scale=2.2){
   const c=makeCanvas(Math.round(w*scale), Math.round(h*scale));
   const ctx=c.getContext('2d', { willReadFrequently:true });
@@ -45,9 +46,9 @@ function fillWhite(canvas, rx, ry, rw, rh){
 }
 const toURL = (c)=>c.toDataURL('image/png');
 
-// 3) OCR helpers
-async function ocrLine(url, { psm=7, whitelist='0123456789:’\'″"′ ' } = {}){
-  const T = await ensureTesseract();
+/* 3) OCR helpers */
+async function ocrLine(url, { psm=7, whitelist='0123456789:’\'″"′ .,' } = {}){
+  await ensureTesseract();
   const opts = {
     tessedit_pageseg_mode: psm,
     tessedit_char_whitelist: whitelist,
@@ -56,74 +57,89 @@ async function ocrLine(url, { psm=7, whitelist='0123456789:’\'″"′ ' } = {}
   const res = await Tesseract.recognize(url, 'eng+kor', opts);
   return res?.data?.text?.trim() ?? '';
 }
-async function bestTextFrom(canvas){
-  const candidates = [null, 165, 185, 205];
+async function bestTextFrom(canvas, thresholds=[null, 165, 180, 190, 205]){
   const texts = [];
-  for(const th of candidates){
+  for(const th of thresholds){
     const c = th==null ? canvas : binarize(cloneCanvas(canvas), th);
     texts.push(await ocrLine(toURL(c)));
   }
-  const score = (s)=> (s.match(/[0-9]/g)||[]).length + (s.match(/[:]/g)||[]).length*2;
+  const score = (s)=> (s.match(/[0-9]/g)||[]).length + (s.match(/[:.]/g)||[]).length*2;
   return texts.sort((a,b)=>score(b)-score(a))[0] || '';
 }
-function cloneCanvas(src){
-  const c = makeCanvas(src.width, src.height);
-  c.getContext('2d').drawImage(src,0,0);
-  return c;
-}
 
-// 4) ROI들
+/* 4) ROI들 */
 function roisDaily(w,h){
-  // 상단 거리, 하단 3칸(좌: Runs / 중: Pace / 우: Time)
   const top = { x: Math.round(w*0.06), y: Math.round(h*0.06), w: Math.round(w*0.74), h: Math.round(h*0.26) };
   const barY = Math.round(h*0.48), barH = Math.round(h*0.16);
   const barX = Math.round(w*0.06), barW = Math.round(w*0.88), cellW = Math.round(barW/3);
   return {
     top,
-    runs: { x: barX + 0*cellW, y: barY, w: cellW, h: barH }, // 참고용(파싱은 안 씀)
-    pace: { x: barX + 1*cellW, y: barY, w: cellW, h: barH }, // 가운데
-    time: { x: barX + 2*cellW, y: barY, w: cellW, h: barH }, // 오른쪽
-  };
-}
-function roisMonthly(w,h){
-  const top = { x: Math.round(w*0.06), y: Math.round(h*0.06), w: Math.round(w*0.80), h: Math.round(h*0.26) };
-  const barY = Math.round(h*0.50), barH = Math.round(h*0.18);
-  const barX = Math.round(w*0.06), barW = Math.round(w*0.88), cellW = Math.round(barW/3);
-  return {
-    top,
-    runs: { x: barX + 0*cellW, y: barY, w: cellW, h: barH },
-    pace: { x: barX + 1*cellW, y: barY, w: cellW, h: barH },
-    time: { x: barX + 2*cellW, y: barY, w: cellW, h: barH },
+    pace: { x: barX + 0*cellW, y: barY, w: cellW, h: barH },
+    time: { x: barX + 1*cellW, y: barY, w: cellW, h: barH },
+    runs: null
   };
 }
 
-// 5) 파서
-function parseDistance(s){
-  s = s.replace(/[Oo]/g, '0').replace(/,/g,'.'); // O → 0 보정 포함
-  const matches = [...s.matchAll(/\b(\d{1,4}(?:\.\d{1,2})?)\b/g)];
+/* 월간: 기기/버전에 따라 하단 3열의 세로 위치가 조금씩 다름 → 후보 세트 3개 */
+function roisMonthlyVariants(w,h){
+  const top = { x: Math.round(w*0.06), y: Math.round(h*0.06), w: Math.round(w*0.80), h: Math.round(h*0.26) };
+  const barX = Math.round(w*0.06), barW = Math.round(w*0.88), cellW = Math.round(barW/3);
+  const mk = (barYRatio, barHRatio)=>({
+    top,
+    runs: { x: barX + 0*cellW, y: Math.round(h*barYRatio), w: cellW, h: Math.round(h*barHRatio) },
+    pace: { x: barX + 1*cellW, y: Math.round(h*barYRatio), w: cellW, h: Math.round(h*barHRatio) },
+    time: { x: barX + 2*cellW, y: Math.round(h*barYRatio), w: cellW, h: Math.round(h*barHRatio) },
+  });
+  return [
+    mk(0.50, 0.18),  // 기본
+    mk(0.57, 0.18),  // 조금 아래
+    mk(0.62, 0.20),  // 더 아래 + 살짝 높이
+  ];
+}
+
+/* 5) 파서 (보정 강화) */
+function normalizeDigits(s){
+  return s
+    .replace(/[Oo]/g, '0')
+    .replace(/[|Il]/g, '1')
+    .replace(/[·•:]/g, '.')   // 점/콜론을 소수점으로 오인식한 경우
+    .replace(/[,]/g, '.')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function parseDistance(raw){
+  if (!raw) return null;
+  const s = normalizeDigits(raw);
+  // 소수점이 2개 이상이면 첫 번째만 남김
+  const s1 = s.replace(/(\d)\.(?=.*\.)/g, '$1'); // 여분 점 제거
+  const matches = [...s1.matchAll(/\b(\d{1,4}(?:\.\d{1,2})?)\b/g)];
   if (!matches.length) return null;
-  let val = parseFloat(matches[0][1]);
-  // 보정: 3자리 이상 정수인데 소수점 없으면 잘못 인식된 걸로 판단
-  if (!matches[0][1].includes('.') && val >= 100){
-    const fixed = (val / 100).toFixed(2);
-    return parseFloat(fixed);
-  }
+  const pick = (arr)=>arr.sort((a,b)=>{
+    const A=a[1], B=b[1];
+    // 길이가 길고(자리수 많고) 소수점 있는 쪽 가산
+    const lenScore = B.replace('.','').length - A.replace('.','').length;
+    const dotScore = (B.includes('.')?1:0) - (A.includes('.')?1:0);
+    return lenScore || dotScore;
+  })[0];
+  let val = parseFloat(pick(matches)[1]);
+  // 예외: 3자리 정수인데 점 없고 100 이상이면 /100 보정
+  if (!String(val).includes('.') && val >= 100) val = parseFloat((val/100).toFixed(2));
   return val;
 }
-
 function parseRuns(s){
-  const m = s.match(/\b(\d{1,3})\b/);
+  if (!s) return null;
+  const m = normalizeDigits(s).match(/\b(\d{1,3})\b/);
   return m ? parseInt(m[1],10) : null;
 }
-
 function parsePace(s){
+  if (!s) return { min:null, sec:null };
   const t = s.replace(/[’′']/g,':').replace(/[″"]/g,':').replace(/：/g,':');
   const m = t.match(/(\d{1,2})\s*:\s*([0-5]\d)/);
   if(!m) return { min:null, sec:null };
   return { min:+m[1], sec:+m[2] };
 }
-
 function parseTime(s){
+  if (!s) return { raw:null, H:null, M:null, S:null };
   const t = s.replace(/[’′']/g,':').replace(/：/g,':');
   const hmsWords = t.match(/(\d{1,2})\s*h[^0-9]*(\d{1,2})\s*m[^0-9]*(\d{1,2})\s*s/i);
   if (hmsWords) return { raw:`${+hmsWords[1]}:${hmsWords[2]}:${hmsWords[3]}`, H:+hmsWords[1], M:+hmsWords[2], S:+hmsWords[3] };
@@ -134,86 +150,90 @@ function parseTime(s){
   return { raw:null, H:null, M:null, S:null };
 }
 
-// --- 폴백 스코어러(데일리에서만 사용) ---
-function scorePace(text){
-  const p = parsePace(text);
-  if (p.min==null) return -1;
-  let s = 0;
-  if (p.min>=2 && p.min<=20) s += 3;
-  if (p.sec>=0 && p.sec<=59) s += 2;
-  if (/[’′'″"]/.test(text)) s += 1;
-  return s;
-}
-function scoreTime(text){
-  const t = parseTime(text);
-  if (!t.raw) return -1;
-  let s = (text.match(/:/g)||[]).length * 2;
-  if ((t.M??0) < 60 && (t.S??0) < 60) s += 2;
-  if ((t.H??0) <= 24) s += 1;
-  return s;
+/* KM 텍스트를 여러 후보로 읽고 최적 채택 */
+async function bestKmFromTopCanvas(topCanvas, recordType){
+  const candidates = [];
+
+  // 1) 원본
+  candidates.push(await bestTextFrom(cloneCanvas(topCanvas)));
+
+  // 2) 오른쪽 상단 마스킹 (라벨/점잡음 제거용) — 크기 2종
+  for (const rw of [0.22, 0.30]) {
+    const c = fillWhite(cloneCanvas(topCanvas), 1-rw, 0, rw, 0.50);
+    candidates.push(await bestTextFrom(c));
+  }
+
+  // 3) 하단 라벨(킬로미터/Kilometers) 마스킹
+  const cBottom = fillWhite(cloneCanvas(topCanvas), 0.00, 0.60, 1.00, 0.40);
+  candidates.push(await bestTextFrom(cBottom));
+
+  // 점수: 파싱 가능한 거리값 + 자리수/소수점 보너스
+  const scored = candidates.map(txt=>{
+    const val = parseDistance(txt);
+    if (val==null) return {score:-1, val:null};
+    const raw = String(txt);
+    const digitCount = (raw.match(/\d/g)||[]).length;
+    const dotBonus = String(val).includes('.') ? 1 : 0;
+    return {score: digitCount + dotBonus*2, val};
+  }).sort((a,b)=>b.score-a.score);
+
+  return (scored[0]?.val ?? null);
 }
 
-// 6) 공개 API
+/* 6) 공개 API */
 export async function extractAll(imgDataURL, { recordType='daily' } = {}){
   const img = await toImage(imgDataURL);
   const { width:w, height:h } = img;
 
-  const R = recordType==='monthly' ? roisMonthly(w,h) : roisDaily(w,h);
+  const monthlySets = recordType==='monthly' ? roisMonthlyVariants(w,h) : null;
+  const setsToTry = monthlySets || [roisDaily(w,h)];
 
-  // ── 상단 거리 ──
-  let topC = drawCrop(img, R.top.x, R.top.y, R.top.w, R.top.h, 2.6);
-  topC = fillWhite(topC, 0.68, 0.00, 0.32, 0.45);
-  const kmTxt = await bestTextFrom(binarize(cloneCanvas(topC), 190));
-  const km = parseDistance(kmTxt);
+  let best = { score:-1, out:null };
 
-  // ── Pace / Time ──
-  let paceMin=null, paceSec=null;
-  let timeH=null, timeM=null, timeS=null, timeRaw=null;
+  for (const R of setsToTry){
+    // ── KM ──
+    let topC = drawCrop(img, R.top.x, R.top.y, R.top.w, R.top.h, 2.6);
+    const km = await bestKmFromTopCanvas(topC, recordType);
 
-  if (R.pace){
-    const paceC = drawCrop(img, R.pace.x, R.pace.y, R.pace.w, R.pace.h, 2.6);
-    const paceTxt = await bestTextFrom(paceC);
-    const P = parsePace(paceTxt);
-    paceMin = P.min; paceSec = P.sec;
-  }
-  if (R.time){
-    const timeC = drawCrop(img, R.time.x, R.time.y, R.time.w, R.time.h, 2.6);
-    const timeTxt = await bestTextFrom(timeC);
-    const T = parseTime(timeTxt);
-    timeH = T.H; timeM = T.M; timeS = T.S; timeRaw = T.raw;
-  }
-
-  // ── 데일리 폴백: 세 칸을 모두 스캔해서 가장 가능성 높은 Pace/Time 선택 ──
-  if (recordType !== 'monthly' && (!timeRaw || paceMin==null)){
-    const cells = [R.runs, R.pace, R.time].filter(Boolean);
-    const texts = [];
-    for (const c of cells){
-      const cc = drawCrop(img, c.x, c.y, c.w, c.h, 2.6);
-      texts.push(await bestTextFrom(cc));
+    // ── Pace ──
+    let paceMin=null, paceSec=null;
+    if (R.pace){
+      const paceC = drawCrop(img, R.pace.x, R.pace.y, R.pace.w, R.pace.h, 2.6);
+      const paceTxt = await bestTextFrom(paceC);
+      const P = parsePace(paceTxt);
+      paceMin = P.min; paceSec = P.sec;
     }
 
-    if (paceMin==null){
-      let bestI=-1, bestS=-1, bestP=null;
-      texts.forEach((t,i)=>{ const sc=scorePace(t); if(sc>bestS){ bestS=sc; bestI=i; bestP=parsePace(t);} });
-      if (bestS>=0 && bestP){ paceMin = bestP.min; paceSec = bestP.sec; }
+    // ── Time ──
+    let timeH=null, timeM=null, timeS=null, timeRaw=null;
+    if (R.time){
+      const timeC = drawCrop(img, R.time.x, R.time.y, R.time.w, R.time.h, 2.6);
+      const timeTxt = await bestTextFrom(timeC);
+      const T = parseTime(timeTxt);
+      timeH = T.H; timeM = T.M; timeS = T.S; timeRaw = T.raw;
     }
 
-    if (!timeRaw){
-      let bestI=-1, bestS=-1, bestT=null;
-      texts.forEach((t,i)=>{ const sc=scoreTime(t); if(sc>bestS){ bestS=sc; bestI=i; bestT=parseTime(t);} });
-      if (bestS>=0 && bestT){
-        timeH = bestT.H; timeM = bestT.M; timeS = bestT.S; timeRaw = bestT.raw;
-      }
+    // ── Runs (monthly only) ──
+    let runs = null;
+    if (recordType==='monthly' && R.runs){
+      const runsC = drawCrop(img, R.runs.x, R.runs.y, R.runs.w, R.runs.h, 2.6);
+      const runsTxt = await bestTextFrom(runsC);
+      runs = parseRuns(runsTxt);
+    }
+
+    // 스코어: KM 인식 여부(가중), 나머지 필드 수
+    const fieldsOk = [
+      Number.isFinite(km),
+      (paceMin!=null && paceSec!=null && (paceMin+paceSec)>0),
+      (timeRaw!=null || timeH!=null || timeM!=null || timeS!=null),
+      (recordType==='monthly' ? runs!=null : true)
+    ].filter(Boolean).length;
+    const score = (Number.isFinite(km)?5:0) + fieldsOk;
+
+    if (score > best.score){
+      best = { score, out:{ km: Number.isFinite(km)?km:0, runs, paceMin, paceSec, timeH, timeM, timeS, timeRaw } };
     }
   }
 
-  // ── Runs(월간 전용) ──
-  let runs = null;
-  if (recordType==='monthly' && R.runs){
-    const runsC = drawCrop(img, R.runs.x, R.runs.y, R.runs.w, R.runs.h, 2.6);
-    const runsTxt = await bestTextFrom(runsC);
-    runs = parseRuns(runsTxt);
-  }
-
-  return { km: km ?? 0, runs, paceMin, paceSec, timeH, timeM, timeS, timeRaw };
+  return best.out ?? { km:0, runs:null, paceMin:null, paceSec:null, timeH:null, timeM:null, timeS:null, timeRaw:null };
 }
