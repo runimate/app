@@ -233,22 +233,61 @@ function renderStats(){
 /* =========================
    캔버스 스케일/애니
 ========================= */
+// 기존 easeOut에 추가로 S-curve 이징 추가
 const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
-function animateNumber(id,start,end,duration){
+const easeInOutCubic = t => (t < 0.5) ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3)/2;
+
+/**
+ * 거리 숫자 애니메이션
+ * - holdStart: 시작 시 0.00에서 잠깐 머무는 시간(ms)
+ * - holdEnd: 끝값에서 살짝 머무르는 시간(ms) 후 resolve
+ * - easing: 기본 easeInOutCubic (부드럽게 가속/감속)
+ */
+function animateNumber(id, start, end, duration, opts = {}){
+  const { holdStart = 0, holdEnd = 0, easing = easeInOutCubic } = opts;
   return new Promise(resolve=>{
     const el = document.getElementById(id); let t0;
-    function step(t){ if(!t0)t0=t; const r=Math.min((t-t0)/duration,1);
-      const val = (start+(end-start)*easeOutCubic(r));
+
+    function step(t){
+      if(!t0) t0 = t;
+      const elapsed = t - t0;
+
+      // 시작 홀드 구간: 0.00 유지
+      if (elapsed < holdStart){
+        if (el) el.textContent = formatKm(start);
+        requestAnimationFrame(step);
+        return;
+      }
+
+      // 메인 진행 구간
+      const r = Math.min((elapsed - holdStart) / Math.max(1, duration), 1);
+      const eased = easing(Math.max(0, r));
+      const val = start + (end - start) * eased;
+
       if (el) el.textContent = formatKm(val);
-      r<1 ? requestAnimationFrame(step) : resolve();
+
+      if (r < 1){
+        requestAnimationFrame(step);
+      } else {
+        // 종료 스냅 & 엔드 홀드
+        if (el) el.textContent = formatKm(end);
+        if (holdEnd > 0) {
+          setTimeout(()=> resolve(), holdEnd);
+        } else {
+          resolve();
+        }
+      }
     }
     requestAnimationFrame(step);
   });
 }
+
 function runAnimation(){
   const end = isFiniteNum(parsedData.km) ? parsedData.km : parseFloat((document.getElementById('km')?.textContent||'0').replace(/[^\d.]/g,'')) || 0;
-  return animateNumber('km', 0, end, 1600);
+  // 조금 더 길게 + 시작/끝 홀드로 부드럽게
+  return animateNumber('km', 0, end, 2000, { holdStart: 260, holdEnd: 120, easing: easeInOutCubic });
 }
+
 function animateRaceTime(id, endSec, duration=2400){
   return new Promise(resolve=>{
     const el = document.getElementById(id); if(!el){ resolve(); return; }
@@ -1241,7 +1280,20 @@ window.addEventListener('orientationchange', ()=> { setTimeout(()=>{ syncPillLik
 window.onRun = function onRun(){
   document.body.classList.add('focus');
   document.getElementById('stage-canvas')?.scrollIntoView({behavior:'smooth', block:'start'});
-  if (recordType==='race'){ prepBadgesForFade(); (async()=>{ isAnimatingRace=true; if (raceTimeEl) raceTimeEl.textContent='0:00'; if (racePaceEl) racePaceEl.textContent='0:00 /km'; await sleep(360); await animateRaceTime('race-time', computeRaceSeconds(), 2400); renderRaceBoard(true); fadeInVisibleBadges(); isAnimatingRace=false; })(); return; }
+  if (recordType==='race'){
+    prepBadgesForFade();
+    (async()=>{
+      isAnimatingRace=true;
+      if (raceTimeEl) raceTimeEl.textContent='0:00';
+      if (racePaceEl) racePaceEl.textContent='0:00 /km';
+      await sleep(360);
+      await animateRaceTime('race-time', computeRaceSeconds(), 2400);
+      renderRaceBoard(true);
+      fadeInVisibleBadges();
+      isAnimatingRace=false;
+    })();
+    return;
+  }
   runAnimation();
 };
 window.exitFocus = function exitFocus(){
